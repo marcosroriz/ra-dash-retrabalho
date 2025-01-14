@@ -63,9 +63,9 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 
 # Tabela Top OS de Retrabalho
 tbl_top_os_geral_retrabalho = [
-    {"field": "DESCRICAO DA OFICINA", "headerName": "OFICINA", "filter": "agSetColumnFilter", "minWidth": 200},
-    {"field": "DESCRICAO DA SECAO", "headerName": "SEÇÃO", "filter": "agSetColumnFilter", "minWidth": 200},
-    {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "filter": "agSetColumnFilter", "minWidth": 250},
+    {"field": "DESCRICAO DA OFICINA", "headerName": "OFICINA", "pinned": "left", "minWidth": 200},
+    {"field": "DESCRICAO DA SECAO", "headerName": "SEÇÃO", "minWidth": 200},
+    {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "minWidth": 250},
     {
         "field": "TOTAL_OS",
         "headerName": "TOTAL DE OS",
@@ -80,7 +80,7 @@ tbl_top_os_geral_retrabalho = [
         "headerName": "% RETRABALHOS",
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -90,7 +90,7 @@ tbl_top_os_geral_retrabalho = [
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -108,6 +108,7 @@ tbl_top_os_geral_retrabalho = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 160,
+        "valueFormatter": {"function": "params.value.toLocaleString()"},
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
@@ -129,7 +130,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "field": "PERC_RETRABALHO",
         "headerName": "% RETRABALHOS",
         "filter": "agNumberColumnFilter",
-        "valueFormatter": {"function": "params.value + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -138,7 +139,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
-        "valueFormatter": {"function": "params.value + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -154,6 +155,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "headerName": "REL OS/PROBLEMA",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
+        "valueFormatter": {"function": "params.value.toLocaleString()"},
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
@@ -161,333 +163,11 @@ tbl_top_colaborador_geral_retrabalho = [
 
 
 ##############################################################################
-# Registro da página #########################################################
-##############################################################################
-dash.register_page(__name__, name="Visão Geral", path="/", icon="mdi:bus-alert")
-
-##############################################################################
-# Layout #####################################################################
-##############################################################################
-layout = dbc.Container(
-    [
-        # Loading
-        dmc.LoadingOverlay(
-            visible=True,
-            id="loading-overlay-guia-geral",
-            loaderProps={"size": "xl"},
-            overlayProps={
-                "radius": "lg",
-                "blur": 2,
-                "style": {
-                    "top": 0,  # Start from the top of the viewport
-                    "left": 0,  # Start from the left of the viewport
-                    "width": "100vw",  # Cover the entire width of the viewport
-                    "height": "100vh",  # Cover the entire height of the viewport
-                },
-            },
-            zIndex=10,
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        # Cabeçalho e Inputs
-                        dbc.Row(
-                            [
-                                html.Hr(),
-                                dbc.Row(
-                                    [
-                                        dbc.Col(DashIconify(icon="mdi:bus-alert", width=45), width="auto"),
-                                        dbc.Col(
-                                            html.H1(
-                                                [
-                                                    "Visão geral do\u00a0",
-                                                    html.Strong("retrabalho"),
-                                                ],
-                                                className="align-self-center",
-                                            ),
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                                dmc.Space(h=15),
-                                html.Hr(),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Data (intervalo) de análise"),
-                                                    dmc.DatePicker(
-                                                        id="input-intervalo-datas-geral",
-                                                        allowSingleDateInRange=True,
-                                                        type="range",
-                                                        minDate=date(2024, 1, 1),
-                                                        maxDate=date.today(),
-                                                        value=[date(2024, 1, 1), date.today()],
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Tempo (em dias) entre OS para retrabalho"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-dias-geral-retrabalho",
-                                                        options=[
-                                                            {"label": "10 dias", "value": 10},
-                                                            {"label": "15 dias", "value": 15},
-                                                            {"label": "30 dias", "value": 30},
-                                                        ],
-                                                        placeholder="Período em dias",
-                                                        value=10,
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Oficinas"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-oficina-visao-geral",
-                                                        options=[
-                                                            {"label": "TODAS", "value": "TODAS"},
-                                                            {
-                                                                "label": "GARAGEM CENTRAL",
-                                                                "value": "GARAGEM CENTRAL - RAL",
-                                                            },
-                                                            {
-                                                                "label": "GARAGEM NOROESTE",
-                                                                "value": "GARAGEM NOROESTE - RAL",
-                                                            },
-                                                            {
-                                                                "label": "GARAGEM SUL",
-                                                                "value": "GARAGEM SUL - RAL",
-                                                            },
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais oficinas...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Seções (categorias) de manutenção"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-secao-visao-geral",
-                                                        options=[
-                                                            {"label": "TODAS", "value": "TODAS"},
-                                                            {
-                                                                "label": "BORRACHARIA",
-                                                                "value": "MANUTENCAO BORRACHARIA",
-                                                            },
-                                                            {
-                                                                "label": "ELETRICA",
-                                                                "value": "MANUTENCAO ELETRICA",
-                                                            },
-                                                            {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            {
-                                                                "label": "LANTERNAGEM",
-                                                                "value": "MANUTENCAO LANTERNAGEM",
-                                                            },
-                                                            {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
-                                                            {
-                                                                "label": "MECANICA",
-                                                                "value": "MANUTENCAO MECANICA",
-                                                            },
-                                                            {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            {
-                                                                "label": "SERVIÇOS DE TERCEIROS",
-                                                                "value": "SERVIÇOS DE TERCEIROS",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE ALINHAMENTO",
-                                                                "value": "SETOR DE ALINHAMENTO",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE POLIMENTO",
-                                                                "value": "SETOR DE POLIMENTO",
-                                                            },
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais seções...",
-                                                    ),
-                                                ],
-                                                # className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Ordens de Serviço"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-ordens-servico-visao-geral",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_os
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais ordens de serviço...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=12,
-                                ),
-                            ]
-                        ),
-                    ],
-                    md=8,
-                ),
-                dbc.Col(
-                    # Resumo
-                    dbc.Row(
-                        [
-                            dbc.Row(
-                                [
-                                    # Cabeçalho
-                                    html.Hr(),
-                                    dbc.Col(
-                                        DashIconify(icon="wpf:statistics", width=45),
-                                        width="auto",
-                                    ),
-                                    dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
-                                    dmc.Space(h=15),
-                                    html.Hr(),
-                                ],
-                                align="center",
-                            ),
-                            # Gráfico de pizza com a relação entre Retrabalho e Correção
-                            dcc.Graph(id="graph-pizza-sintese-retrabalho-geral"),
-                        ]
-                    ),
-                    md=4,
-                ),
-            ]
-        ),
-        # Gráfico de Retrabalho por Modelo
-        dmc.Space(h=30),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="mdi:fleet", width=45), width="auto"),
-                dbc.Col(
-                    html.H4("Total de veículos da frota com retrabalho por modelo", className="align-self-center"),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-visao-geral-por-modelo"),
-        dmc.Space(h=40),
-        # Graficos de Evolução do Retrabalho por Garagem e Seção
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Evolução do retrabalho por oficina / mês", className="align-self-center"), width=True),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-retrabalho-por-garagem-por-mes"),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Evolução do retrabalho por seção / mês", className="align-self-center"), width=True),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes"),
-        dmc.Space(h=40),
-        # Tabela com as estatísticas gerais de Retrabalho
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:line-horizontal-4-search-16-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Detalhamento por tipo de OS (serviço)", className="align-self-center"), width=True),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=20),
-        dag.AgGrid(
-            # enableEnterpriseModules=True,
-            id="tabela-top-os-retrabalho-geral",
-            columnDefs=tbl_top_os_geral_retrabalho,
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            dashGridOptions={
-                "localeText": locale_utils.AG_GRID_LOCALE_BR,
-            },
-        ),
-        dmc.Space(h=40),
-        # Tabela com as estatísticas gerais por Colaborador
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
-                dbc.Col(
-                    html.H4("Detalhamento por colaborador das OSs escolhidas", className="align-self-center"),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=20),
-        dag.AgGrid(
-            id="tabela-top-os-colaborador-geral",
-            columnDefs=tbl_top_colaborador_geral_retrabalho,
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="responsiveSizeToFit",
-            dashGridOptions={
-                "localeText": locale_utils.AG_GRID_LOCALE_BR,
-            },
-        ),
-        dmc.Space(h=40),
-    ]
-)
-
-
-##############################################################################
 # CALLBACKS ##################################################################
+##############################################################################
+
+##############################################################################
+# Callbacks para os inputs ##################################################
 ##############################################################################
 
 
@@ -598,6 +278,11 @@ def subquery_os(lista_os, prefix=""):
     return query
 
 
+##############################################################################
+# Callbacks para os gráficos ################################################
+##############################################################################
+
+
 # Callback para o grafico de síntese do retrabalho
 @callback(
     Output("graph-pizza-sintese-retrabalho-geral", "figure"),
@@ -630,6 +315,7 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
     # Query
     query = f"""
         SELECT
+            COUNT(*) AS "TOTAL_NUM_OS",
             SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
@@ -675,10 +361,25 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
     # Arruma legenda e texto
     fig.update_traces(textinfo="value+percent", sort=False)
 
+    # Total numérico de OS, para o título
+    total_num_os = df["TOTAL_NUM_OS"].values[0]
+    total_num_os_str = f"{total_num_os:,}".replace(",", ".")
+    fig.update_layout(
+        title=dict(
+            text=f"Total de OS: {total_num_os_str}",
+            y=0.97,  # Posição vertical do título
+            x=0.5,  # Centraliza o título horizontalmente
+            xanchor="center",
+            yanchor="top",
+            font=dict(size=18),  # Tamanho do texto
+        ),
+        separators=",.",
+    )
+
     # Remove o espaçamento em torno do gráfico
     fig.update_layout(
-        margin=dict(t=20, b=0),  # Remove as margens
-        height=325,  # Ajuste conforme necessário
+        margin=dict(t=40, b=0),  # Remove as margens
+        height=320,  # Ajuste conforme necessário
         legend=dict(
             orientation="h",  # Legenda horizontal
             yanchor="top",  # Ancora no topo
@@ -844,7 +545,12 @@ def plota_grafico_por_modelo(datas, min_dias, lista_oficinas, lista_secaos, list
     bar_chart.update_traces(texttemplate="%{text}")
 
     # Ajustar a margem inferior para evitar corte de rótulos
-    bar_chart.update_layout(margin=dict(t=10, b=200), height=500)
+    bar_chart.update_layout(
+        yaxis=dict(range=[0, 118]), margin=dict(t=10, b=200), height=500  # Adjust the upper limit as needed
+    )
+
+    # Separador numérico
+    bar_chart.update_layout(separators=",.")
 
     # Retorna o gráfico
     return bar_chart
@@ -1113,10 +819,6 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     # Aumenta o espaçamento do titulo
     fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
 
-    # fig.update_layout(
-    #     height=400,  # Define a altura do gráfico
-    # )
-
     return fig
 
 
@@ -1152,27 +854,6 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     inner_subquery_oficinas_str = subquery_oficinas(lista_oficinas, "main.")
     inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
     inner_subquery_os_str = subquery_os(lista_os, "main.")
-
-    # query = f"""
-    #     SELECT
-    #         "DESCRICAO DA OFICINA",
-    #         "DESCRICAO DA SECAO",
-    #         "DESCRICAO DO SERVICO",
-    #         COUNT(*) as "TOTAL_OS",
-    #         100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-    #         100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
-    #     FROM
-    #         mat_view_retrabalho_{min_dias}_dias
-    #     WHERE
-    #         "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-    #         {subquery_oficinas_str}
-    #         {subquery_secoes_str}
-    #         {subquery_os_str}
-    #     GROUP BY
-    #         "DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"
-    #     ORDER BY
-    #         "PERC_RETRABALHO" DESC;
-    # """
 
     query = f"""
     WITH normaliza_problema AS (
@@ -1283,29 +964,6 @@ def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_of
     inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
     inner_subquery_os_str = subquery_os(lista_os, "main.")
 
-    # query = f"""
-    #     SELECT
-    #         "COLABORADOR QUE EXECUTOU O SERVICO",
-    #         COUNT(*) as "TOTAL_OS",
-    #         -- SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-    #         -- SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-    #         -- SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-    #         100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-    #         -- 100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-    #         100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
-    #     FROM
-    #         mat_view_retrabalho_{min_dias}_dias
-    #     WHERE
-    #         "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-    #         {subquery_oficinas_str}
-    #         {subquery_secoes_str}
-    #         {subquery_os_str}
-    #     GROUP BY
-    #         "COLABORADOR QUE EXECUTOU O SERVICO"
-    #     ORDER BY
-    #         "PERC_RETRABALHO" DESC;
-    # """
-
     query = f"""
         WITH normaliza_problema AS (
             SELECT
@@ -1386,3 +1044,444 @@ def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_of
         df.at[ix, "ID_COLABORADOR"] = int(colaborador)
 
     return df.to_dict("records")
+
+
+##############################################################################
+### Callbacks para os labels #################################################
+##############################################################################
+
+
+def gera_labels_inputs(campo):
+    # Cria o callback
+    @callback(
+        [
+            Output(component_id=f"{campo}-labels", component_property="children"),
+        ],
+        [
+            Input("input-select-dias-geral-retrabalho", "value"),
+            Input(component_id="input-select-oficina-visao-geral", component_property="value"),
+            Input(component_id="input-select-secao-visao-geral", component_property="value"),
+            Input(component_id="input-select-ordens-servico-visao-geral", component_property="value"),
+        ],
+    )
+    def atualiza_labels_inputs(min_dias, lista_oficinas, lista_secaos, lista_os):
+        labels_antes = [
+            # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
+            dmc.Badge("Filtro", color="gray", variant="outline"),
+        ]
+        min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
+        lista_oficinas_labels = []
+        lista_secaos_labels = []
+        lista_os_labels = []
+
+        if lista_oficinas is None or not lista_oficinas or "TODAS" in lista_oficinas:
+            lista_oficinas_labels.append(dmc.Badge("Todas as oficinas", variant="outline"))
+        else:
+            for oficina in lista_oficinas:
+                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+
+        if lista_secaos is None or not lista_secaos or "TODAS" in lista_secaos:
+            lista_secaos_labels.append(dmc.Badge("Todas as seções", variant="outline"))
+        else:
+            for secao in lista_secaos:
+                lista_secaos_labels.append(dmc.Badge(secao, variant="dot"))
+
+        if lista_os is None or not lista_os or "TODAS" in lista_os:
+            lista_os_labels.append(dmc.Badge("Todas as ordens de serviço", variant="outline"))
+        else:
+            for os in lista_os:
+                lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
+
+        return [
+            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels)
+        ]
+
+    # Cria o componente
+    return dmc.Group(id=f"{campo}-labels", children=[])
+
+
+##############################################################################
+# Registro da página #########################################################
+##############################################################################
+dash.register_page(__name__, name="Visão Geral", path="/", icon="mdi:bus-alert")
+
+
+##############################################################################
+# Layout #####################################################################
+##############################################################################
+layout = dbc.Container(
+    [
+        # Loading
+        dmc.LoadingOverlay(
+            visible=True,
+            id="loading-overlay-guia-geral",
+            loaderProps={"size": "xl"},
+            overlayProps={
+                "radius": "lg",
+                "blur": 2,
+                "style": {
+                    "top": 0,  # Start from the top of the viewport
+                    "left": 0,  # Start from the left of the viewport
+                    "width": "100vw",  # Cover the entire width of the viewport
+                    "height": "100vh",  # Cover the entire height of the viewport
+                },
+            },
+            zIndex=10,
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        # Cabeçalho e Inputs
+                        dbc.Row(
+                            [
+                                html.Hr(),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(DashIconify(icon="mdi:bus-alert", width=45), width="auto"),
+                                        dbc.Col(
+                                            html.H1(
+                                                [
+                                                    "Visão geral do\u00a0",
+                                                    html.Strong("retrabalho"),
+                                                ],
+                                                className="align-self-center",
+                                            ),
+                                            width=True,
+                                        ),
+                                    ],
+                                    align="center",
+                                ),
+                                dmc.Space(h=15),
+                                html.Hr(),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Data (intervalo) de análise"),
+                                                    dmc.DatePicker(
+                                                        id="input-intervalo-datas-geral",
+                                                        allowSingleDateInRange=True,
+                                                        type="range",
+                                                        minDate=date(2024, 1, 1),
+                                                        maxDate=date.today(),
+                                                        value=[date(2024, 1, 1), date.today()],
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Tempo (em dias) entre OS para retrabalho"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-dias-geral-retrabalho",
+                                                        options=[
+                                                            {"label": "10 dias", "value": 10},
+                                                            {"label": "15 dias", "value": 15},
+                                                            {"label": "30 dias", "value": 30},
+                                                        ],
+                                                        placeholder="Período em dias",
+                                                        value=10,
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dmc.Space(h=10),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Oficinas"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-oficina-visao-geral",
+                                                        options=[
+                                                            {"label": "TODAS", "value": "TODAS"},
+                                                            {
+                                                                "label": "GARAGEM CENTRAL",
+                                                                "value": "GARAGEM CENTRAL - RAL",
+                                                            },
+                                                            {
+                                                                "label": "GARAGEM NOROESTE",
+                                                                "value": "GARAGEM NOROESTE - RAL",
+                                                            },
+                                                            {
+                                                                "label": "GARAGEM SUL",
+                                                                "value": "GARAGEM SUL - RAL",
+                                                            },
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione uma ou mais oficinas...",
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Seções (categorias) de manutenção"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-secao-visao-geral",
+                                                        options=[
+                                                            {"label": "TODAS", "value": "TODAS"},
+                                                            {
+                                                                "label": "BORRACHARIA",
+                                                                "value": "MANUTENCAO BORRACHARIA",
+                                                            },
+                                                            {
+                                                                "label": "ELETRICA",
+                                                                "value": "MANUTENCAO ELETRICA",
+                                                            },
+                                                            {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
+                                                            {
+                                                                "label": "LANTERNAGEM",
+                                                                "value": "MANUTENCAO LANTERNAGEM",
+                                                            },
+                                                            {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
+                                                            {
+                                                                "label": "MECANICA",
+                                                                "value": "MANUTENCAO MECANICA",
+                                                            },
+                                                            {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
+                                                            {
+                                                                "label": "SERVIÇOS DE TERCEIROS",
+                                                                "value": "SERVIÇOS DE TERCEIROS",
+                                                            },
+                                                            {
+                                                                "label": "SETOR DE ALINHAMENTO",
+                                                                "value": "SETOR DE ALINHAMENTO",
+                                                            },
+                                                            {
+                                                                "label": "SETOR DE POLIMENTO",
+                                                                "value": "SETOR DE POLIMENTO",
+                                                            },
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione uma ou mais seções...",
+                                                    ),
+                                                ],
+                                                # className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dmc.Space(h=10),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Ordens de Serviço"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-ordens-servico-visao-geral",
+                                                        options=[
+                                                            {"label": os["LABEL"], "value": os["LABEL"]}
+                                                            for os in lista_todas_os
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione uma ou mais ordens de serviço...",
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=12,
+                                ),
+                            ]
+                        ),
+                    ],
+                    md=8,
+                ),
+                dbc.Col(
+                    # Resumo
+                    dbc.Row(
+                        [
+                            dbc.Row(
+                                [
+                                    # Cabeçalho
+                                    html.Hr(),
+                                    dbc.Col(
+                                        DashIconify(icon="wpf:statistics", width=45),
+                                        width="auto",
+                                    ),
+                                    dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
+                                    dmc.Space(h=15),
+                                    html.Hr(),
+                                ],
+                                align="center",
+                            ),
+                            dcc.Graph(id="graph-pizza-sintese-retrabalho-geral"),
+                        ]
+                    ),
+                    md=4,
+                ),
+            ]
+        ),
+        # Gráfico de Retrabalho por Modelo
+        dmc.Space(h=30),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:fleet", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Quantitativo da frota que teve problema e retrabalho por modelo",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-quanti-frota"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-visao-geral-por-modelo"),
+        dmc.Space(h=40),
+        # Graficos de Evolução do Retrabalho por Garagem e Seção
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+                # dbc.Col(html.H4("Evolução do retrabalho por oficina / mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução do retrabalho por oficina / mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-evolucao-por-oficina"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-retrabalho-por-garagem-por-mes"),
+        dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
+                # dbc.Col(html.H4("Evolução do retrabalho por seção / mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução do retrabalho por seção / mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-evolucao-por-secao"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes"),
+        dmc.Space(h=40),
+        # Tabela com as estatísticas gerais de Retrabalho
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:line-horizontal-4-search-16-filled", width=45), width="auto"),
+                # dbc.Col(html.H4("Detalhamento por tipo de OS (serviço)", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Detalhamento por tipo de OS (serviço)",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-tabela-tipo-os"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
+        dag.AgGrid(
+            # enableEnterpriseModules=True,
+            id="tabela-top-os-retrabalho-geral",
+            columnDefs=tbl_top_os_geral_retrabalho,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+            },
+        ),
+        dmc.Space(h=40),
+        # Tabela com as estatísticas gerais por Colaborador
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
+                # dbc.Col(
+                #     html.H4("Detalhamento por colaborador das OSs escolhidas", className="align-self-center"),
+                #     width=True,
+                # ),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Detalhamento por colaborador das OSs escolhidas",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-tabela-colaborador-os"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
+        dag.AgGrid(
+            id="tabela-top-os-colaborador-geral",
+            columnDefs=tbl_top_colaborador_geral_retrabalho,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="responsiveSizeToFit",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+            },
+        ),
+        dmc.Space(h=40),
+    ]
+)

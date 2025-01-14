@@ -94,18 +94,17 @@ app = Dash(
     external_stylesheets=stylesheets,
     external_scripts=scripts,
     use_pages=True,
+    suppress_callback_exceptions=True,
 )
 
 # Server
 server = app.server
 
+
 # Menu / Navbar
 def criarMenu(dirVertical=True):
     return dbc.Nav(
-        [
-            dbc.NavLink(page["name"], href=page["relative_path"], active="exact")
-            for page in dash.page_registry.values()
-        ],
+        [dbc.NavLink(page["name"], href=page["relative_path"], active="exact") for page in dash.page_registry.values()],
         vertical=dirVertical,
         pills=True,
     )
@@ -140,14 +139,10 @@ header = dmc.Group(
 app_shell = dmc.AppShell(
     [
         dmc.AppShellHeader(header, p=24, style={"backgroundColor": "#f8f9fa"}),
-        dmc.AppShellNavbar(
-            id="navbar", children=criarMenu(dirVertical=True), py="md", px=4
-        ),
+        dmc.AppShellNavbar(id="navbar", children=criarMenu(dirVertical=True), py="md", px=4),
         dmc.AppShellMain(
             dmc.DatesProvider(
-                children=dbc.Container(
-                    [dash.page_container], fluid=True, className="dbc dbc-ag-grid"
-                ),
+                children=dbc.Container([dash.page_container], fluid=True, className="dbc dbc-ag-grid"),
                 settings={"locale": "pt"},
             ),
         ),
@@ -160,13 +155,6 @@ app_shell = dmc.AppShell(
     },
     padding="md",
     id="app-shell",
-    # header={"height": 90},
-    # padding="xl",
-    # navbar={
-    #     "width": 300,
-    #     "breakpoint": "sm",
-    #     "collapsed": {"desktop": True, "mobile": True},
-    # },
 )
 
 app.layout = dmc.MantineProvider(app_shell)
