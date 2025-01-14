@@ -30,7 +30,6 @@ from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
 import tema
-import arq_utils
 import locale_utils
 
 # Banco de Dados
