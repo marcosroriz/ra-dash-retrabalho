@@ -112,6 +112,46 @@ tbl_top_os_geral_retrabalho = [
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
+    {
+        "field": "NOTA_MEDIA_SINTOMA",
+        "headerName": "NOTA MÉDIA SINTOMA",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "valueFormatter": {"function": "params.value.toLocaleString()"},
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "NOTA_MEDIA_SOLUCAO",
+        "headerName": "NOTA MÉDIA SOLUÇÃO",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "valueFormatter": {"function": "params.value.toLocaleString()"},
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "PERC_SINTOMA_COERENTE",
+        "headerName": "% OS SINTOMAS COERENTE",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "filter": "agNumberColumnFilter",
+        "maxWidth": 160,
+        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "PERC_SOLUCAO_COERENTE",
+        "headerName": "% OS SOLUÇÃO COERENTE",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "filter": "agNumberColumnFilter",
+        "maxWidth": 160,
+        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "type": ["numericColumn"],
+    },
 ]
 
 # Tabela Top OS Colaborador
@@ -822,6 +862,162 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     return fig
 
 
+# Callbacks para o grafico de evolução do retrabalho por nota
+@callback(
+    Output("graph-evolucao-retrabalho-por-nota-por-mes", "figure"),
+    [
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+)
+def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    # Valida input
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+        return go.Figure()
+
+    # Datas
+    data_inicio_str = datas[0]
+
+    # Remove min_dias antes para evitar que a última OS não seja retrabalho
+    data_fim = pd.to_datetime(datas[1])
+    data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+    data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+    # Subqueries
+    subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+    subquery_secoes_str = subquery_secoes(lista_secaos)
+    subquery_os_str = subquery_os(lista_os)
+
+    query = f"""
+    SELECT
+        to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+        to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month_str,
+        AVG(CASE WHEN retrabalho THEN osclass."SCORE_SYMPTOMS_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SINTOMA_COM_RETRABALHO",
+	    AVG(CASE WHEN retrabalho THEN osclass."SCORE_SOLUTION_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SOLUCAO_COM_RETRABALHO",
+    	AVG(CASE WHEN correcao_primeira THEN osclass."SCORE_SYMPTOMS_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SINTOMA_SOLUCAO",
+	    AVG(CASE WHEN correcao_primeira THEN osclass."SCORE_SOLUTION_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SOLUCAO_SOLUCAO"
+    FROM
+        mat_view_retrabalho_{min_dias}_dias AS retview
+    LEFT JOIN 
+        os_dados_classificacao AS osclass
+        ON retview."KEY_HASH" = osclass."KEY_HASH"
+    WHERE
+        "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+        {subquery_oficinas_str}
+        {subquery_secoes_str}
+        {subquery_os_str}
+    GROUP BY
+        year_month
+    ORDER BY
+        year_month;
+    """
+
+    # Executa Query
+    df = pd.read_sql(query, pgEngine)
+
+    # Arruma dt
+    df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m", errors="coerce")
+
+    # Funde (melt) colunas de retrabalho e correção dos sintomas
+    df_sintoma = df.melt(
+        id_vars=["year_month_dt"],
+        value_vars=["NOTA_MEDIA_SINTOMA_COM_RETRABALHO", "NOTA_MEDIA_SINTOMA_SOLUCAO"],
+        var_name="CATEGORIA",
+        value_name="NOTA_MEDIA",
+    )
+
+    # Renomeia as colunas
+    df_sintoma["CATEGORIA"] = df_sintoma["CATEGORIA"].replace(
+        {"NOTA_MEDIA_SINTOMA_COM_RETRABALHO": "RETRABALHO", "NOTA_MEDIA_SINTOMA_SOLUCAO": "CORRECAO_PRIMEIRA"}
+    )
+
+    # Adiciona tipo
+    df_sintoma["TIPO"] = "SINTOMA"
+
+    # Funde (melt) colunas de retrabalho e correção das solucoes
+    df_solucao = df.melt(
+        id_vars=["year_month_dt"],
+        value_vars=["NOTA_MEDIA_SOLUCAO_COM_RETRABALHO", "NOTA_MEDIA_SOLUCAO_SOLUCAO"],
+        var_name="CATEGORIA",
+        value_name="NOTA_MEDIA",
+    )
+
+    # Renomeia as colunas
+    df_solucao["CATEGORIA"] = df_sintoma["CATEGORIA"].replace(
+        {"NOTA_MEDIA_SOLUCAO_COM_RETRABALHO": "RETRABALHO", "NOTA_MEDIA_SOLUCAO_SOLUCAO": "CORRECAO_PRIMEIRA"}
+    )
+
+    # Adiciona tipo
+    df_solucao["TIPO"] = "SOLUCAO"
+
+    # Concatena os dfs
+    df_combinado = pd.concat([df_sintoma, df_solucao])
+
+    # Gera o gráfico
+    fig = px.line(
+        df_combinado,
+        x="year_month_dt",
+        y="NOTA_MEDIA",
+        color="TIPO",
+        facet_col="CATEGORIA",
+        facet_col_spacing=0.05,  # Espaçamento entre os gráficos
+        labels={"DESCRICAO DA SECAO": "Seção", "year_month_dt": "Ano-Mês", "PERC": "%"},
+        markers=True,
+    )
+
+    # Coloca % no eixo y
+    # fig.update_yaxes(tickformat=".0f%")
+
+    # Renomeia o eixo y
+    fig.update_layout(
+        yaxis=dict(
+            title="Nota Sintoma",
+        ),
+        yaxis2=dict(
+            title="Nota Solução",
+            overlaying="y",
+            side="right",
+            anchor="x",
+        ),
+        margin=dict(b=100),
+    )
+
+    # Titulo
+    fig.update_layout(
+        annotations=[
+            dict(
+                text="Nota das OSs com Retrabalho",
+                x=0.25,  # Posição X para o primeiro plot
+                y=1.05,  # Posição Y (em cima do plot)
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+            dict(
+                text="Nota das OSs corrigidas de primeira",
+                x=0.75,  # Posição X para o segundo plot
+                y=1.05,  # Posição Y (em cima do plot)
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+        ]
+    )
+
+    # Gera ticks todo mês
+    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
+
+    # Aumenta o espaçamento do titulo
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
+
+    return fig
+
+
 @callback(
     Output("tabela-top-os-retrabalho-geral", "rowData"),
     [
@@ -927,9 +1123,52 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     # Executa a query
     df = pd.read_sql(query, pgEngine)
 
+    # Adicionaa campo de relação entre OS e problemas
     df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
 
-    return df.to_dict("records")
+    # Novo DF com notas LLM
+    query_llm = f"""
+    SELECT
+        main."DESCRICAO DA OFICINA",
+        main."DESCRICAO DA SECAO",
+        main."DESCRICAO DO SERVICO",
+	    AVG(osclass."SCORE_SYMPTOMS_TEXT_QUALITY") AS "NOTA_MEDIA_SINTOMA",
+	    AVG(osclass."SCORE_SOLUTION_TEXT_QUALITY") AS "NOTA_MEDIA_SOLUCAO",
+        100 * ROUND(SUM(CASE WHEN NOT osclass."SYMPTOMS_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SINTOMA_NAO_COERENTE",
+        100 * ROUND(SUM(CASE WHEN osclass."SYMPTOMS_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SINTOMA_COERENTE",
+		100 * ROUND(SUM(CASE WHEN NOT osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_NAO_COERENTE",
+        100 * ROUND(SUM(CASE WHEN osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_COERENTE"
+    FROM
+        mat_view_retrabalho_{min_dias}_dias main
+    LEFT JOIN 
+        os_dados_classificacao AS osclass
+    ON 
+        main."KEY_HASH" = osclass."KEY_HASH"
+    WHERE
+        main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+        {inner_subquery_oficinas_str}
+        {inner_subquery_secoes_str}
+        {inner_subquery_os_str}
+    GROUP BY
+        main."DESCRICAO DA OFICINA",
+        main."DESCRICAO DA SECAO",
+        main."DESCRICAO DO SERVICO"
+    """
+    # Executa a query
+    df_llm = pd.read_sql(query_llm, pgEngine)
+
+    # Lida com NaNs
+    df_llm = df_llm.fillna(0)
+
+    print("----")
+    print(df_llm)
+
+    # Faz Merge
+    df_combinado = pd.merge(df, df_llm, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"])
+    print("----")
+    print(df_combinado)
+
+    return df_combinado.to_dict("records")
 
 
 @callback(
@@ -1164,9 +1403,9 @@ layout = dbc.Container(
                                                         id="input-intervalo-datas-geral",
                                                         allowSingleDateInRange=True,
                                                         type="range",
-                                                        minDate=date(2024, 1, 1),
+                                                        minDate=date(2024, 8, 1),
                                                         maxDate=date.today(),
-                                                        value=[date(2024, 1, 1), date.today()],
+                                                        value=[date(2024, 8, 1), date.today()],
                                                     ),
                                                 ],
                                                 className="dash-bootstrap",
@@ -1246,37 +1485,37 @@ layout = dbc.Container(
                                                         id="input-select-secao-visao-geral",
                                                         options=[
                                                             {"label": "TODAS", "value": "TODAS"},
-                                                            {
-                                                                "label": "BORRACHARIA",
-                                                                "value": "MANUTENCAO BORRACHARIA",
-                                                            },
+                                                            # {
+                                                            #     "label": "BORRACHARIA",
+                                                            #     "value": "MANUTENCAO BORRACHARIA",
+                                                            # },
                                                             {
                                                                 "label": "ELETRICA",
                                                                 "value": "MANUTENCAO ELETRICA",
                                                             },
                                                             {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            {
-                                                                "label": "LANTERNAGEM",
-                                                                "value": "MANUTENCAO LANTERNAGEM",
-                                                            },
-                                                            {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
+                                                            # {
+                                                            #     "label": "LANTERNAGEM",
+                                                            #     "value": "MANUTENCAO LANTERNAGEM",
+                                                            # },
+                                                            # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
                                                             {
                                                                 "label": "MECANICA",
                                                                 "value": "MANUTENCAO MECANICA",
                                                             },
-                                                            {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            {
-                                                                "label": "SERVIÇOS DE TERCEIROS",
-                                                                "value": "SERVIÇOS DE TERCEIROS",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE ALINHAMENTO",
-                                                                "value": "SETOR DE ALINHAMENTO",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE POLIMENTO",
-                                                                "value": "SETOR DE POLIMENTO",
-                                                            },
+                                                            # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
+                                                            # {
+                                                            #     "label": "SERVIÇOS DE TERCEIROS",
+                                                            #     "value": "SERVIÇOS DE TERCEIROS",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE ALINHAMENTO",
+                                                            #     "value": "SETOR DE ALINHAMENTO",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE POLIMENTO",
+                                                            #     "value": "SETOR DE POLIMENTO",
+                                                            # },
                                                         ],
                                                         multi=True,
                                                         value=["TODAS"],
@@ -1412,6 +1651,27 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes"),
+        dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-sparkle-20-filled", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução da nota do retrabalho por mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-evolucao-por-nota"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-retrabalho-por-nota-por-mes"),
         dmc.Space(h=40),
         # Tabela com as estatísticas gerais de Retrabalho
         dbc.Row(
