@@ -8,3 +8,8 @@ src/.env
 profile/
 src/.env.sample
 src/.env.sample
+src/.env.sample
+src/.env.sample
+src/.env.sample
+src/.env.sample
+*.sample
