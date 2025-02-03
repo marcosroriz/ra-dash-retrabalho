@@ -6,3 +6,5 @@ src/.env
 
 # Profile
 profile/
+src/.env.sample
+src/.env.sample
