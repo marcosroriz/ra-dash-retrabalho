@@ -1124,6 +1124,7 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
 
     total_correcao_primeira = f'''{df.iloc[0]['PERC_CORRECAO_PRIMEIRA']}%'''
     total_retrabalho = f'''{df.iloc[0]['PERC_RETRABALHO']}%'''
+    
 
     #print(total_retrabalho)
     # Gera o gráfico
@@ -1589,7 +1590,7 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     [
         #Output("indicador-porcentagem-retrabalho-veiculo", "children"),
         #Output("indicador-porcentagem-correcao-primeira", "children"),
-        Output("indicador-relacao-os-problema", "children"),
+        #Output("indicador-relacao-os-problema", "children"),
         #Output("indicador-posicao-relaçao-retrabalho", "children"),
         #Output("indicador-posição-veiculo-correção-primeira", "children"),
         Output("indicador-posição-veiculo-relaçao-osproblema", "children"),
@@ -1632,7 +1633,8 @@ def atualiza_indicadores(data):
     [Output('graph-evolucao-os-mes-veiculo', 'figure'),
      Output("indicador-problemas-diferentes", "children"),
      Output("indicador-mecanicos-diferentes", "children"),
-     Output("indicador-oss-diferentes", "children"),],
+     Output("indicador-oss-diferentes", "children"),
+     Output("indicador-relacao-os-problema", "children")],
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
@@ -1645,7 +1647,7 @@ def atualiza_indicadores(data):
 def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-        return go.Figure(), "", "", ""
+        return go.Figure(), "", "", "", ""
 
     # Datas
     data_inicio_str = datas[0]
@@ -1700,6 +1702,22 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
             {subquery_os_str}
             {subquery_veiculos_str};
     """
+
+    query_descobrir_problemas = f"""
+        SELECT
+            SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias
+        WHERE
+            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_oficinas_str}
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_veiculos_str};
+    """
+
+    df_problemas = pd.read_sql(query_descobrir_problemas, pgEngine)
+    total_problemas = df_problemas["TOTAL_CORRECAO"].iloc[0]
 
     query_media = f"""
         WITH os_count AS (
@@ -1824,6 +1842,9 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     os_diferentes = int(df_unico['QUANTIDADE_DE_OS'].sum())
     os_totais_veiculo = int(df_soma_mes_veiculos['QUANTIDADE_DE_OS'].sum())
     
+    os_problema = os_totais_veiculo/total_problemas
+    os_problema = round(os_problema, 2)
+
     #print(mecanicos_diferentes)
 
     # Gráfico 2: Soma de OS por Mês
@@ -1887,7 +1908,7 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     fig.update_xaxes(title_text="Ano-Mês", row=1, col=2)
     fig.update_yaxes(title_text="Quantidade de OS", row=1, col=2)
 
-    return fig, os_diferentes, mecanicos_diferentes, os_totais_veiculo
+    return fig, os_diferentes, mecanicos_diferentes, os_totais_veiculo, os_problema
 
 # GRAFICO DA TABELA DE PEÇAS
 @callback(
