@@ -388,7 +388,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Total de serviços  diferentes"),
+                            dbc.CardFooter("Total de tipo serviços"),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -613,7 +613,7 @@ layout = dbc.Container(
             ],
             align="center",
         ),
-        dmc.Space(h=10),
+        dmc.Space(h=30),
         dag.AgGrid(
             id="tabela-top-os-colaborador",
             columnDefs=tbl_top_os_geral_retrabalho,
@@ -732,7 +732,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     total_os = f"{df_os_analise['TOTAL_OS'].iloc[0]} OSs trabalhadas"
     # Indicador 2: Quantidade de serviços únicos realizados
     servicos_diferentes = df_os_analise['QTD_SERVICOS_DIFERENTES'].iloc[0]
-    quantidade_servicos = f"{servicos_diferentes} serviços diferentes"
+    quantidade_servicos = f"{servicos_diferentes} tipos de serviços"
 
     # Indicadores de correção de primeira e retrabalho
     if not df_os_analise.empty and all(
@@ -749,10 +749,33 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         lista_secaos=lista_secaos, lista_os=lista_os
     )
     
+    if df_rank_servico.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
+    
     df_rank_os = colab.indcador_rank_total_os(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
         lista_secaos=lista_secaos, lista_os=lista_os
     )
+    if df_rank_os.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
     # Indicadores Rank
     rank_servico = f"{df_rank_servico['rank_colaborador'].iloc[0]}° posição"
     rank_os_absoluta = f"{df_rank_os['rank_colaborador'].iloc[0]}°  posição"
@@ -762,12 +785,34 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         lista_secaos=lista_secaos, lista_os=lista_os
     )
     
+    if df_nota_media.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
     nota_media = f"{df_nota_media['nota_media_colaborador'].iloc[0] if not df_nota_media['nota_media_colaborador'].iloc[0]  is None else 0} nota media"
     
     df_nota_posicao = colab.posicao_rank_nota_media(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
         lista_secaos=lista_secaos, lista_os=lista_os
     )
+    if df_nota_posicao.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
 
     rank_nota_posicao = f"{df_nota_posicao['rank_colaborador'].iloc[0]}° posição da nota media"
     

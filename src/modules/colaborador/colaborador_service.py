@@ -19,9 +19,7 @@ class ColaboradorService:
                 """,
                 self.pgEngine
             )
-            df_mecanicos["LABEL_COLABORADOR"] = df_mecanicos["nome_colaborador"].apply(
-                lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)
-            )
+            df_mecanicos["LABEL_COLABORADOR"] = df_mecanicos["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x))
             return df_mecanicos
         except Exception as e:
             return pd.DataFrame()
@@ -31,23 +29,14 @@ class ColaboradorService:
         try:
             df_mecanicos_todos = pd.read_sql(
                 """
-                SELECT DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO" 
-                FROM os_dados od 
+               SELECT * FROM colaboradores_frotas_os
                 """,
                 self.pgEngine,
             )
-            # Converte cod_colaborador para int
-            df_mecanicos_todos["cod_colaborador"] = df_mecanicos_todos["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
-
-            # Faz merge dos dados dos mecânicos da RA com os dados de todos os mecânicos
-            df_mecanicos_todos = df_mecanicos_todos.merge(self.get_info_colaboradores(), how="left", on="cod_colaborador")
-
-            # Adiciona o campo não informados para os colaboradores que não estão na RA
-            df_mecanicos_todos["LABEL_COLABORADOR"] = df_mecanicos_todos["LABEL_COLABORADOR"].fillna("Não Informado")
-
+            df_mecanicos_todos["nome_colaborador"] = df_mecanicos_todos["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)) 
             # Adiciona o campo "cod_colaborador" para o campo LABEL
             df_mecanicos_todos["LABEL_COLABORADOR"] = (
-                df_mecanicos_todos["LABEL_COLABORADOR"] + " (" + df_mecanicos_todos["cod_colaborador"].astype(str) + ")"
+                df_mecanicos_todos["nome_colaborador"] + " (" + df_mecanicos_todos["cod_colaborador"].astype(str) + ")"
             )
 
             # Ordena os colaboradores
@@ -237,8 +226,11 @@ class ColaboradorService:
         subquery_secoes_str = self.subquery_secoes(lista_secaos)
         subquery_os_str = self.subquery_os(lista_os)
 
-        inner_subquery_secoes_str = self.subquery_secoes(lista_secaos, "main.")
-        inner_subquery_os_str = self.subquery_os(lista_os, "main.")
+        inner_subquery_secoes_str1 = self.subquery_secoes(lista_secaos, "mt.")
+        inner_subquery_os_str1= self.subquery_os(lista_os, "mt.")
+        
+        inner_subquery_secoes_str2 = self.subquery_secoes(lista_secaos, "main.")
+        inner_subquery_os_str2 = self.subquery_os(lista_os, "main.")
         
         query = f"""
         WITH normaliza_problema AS (
@@ -286,7 +278,7 @@ class ColaboradorService:
             ON mt."KEY_HASH" = odc."KEY_HASH"
             WHERE
                 mt."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-                {inner_subquery_os_str}
+                {inner_subquery_os_str1}
             GROUP BY
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
@@ -326,8 +318,8 @@ class ColaboradorService:
             AND main."DESCRICAO DO SERVICO" = osn."DESCRICAO DO SERVICO"
         WHERE
             main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
-            {inner_subquery_secoes_str}
-            {inner_subquery_os_str}
+            {inner_subquery_secoes_str2}
+            {inner_subquery_os_str2}
         GROUP BY
             main."DESCRICAO DA OFICINA",
             main."DESCRICAO DA SECAO",
