@@ -8,11 +8,8 @@
 ##############################################################################
 # Bibliotecas básicas
 from datetime import date
-import math
 import numpy as np
 import pandas as pd
-import os
-import re
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
@@ -64,19 +61,33 @@ df_lista_os = pd.read_sql(
 lista_todas_os = df_lista_os.to_dict(orient="records")
 lista_todas_os.insert(0, {"LABEL": "TODAS"})
 
-df_lista_veiculos = pd.read_sql(
+df_lista_modelos = pd.read_sql(
     """
     SELECT DISTINCT
-    "CODIGO DO VEICULO" AS "VEICULO"
-        FROM 
+        "DESCRICAO DO MODELO" AS "MODELO"
+    FROM 
         mat_view_retrabalho_10_dias mvrd
     """,
     pgEngine,
 )
+lista_todos_modelos = df_lista_modelos.to_dict(orient="records")
+
+lista_todos_modelos.insert(0, {"LABEL": "TODAS", "MODELO": "TODAS"})
+
+df_lista_veiculos = pd.read_sql(
+    """
+    SELECT DISTINCT
+        "CODIGO DO VEICULO" AS "VEICULO",
+        "DESCRICAO DO MODELO" AS "MODELO"
+    FROM 
+        mat_view_retrabalho_10_dias mvrd
+    """,
+    pgEngine,
+)
+df_lista_veiculos = df_lista_veiculos.sort_values("VEICULO")
 
 lista_todos_veiculos = df_lista_veiculos.to_dict(orient="records")
-lista_todos_veiculos.insert(0, {"VEICULO": "TODAS"})
-
+lista_todos_veiculos.insert(0, {"VEICULO": "TODAS", "MODELO": "TODOS OS VEÍCULOS"})
 
 # Tabela Top OS de Retrabalho
 tbl_top_os_geral_retrabalho = [
@@ -189,7 +200,7 @@ layout = dbc.Container(
         # Loading
         dmc.LoadingOverlay(
             visible=True,
-            id="loading-overlay-guia-geral",
+            id="loading-overlay-guia-por-veiculo",
             loaderProps={"size": "xl"},
             overlayProps={
                 "radius": "lg",
@@ -236,37 +247,13 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Data (intervalo) de análise"),
                                                     dmc.DatePicker(
-                                                        id="input-intervalo-datas-geral",
+                                                        id="input-intervalo-datas-por-veiculo",
                                                         allowSingleDateInRange=True,
                                                         type="range",
                                                         minDate=date(2024, 1, 1),
                                                         maxDate=date.today(),
                                                         value=[date(2024, 1, 1), date.today()],
                                                     ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Veículos"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-veiculos",
-                                                        options=[
-                                                            {"label": os["VEICULO"], "value": os["VEICULO"]}
-                                                            for os in lista_todos_veiculos
-                                                        ],
-                                                        multi=True,
-                                                        value=[lista_todos_veiculos[1]["VEICULO"]] if lista_todos_veiculos else [],
-                                                        placeholder="Selecione uma ou mais ordens de serviço...",
-                                                    )
                                                 ],
                                                 className="dash-bootstrap",
                                             ),
@@ -291,6 +278,61 @@ layout = dbc.Container(
                                                         placeholder="Período em dias",
                                                         value=10,
                                                     ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dmc.Space(h=10),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Modelos"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-modelos",
+                                                        options=[
+                                                            {
+                                                                "label": os["MODELO"], 
+                                                                "value": os["MODELO"]
+                                                            }
+                                                            for os in lista_todos_modelos
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione um ou mais modelos...",
+                                                    )
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Veículos"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-veiculos",
+                                                        options=[
+                                                            {
+                                                                "label": f'{os["VEICULO"]} ({os["MODELO"]})', 
+                                                                "value": os["VEICULO"]
+                                                            }
+                                                            for os in lista_todos_veiculos
+                                                        ],
+                                                        multi=True,
+                                                        value=[lista_todos_veiculos[1]["VEICULO"]] if lista_todos_veiculos else [],
+                                                        placeholder="Selecione uma ou mais ordens de serviço...",
+                                                    )
                                                 ],
                                                 className="dash-bootstrap",
                                             ),
@@ -1017,7 +1059,7 @@ def subquery_modelos_veiculos(lista_modelos, prefix=""):
     Output("indicador-porcentagem-correcao-primeira", "children")],
 
     [
-        Input("input-intervalo-datas-geral", "value"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
@@ -1264,7 +1306,7 @@ def media_geral_retrabalho_geral(datas, min_dias, lista_oficinas, lista_secaos, 
 @callback(
     Output("graph-evolucao-retrabalho-por-garagem-por-mes-veiculos", "figure"),
     [
-        Input("input-intervalo-datas-geral", "value"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
@@ -1412,7 +1454,7 @@ def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(datas, min_dias, lista
 @callback(
     Output("graph-evolucao-retrabalho-por-secao-por-mes-veiculos", "figure"),
     [
-        Input("input-intervalo-datas-geral", "value"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
@@ -1592,7 +1634,7 @@ def atualiza_indicadores(data):
      Output("indicador-mecanicos-diferentes", "children"),
      Output("indicador-oss-diferentes", "children"),],
     [
-        Input("input-intervalo-datas-geral", "value"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
@@ -1851,7 +1893,7 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
 @callback(
     Output("graph-pecas-trocadas-por-mes", "figure"),
     [
-        Input("input-intervalo-datas-geral", "value"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
@@ -1966,7 +2008,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
     ],
     #Input("graph-pecas-trocadas-por-mes", "clickData"),
     [
-        Input("input-intervalo-datas-geral", "value"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-veiculos", "value"),
     ],
@@ -2075,14 +2117,14 @@ def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
 @callback(
     Output("tabela-descricao-de-servico", "rowData"),
     [
-        Input("input-intervalo-datas-geral", "value"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
         Input("input-select-veiculos", "value"),
     ],
-    running=[(Output("loading-overlay-guia-geral", "visible"), True, False)],
+    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
 )
 def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
     # Valida input
@@ -2197,7 +2239,7 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     [Output("indicador-posicao-relaçao-retrabalho", "children"),
      Output("indicador-posição-veiculo-correção-primeira","children") ],
     [
-        Input("input-intervalo-datas-geral", "value"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
