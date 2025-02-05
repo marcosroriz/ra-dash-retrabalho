@@ -668,6 +668,89 @@ layout = dbc.Container(
                                         dmc.Group(
                                             [
                                                 dmc.Title(
+                                                    id="indicador-posicao-relaçao-retrabalho-modelo",
+                                                    order=2,
+                                                ),
+                                                DashIconify(
+                                                    icon="ic:round-sort",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Ranking do veículo % retrabalho modelo"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(
+                                                    id="indicador-posição-veiculo-correção-primeira-modelo",
+                                                    order=2,
+                                                ),
+                                                DashIconify(
+                                                    icon="ic:round-sort",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Ranking do veiculo % correção de primeira modelo"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-posição-veiculo-relaçao-osproblema-modelo", order=2),
+                                                DashIconify(
+                                                    icon="ic:round-sort",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Posição veiculo OS/Problema modelo"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                    ]
+                ),
+                dbc.Row(dmc.Space(h=20)),
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(
                                                     id="indicador-pecas-totais",
                                                     order=2,
                                                 ),
@@ -870,7 +953,6 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-pecas-trocadas-por-mes"),
-        dmc.Space(h=20),
         dag.AgGrid(
             enableEnterpriseModules=True,
             id="tabela-pecas-substituidas",
@@ -1945,9 +2027,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
     WHERE 
         "EQUIPAMENTO" IN ({equipamentos_sql})
         AND "DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        AND "GRUPO" IN ('PEÇAS E EQUIPAMENTOS', 'Transmissão', 'Suspensão', 'Motores', 
-                         'Sistema de Alimentacao Veiculos', 'Freios', 'Elétricos', 'Direção',
-                         'Chassis', 'Carrocerias', 'Arrefecimento', 'Ar Condicionado')
+        AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
     GROUP BY 
         year_month, "EQUIPAMENTO"
     ORDER BY 
@@ -1963,9 +2043,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
         pecas_gerais
     WHERE 
         "DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        AND "GRUPO" IN ('PEÇAS E EQUIPAMENTOS', 'Transmissão', 'Suspensão', 'Motores', 
-                         'Sistema de Alimentacao Veiculos', 'Freios', 'Elétricos', 'Direção',
-                         'Chassis', 'Carrocerias', 'Arrefecimento', 'Ar Condicionado')
+        AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
     GROUP BY 
         year_month
     ORDER BY 
@@ -1999,8 +2077,15 @@ def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
                     x=df_equip["year_month_dt"],
                     y=df_equip["total_pecas"],
                     mode="lines+markers",
-                    name=f"Valores do Veículo {equip}",
-                    line=dict(width=2)
+                    name=f"Veículo {equip}",
+                    line=dict(width=2),
+                    marker=dict(size=8),
+                    hovertemplate=(
+                        "<b>Veículo:</b> %{text}<br>"
+                        "<b>Mês:</b> %{x|%Y-%m}<br>"
+                        "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
+                    ),
+                    text=df_equip["EQUIPAMENTO"]  # Adiciona o nome do veículo ao hover
                 )
             )
 
@@ -2010,9 +2095,24 @@ def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
                 x=df_media_geral["year_month_dt"],
                 y=df_media_geral["media_geral"],
                 mode="lines",
-                name="Média Geral de Todos os Veículos",
+                name="Média Geral",
                 line=dict(color="orange", dash="dot", width=2),
+                hovertemplate=(
+                    "<br>"
+                    "<b>Média Geral</b><br>"
+                    "<b>Mês:</b> %{x|%Y-%m}<br>"
+                    "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
+                ),
             )
+        )
+
+        # Layout melhorado
+        fig.update_layout(
+            title="Valor das Peças Trocadas por Mês",
+            xaxis_title="Mês",
+            yaxis_title="Valor (R$)",
+            hovermode="x unified",  # Exibir todos os valores ao passar o mouse
+            template="plotly_white"  # Tema mais moderno
         )
 
         return fig
@@ -2071,9 +2171,7 @@ def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
             TO_DATE("DATA", 'DD/MM/YY') 
                 BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
                     AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-            AND "GRUPO" IN ('PEÇAS E EQUIPAMENTOS', 'Transmissão', 'Suspensão', 'Motores', 
-                     'Sistema de Alimentacao Veiculos', 'Freios', 'Elétricos', 'Direção',
-                     'Chassis', 'Carrocerias', 'Arrefecimento', 'Ar Condicionado')
+            AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
             {subquery_veiculos_str}
     """
 
@@ -2089,9 +2187,7 @@ def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
             TO_DATE("DATA", 'DD/MM/YY') 
             BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
                     AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-            AND "GRUPO" IN ('PEÇAS E EQUIPAMENTOS', 'Transmissão', 'Suspensão', 'Motores', 
-                            'Sistema de Alimentacao Veiculos', 'Freios', 'Elétricos', 'Direção',
-                            'Chassis', 'Carrocerias', 'Arrefecimento', 'Ar Condicionado')
+            AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
         GROUP BY "EQUIPAMENTO"
         )
         SELECT * 
