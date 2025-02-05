@@ -91,9 +91,7 @@ def gerar_grafico_retrabalho_por_modelo(df):
     bar_chart.update_traces(
         text=[
             f"{perc_nao_teve_prob:.0f}%<br>({nao_teve_prob:.0f})"
-            for nao_teve_prob, perc_nao_teve_prob in zip(
-                df["NAO_TEVE_PROBLEMA"], df["PERC_NAO_TEVE_PROBLEMA"]
-            )
+            for nao_teve_prob, perc_nao_teve_prob in zip(df["NAO_TEVE_PROBLEMA"], df["PERC_NAO_TEVE_PROBLEMA"])
         ],
         selector=dict(name="PERC_NAO_TEVE_PROBLEMA"),
     )
@@ -263,7 +261,7 @@ def gerar_grafico_evolucao_retrabalho_por_secao_por_mes(df):
     fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
 
     # Aumenta o espaçamento do titulo
-    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90)) 
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
 
     return fig
 
@@ -328,6 +326,6 @@ def gerar_grafico_evolucao_retrabalho_por_nota_por_mes(df):
     fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
 
     # Aumenta o espaçamento do titulo
-    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90)) 
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
 
     return fig

@@ -18,9 +18,7 @@ class HomeService:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
 
-    def get_sintese_geral(
-        self, datas, min_dias, lista_oficinas, lista_secaos, lista_os
-    ):
+    def get_sintese_geral(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a síntese geral (que será usado para o gráfico de pizza)"""
 
         # Extraí a data inicial (já em string)
@@ -60,15 +58,11 @@ class HomeService:
         df = pd.read_sql(query, self.dbEngine)
 
         # Calcula o total de correções tardia
-        df["TOTAL_CORRECAO_TARDIA"] = (
-            df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
-        )
+        df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
 
         return df
 
-    def get_retrabalho_por_modelo(
-        self, datas, min_dias, lista_oficinas, lista_secaos, lista_os
-    ):
+    def get_retrabalho_por_modelo(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         """Função para obter o quantitativo de retrabalho e correções de primeira por modelo"""
 
         # Extraí a data inicial (já em string)
@@ -137,25 +131,17 @@ class HomeService:
         df_teve_retrabalho = pd.read_sql(query_teve_retrabalho, self.dbEngine)
 
         # Merge dos dataframes
-        df = df_total_frota.merge(
-            df_teve_problema, on="DESCRICAO DO MODELO", how="left"
-        )
+        df = df_total_frota.merge(df_teve_problema, on="DESCRICAO DO MODELO", how="left")
         df = df.merge(df_teve_retrabalho, on="DESCRICAO DO MODELO", how="left")
         df.fillna(0, inplace=True)
 
         # Calcular campos
-        df["NAO_TEVE_PROBLEMA"] = (
-            df["TOTAL_FROTA_PERIODO"] - df["TOTAL_FROTA_TEVE_PROBLEMA"]
-        )
-        df["TEVE_PROBLEMA_SEM_RETRABALHO"] = (
-            df["TOTAL_FROTA_TEVE_PROBLEMA"] - df["TOTAL_FROTA_TEVE_RETRABALHO"]
-        )
+        df["NAO_TEVE_PROBLEMA"] = df["TOTAL_FROTA_PERIODO"] - df["TOTAL_FROTA_TEVE_PROBLEMA"]
+        df["TEVE_PROBLEMA_SEM_RETRABALHO"] = df["TOTAL_FROTA_TEVE_PROBLEMA"] - df["TOTAL_FROTA_TEVE_RETRABALHO"]
         df["TEVE_PROBLEMA_E_RETRABALHO"] = df["TOTAL_FROTA_TEVE_RETRABALHO"]
 
         # Calcula as porcentagens
-        df["PERC_NAO_TEVE_PROBLEMA"] = round(
-            100 * df["NAO_TEVE_PROBLEMA"] / df["TOTAL_FROTA_PERIODO"], 1
-        )
+        df["PERC_NAO_TEVE_PROBLEMA"] = round(100 * df["NAO_TEVE_PROBLEMA"] / df["TOTAL_FROTA_PERIODO"], 1)
         df["PERC_TEVE_PROBLEMA_SEM_RETRABALHO"] = round(
             100 * df["TEVE_PROBLEMA_SEM_RETRABALHO"] / df["TOTAL_FROTA_PERIODO"], 1
         )
@@ -165,9 +151,7 @@ class HomeService:
 
         return df
 
-    def get_evolucao_retrabalho_por_oficina_por_mes(
-        self, datas, min_dias, lista_oficinas, lista_secaos, lista_os
-    ):
+    def get_evolucao_retrabalho_por_oficina_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a evolução do retrabalho por oficinal por mes"""
         # Extraí a data inicial (já em string)
         data_inicio_str = datas[0]
@@ -223,9 +207,7 @@ class HomeService:
 
         return df_combinado
 
-    def get_evolucao_retrabalho_por_secao_por_mes(
-        self, datas, min_dias, lista_oficinas, lista_secaos, lista_os
-    ):
+    def get_evolucao_retrabalho_por_secao_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a evolução do retrabalho por seção por mes"""
         # Extraí a data inicial (já em string)
         data_inicio_str = datas[0]
@@ -280,7 +262,7 @@ class HomeService:
         )
 
         return df_combinado
-    
+
     def get_evolucao_retrabalho_por_nota_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a evolução do retrabalho por nota por mes"""
 
@@ -364,7 +346,6 @@ class HomeService:
         df_combinado = pd.concat([df_sintoma, df_solucao])
 
         return df_combinado
-    
 
     def get_top_os_geral_retrabalho(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         """Função para obter as OSs com mais retrabalho"""
@@ -499,7 +480,7 @@ class HomeService:
         df_combinado = pd.merge(df, df_llm, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"])
 
         return df_combinado
-    
+
     def get_top_os_colaboradores(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         """Função para obter os colaboradores com mais retrabalho"""
 
@@ -593,13 +574,13 @@ class HomeService:
             colaborador = linha["COLABORADOR QUE EXECUTOU O SERVICO"]
             nome_colaborador = "Não encontrado"
             if colaborador in df_mecanicos["cod_colaborador"].values:
-                nome_colaborador = df_mecanicos[df_mecanicos["cod_colaborador"] == colaborador]["nome_colaborador"].values[
-                    0
-                ]
+                nome_colaborador = df_mecanicos[df_mecanicos["cod_colaborador"] == colaborador][
+                    "nome_colaborador"
+                ].values[0]
                 nome_colaborador = re.sub(r"(?<!^)([A-Z])", r" \1", nome_colaborador)
 
             df.at[ix, "LABEL_COLABORADOR"] = f"{nome_colaborador} - {int(colaborador)}"
             df.at[ix, "NOME_COLABORADOR"] = f"{nome_colaborador}"
             df.at[ix, "ID_COLABORADOR"] = int(colaborador)
-        
+
         return df

@@ -3,6 +3,7 @@
 
 # Funções utilitárias para construção das queries SQL
 
+
 # Subqueries para filtrar as oficinas, seções e ordens de serviço quando TODAS não for selecionado
 def subquery_oficinas(lista_oficinas, prefix="", termo_all="TODAS"):
     query = ""

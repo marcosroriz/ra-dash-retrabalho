@@ -238,7 +238,9 @@ def plota_grafico_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista
         return go.Figure()
 
     # Obtem os dados
-    df = home_service.get_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_evolucao_retrabalho_por_oficina_por_mes(
+        datas, min_dias, lista_oficinas, lista_secaos, lista_os
+    )
 
     # Gera o gráfico
     fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_oficina_por_mes(df)
@@ -299,7 +301,6 @@ def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_of
 ##############################################################################
 # Callbacks para as tabelas ##################################################
 ##############################################################################
-
 
 
 @callback(

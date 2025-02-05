@@ -5,6 +5,7 @@ import pandas as pd
 
 # Funções utilitárias para obtenção das principais entidades do sistema
 
+
 def get_garagens(dbEngine):
     # Oficinas
     return pd.read_sql(
