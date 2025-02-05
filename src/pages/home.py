@@ -509,21 +509,7 @@ layout = dbc.Container(
                                                     dbc.Label("Oficinas"),
                                                     dcc.Dropdown(
                                                         id="input-select-oficina-visao-geral",
-                                                        options=[
-                                                            {"label": "TODAS", "value": "TODAS"},
-                                                            {
-                                                                "label": "GARAGEM CENTRAL",
-                                                                "value": "GARAGEM CENTRAL - RAL",
-                                                            },
-                                                            {
-                                                                "label": "GARAGEM NOROESTE",
-                                                                "value": "GARAGEM NOROESTE - RAL",
-                                                            },
-                                                            {
-                                                                "label": "GARAGEM SUL",
-                                                                "value": "GARAGEM SUL - RAL",
-                                                            },
-                                                        ],
+                                                        options=lista_todas_garagens,
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione uma ou mais oficinas...",
