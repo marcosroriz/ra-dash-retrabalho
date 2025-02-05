@@ -9,7 +9,6 @@
 # Bibliotecas básicas
 from datetime import date
 import pandas as pd
-import re
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
@@ -34,12 +33,11 @@ from db import PostgresSingleton
 
 # Imports gerais
 from modules.entities_utils import get_mecanicos, get_lista_os, get_garagens, get_secoes
-from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os
 
 # Imports específicos
 from modules.home.home_service import HomeService
 import modules.home.graficos as home_graficos
-from modules.home.tabelas import tbl_top_os_geral_retrabalho, tbl_top_colaborador_geral_retrabalho
+import modules.home.tabelas as home_tabelas
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -162,7 +160,7 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
 
 
 ##############################################################################
-# Callbacks para os gráficos ################################################
+# Callbacks para os gráficos #################################################
 ##############################################################################
 
 
@@ -289,144 +287,19 @@ def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_of
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
 
-    # Datas
-    data_inicio_str = datas[0]
-
-    # Remove min_dias antes para evitar que a última OS não seja retrabalho
-    data_fim = pd.to_datetime(datas[1])
-    data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-    data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-    # Subqueries
-    subquery_oficinas_str = subquery_oficinas(lista_oficinas)
-    subquery_secoes_str = subquery_secoes(lista_secaos)
-    subquery_os_str = subquery_os(lista_os)
-
-    query = f"""
-    SELECT
-        to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-        to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month_str,
-        AVG(CASE WHEN retrabalho THEN osclass."SCORE_SYMPTOMS_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SINTOMA_COM_RETRABALHO",
-	    AVG(CASE WHEN retrabalho THEN osclass."SCORE_SOLUTION_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SOLUCAO_COM_RETRABALHO",
-    	AVG(CASE WHEN correcao_primeira THEN osclass."SCORE_SYMPTOMS_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SINTOMA_SOLUCAO",
-	    AVG(CASE WHEN correcao_primeira THEN osclass."SCORE_SOLUTION_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SOLUCAO_SOLUCAO"
-    FROM
-        mat_view_retrabalho_{min_dias}_dias AS retview
-    LEFT JOIN 
-        os_dados_classificacao AS osclass
-        ON retview."KEY_HASH" = osclass."KEY_HASH"
-    WHERE
-        "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        {subquery_oficinas_str}
-        {subquery_secoes_str}
-        {subquery_os_str}
-    GROUP BY
-        year_month
-    ORDER BY
-        year_month;
-    """
-
-    # Executa Query
-    df = pd.read_sql(query, pgEngine)
-
-    # Arruma dt
-    df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m", errors="coerce")
-
-    # Funde (melt) colunas de retrabalho e correção dos sintomas
-    df_sintoma = df.melt(
-        id_vars=["year_month_dt"],
-        value_vars=["NOTA_MEDIA_SINTOMA_COM_RETRABALHO", "NOTA_MEDIA_SINTOMA_SOLUCAO"],
-        var_name="CATEGORIA",
-        value_name="NOTA_MEDIA",
-    )
-
-    # Renomeia as colunas
-    df_sintoma["CATEGORIA"] = df_sintoma["CATEGORIA"].replace(
-        {"NOTA_MEDIA_SINTOMA_COM_RETRABALHO": "RETRABALHO", "NOTA_MEDIA_SINTOMA_SOLUCAO": "CORRECAO_PRIMEIRA"}
-    )
-
-    # Adiciona tipo
-    df_sintoma["TIPO"] = "SINTOMA"
-
-    # Funde (melt) colunas de retrabalho e correção das solucoes
-    df_solucao = df.melt(
-        id_vars=["year_month_dt"],
-        value_vars=["NOTA_MEDIA_SOLUCAO_COM_RETRABALHO", "NOTA_MEDIA_SOLUCAO_SOLUCAO"],
-        var_name="CATEGORIA",
-        value_name="NOTA_MEDIA",
-    )
-
-    # Renomeia as colunas
-    df_solucao["CATEGORIA"] = df_sintoma["CATEGORIA"].replace(
-        {"NOTA_MEDIA_SOLUCAO_COM_RETRABALHO": "RETRABALHO", "NOTA_MEDIA_SOLUCAO_SOLUCAO": "CORRECAO_PRIMEIRA"}
-    )
-
-    # Adiciona tipo
-    df_solucao["TIPO"] = "SOLUCAO"
-
-    # Concatena os dfs
-    df_combinado = pd.concat([df_sintoma, df_solucao])
+    # Obtem os dados
+    df = home_service.get_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
 
     # Gera o gráfico
-    fig = px.line(
-        df_combinado,
-        x="year_month_dt",
-        y="NOTA_MEDIA",
-        color="TIPO",
-        facet_col="CATEGORIA",
-        facet_col_spacing=0.05,  # Espaçamento entre os gráficos
-        labels={"DESCRICAO DA SECAO": "Seção", "year_month_dt": "Ano-Mês", "PERC": "%"},
-        markers=True,
-    )
-
-    # Coloca % no eixo y
-    # fig.update_yaxes(tickformat=".0f%")
-
-    # Renomeia o eixo y
-    fig.update_layout(
-        yaxis=dict(
-            title="Nota Sintoma",
-        ),
-        yaxis2=dict(
-            title="Nota Solução",
-            overlaying="y",
-            side="right",
-            anchor="x",
-        ),
-        margin=dict(b=100),
-    )
-
-    # Titulo
-    fig.update_layout(
-        annotations=[
-            dict(
-                text="Nota das OSs com Retrabalho",
-                x=0.25,  # Posição X para o primeiro plot
-                y=1.05,  # Posição Y (em cima do plot)
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=16),
-            ),
-            dict(
-                text="Nota das OSs corrigidas de primeira",
-                x=0.75,  # Posição X para o segundo plot
-                y=1.05,  # Posição Y (em cima do plot)
-                xref="paper",
-                yref="paper",
-                showarrow=False,
-                font=dict(size=16),
-            ),
-        ]
-    )
-
-    # Gera ticks todo mês
-    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
-
-    # Aumenta o espaçamento do titulo
-    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
+    fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_nota_por_mes(df)
 
     return fig
+
+
+##############################################################################
+# Callbacks para as tabelas ##################################################
+##############################################################################
+
 
 
 @callback(
@@ -445,136 +318,10 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         return []
 
-    # Datas
-    data_inicio_str = datas[0]
+    # Obtem os dados
+    df = home_service.get_top_os_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
 
-    # Remove min_dias antes para evitar que a última OS não seja retrabalho
-    data_fim = pd.to_datetime(datas[1])
-    data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-    data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-    # Subqueries
-    subquery_oficinas_str = subquery_oficinas(lista_oficinas)
-    subquery_secoes_str = subquery_secoes(lista_secaos)
-    subquery_os_str = subquery_os(lista_os)
-
-    inner_subquery_oficinas_str = subquery_oficinas(lista_oficinas, "main.")
-    inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
-    inner_subquery_os_str = subquery_os(lista_os, "main.")
-
-    query = f"""
-    WITH normaliza_problema AS (
-        SELECT
-            "DESCRICAO DA OFICINA",
-            "DESCRICAO DA SECAO",
-            "DESCRICAO DO SERVICO" as servico,
-            "CODIGO DO VEICULO",
-            "problem_no"
-        FROM
-            mat_view_retrabalho_{min_dias}_dias
-        WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            {subquery_oficinas_str}
-            {subquery_secoes_str}
-            {subquery_os_str}
-        GROUP BY
-            "DESCRICAO DA OFICINA",
-            "DESCRICAO DA SECAO",
-            "DESCRICAO DO SERVICO",
-            "CODIGO DO VEICULO",
-            "problem_no"
-    ),
-    os_problema AS (
-        SELECT
-            "DESCRICAO DA OFICINA",
-            "DESCRICAO DA SECAO",
-            servico,
-            COUNT(*) AS num_problema
-        FROM
-            normaliza_problema
-        GROUP BY
-            "DESCRICAO DA OFICINA",
-            "DESCRICAO DA SECAO",
-            servico
-    )
-    SELECT
-        main."DESCRICAO DA OFICINA",
-        main."DESCRICAO DA SECAO",
-        main."DESCRICAO DO SERVICO",
-        COUNT(*) AS "TOTAL_OS",
-        SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-        SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-        SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-        100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-        100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-        100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-        COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA"
-    FROM
-        mat_view_retrabalho_{min_dias}_dias main
-    LEFT JOIN
-        os_problema op
-    ON
-        main."DESCRICAO DA OFICINA" = op."DESCRICAO DA OFICINA"
-        AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
-        AND main."DESCRICAO DO SERVICO" = op.servico
-    WHERE
-        main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        {inner_subquery_oficinas_str}
-        {inner_subquery_secoes_str}
-        {inner_subquery_os_str}
-    GROUP BY
-        main."DESCRICAO DA OFICINA",
-        main."DESCRICAO DA SECAO",
-        main."DESCRICAO DO SERVICO",
-        op.num_problema
-    ORDER BY
-        "PERC_RETRABALHO" DESC;
-    """
-
-    # Executa a query
-    df = pd.read_sql(query, pgEngine)
-
-    # Adicionaa campo de relação entre OS e problemas
-    df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
-
-    # Novo DF com notas LLM
-    query_llm = f"""
-    SELECT
-        main."DESCRICAO DA OFICINA",
-        main."DESCRICAO DA SECAO",
-        main."DESCRICAO DO SERVICO",
-	    AVG(osclass."SCORE_SYMPTOMS_TEXT_QUALITY") AS "NOTA_MEDIA_SINTOMA",
-	    AVG(osclass."SCORE_SOLUTION_TEXT_QUALITY") AS "NOTA_MEDIA_SOLUCAO",
-        100 * ROUND(SUM(CASE WHEN NOT osclass."SYMPTOMS_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SINTOMA_NAO_COERENTE",
-        100 * ROUND(SUM(CASE WHEN osclass."SYMPTOMS_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SINTOMA_COERENTE",
-		100 * ROUND(SUM(CASE WHEN NOT osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_NAO_COERENTE",
-        100 * ROUND(SUM(CASE WHEN osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_COERENTE"
-    FROM
-        mat_view_retrabalho_{min_dias}_dias main
-    LEFT JOIN 
-        os_dados_classificacao AS osclass
-    ON 
-        main."KEY_HASH" = osclass."KEY_HASH"
-    WHERE
-        main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        {inner_subquery_oficinas_str}
-        {inner_subquery_secoes_str}
-        {inner_subquery_os_str}
-    GROUP BY
-        main."DESCRICAO DA OFICINA",
-        main."DESCRICAO DA SECAO",
-        main."DESCRICAO DO SERVICO"
-    """
-    # Executa a query
-    df_llm = pd.read_sql(query_llm, pgEngine)
-
-    # Lida com NaNs
-    df_llm = df_llm.fillna(0)
-
-    # Faz Merge
-    df_combinado = pd.merge(df, df_llm, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"])
-
-    return df_combinado.to_dict("records")
+    return df.to_dict("records")
 
 
 @callback(
@@ -592,101 +339,8 @@ def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_of
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         return []
 
-    # Datas
-    data_inicio_str = datas[0]
-
-    # Remove min_dias antes para evitar que a última OS não seja retrabalho
-    data_fim = pd.to_datetime(datas[1])
-    data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-    data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-    # Subqueries
-    subquery_oficinas_str = subquery_oficinas(lista_oficinas)
-    subquery_secoes_str = subquery_secoes(lista_secaos)
-    subquery_os_str = subquery_os(lista_os)
-
-    inner_subquery_oficinas_str = subquery_oficinas(lista_oficinas, "main.")
-    inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
-    inner_subquery_os_str = subquery_os(lista_os, "main.")
-
-    query = f"""
-        WITH normaliza_problema AS (
-            SELECT
-                "COLABORADOR QUE EXECUTOU O SERVICO" AS colaborador,
-                "DESCRICAO DO SERVICO",
-                "CODIGO DO VEICULO",
-                "problem_no"
-            FROM
-                mat_view_retrabalho_{min_dias}_dias
-            WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-                {subquery_oficinas_str}
-                {subquery_secoes_str}
-                {subquery_os_str}
-            GROUP BY
-                "COLABORADOR QUE EXECUTOU O SERVICO",
-                "DESCRICAO DO SERVICO",
-                "CODIGO DO VEICULO",
-                "problem_no"
-        ),
-        colaborador_problema AS (
-            SELECT 
-                colaborador, 
-                COUNT(*) AS num_problema
-            FROM 
-                normaliza_problema
-            GROUP BY 
-                colaborador
-        )
-        SELECT
-            main."COLABORADOR QUE EXECUTOU O SERVICO",
-            COUNT(*) AS "TOTAL_OS",
-            SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-            SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-            SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-            100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-            100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            COALESCE(cp.num_problema, 0) AS "TOTAL_PROBLEMA"
-        FROM
-            mat_view_retrabalho_{min_dias}_dias main
-        LEFT JOIN
-            colaborador_problema cp
-            ON
-            main."COLABORADOR QUE EXECUTOU O SERVICO" = cp.colaborador
-        WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            {inner_subquery_oficinas_str}
-            {inner_subquery_secoes_str}
-            {inner_subquery_os_str}
-        GROUP BY
-            main."COLABORADOR QUE EXECUTOU O SERVICO",
-            cp.num_problema
-        ORDER BY
-            "PERC_RETRABALHO" DESC;
-    """
-
-    # Executa Query
-    df = pd.read_sql(query, pgEngine)
-
-    df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
-
-    # Adiciona label de nomes
-    df["COLABORADOR QUE EXECUTOU O SERVICO"] = df["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
-
-    # Encontra o nome do colaborador
-    for ix, linha in df.iterrows():
-        colaborador = linha["COLABORADOR QUE EXECUTOU O SERVICO"]
-        nome_colaborador = "Não encontrado"
-        if colaborador in df_mecanicos["cod_colaborador"].values:
-            nome_colaborador = df_mecanicos[df_mecanicos["cod_colaborador"] == colaborador]["nome_colaborador"].values[
-                0
-            ]
-            nome_colaborador = re.sub(r"(?<!^)([A-Z])", r" \1", nome_colaborador)
-
-        df.at[ix, "LABEL_COLABORADOR"] = f"{nome_colaborador} - {int(colaborador)}"
-        df.at[ix, "NOME_COLABORADOR"] = f"{nome_colaborador}"
-        df.at[ix, "ID_COLABORADOR"] = int(colaborador)
+    # Obtem dados
+    df = home_service.get_top_os_colaboradores(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
 
     return df.to_dict("records")
 
@@ -1104,7 +758,7 @@ layout = dbc.Container(
         dag.AgGrid(
             # enableEnterpriseModules=True,
             id="tabela-top-os-retrabalho-geral",
-            columnDefs=tbl_top_os_geral_retrabalho,
+            columnDefs=home_tabelas.tbl_top_os_geral_retrabalho,
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
@@ -1141,7 +795,7 @@ layout = dbc.Container(
         dmc.Space(h=20),
         dag.AgGrid(
             id="tabela-top-os-colaborador-geral",
-            columnDefs=tbl_top_colaborador_geral_retrabalho,
+            columnDefs=home_tabelas.tbl_top_colaborador_geral_retrabalho,
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="responsiveSizeToFit",

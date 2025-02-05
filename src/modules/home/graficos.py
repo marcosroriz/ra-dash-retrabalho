@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 import tema
 
 
+# Rotinas para gerar os Gráficos
 def gerar_grafico_pizza_sinteze_geral(df, labels, values):
     """Gera o gráfico de pizza com síntese do total de OS e retrabalhos da tela inicial"""
 
@@ -248,6 +249,71 @@ def gerar_grafico_evolucao_retrabalho_por_secao_por_mes(df):
             ),
             dict(
                 text="Correção de primeira por seção (% das OS)",
+                x=0.75,  # Posição X para o segundo plot
+                y=1.05,  # Posição Y (em cima do plot)
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+        ]
+    )
+
+    # Gera ticks todo mês
+    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
+
+    # Aumenta o espaçamento do titulo
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90)) 
+
+    return fig
+
+
+def gerar_grafico_evolucao_retrabalho_por_nota_por_mes(df):
+    """Gera o gráfico de linhas referentes a evolução do retrabalho por nota por mês"""
+
+    # Gera o gráfico
+    fig = px.line(
+        df,
+        x="year_month_dt",
+        y="NOTA_MEDIA",
+        color="TIPO",
+        facet_col="CATEGORIA",
+        facet_col_spacing=0.05,  # Espaçamento entre os gráficos
+        labels={"DESCRICAO DA SECAO": "Seção", "year_month_dt": "Ano-Mês", "PERC": "%"},
+        markers=True,
+    )
+
+    # Coloca % no eixo y
+    # fig.update_yaxes(tickformat=".0f%")
+
+    # Renomeia o eixo y
+    fig.update_layout(
+        yaxis=dict(
+            title="Nota Sintoma",
+        ),
+        yaxis2=dict(
+            title="Nota Solução",
+            overlaying="y",
+            side="right",
+            anchor="x",
+        ),
+        margin=dict(b=100),
+    )
+
+    # Titulo
+    fig.update_layout(
+        annotations=[
+            dict(
+                text="Nota das OSs com Retrabalho",
+                x=0.25,  # Posição X para o primeiro plot
+                y=1.05,  # Posição Y (em cima do plot)
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+            dict(
+                text="Nota das OSs corrigidas de primeira",
                 x=0.75,  # Posição X para o segundo plot
                 y=1.05,  # Posição Y (em cima do plot)
                 xref="paper",
