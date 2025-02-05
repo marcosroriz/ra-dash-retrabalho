@@ -320,7 +320,7 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
         return []
 
     # Obtem os dados
-    df = home_service.get_top_os_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
 
     return df.to_dict("records")
 
