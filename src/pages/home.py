@@ -32,7 +32,7 @@ import locale_utils
 from db import PostgresSingleton
 
 # Imports gerais
-from modules.entities_utils import get_mecanicos, get_lista_os, get_garagens, get_secoes
+from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, get_secoes
 
 # Imports específicos
 from modules.home.home_service import HomeService
@@ -50,9 +50,9 @@ pgEngine = pgDB.get_engine()
 home_service = HomeService(pgEngine)
 
 # Obtem a lista de Oficinas
-df_oficinas = get_garagens(pgEngine)
-lista_todas_garagens = df_oficinas.to_dict(orient="records")
-lista_todas_garagens.insert(0, {"LABEL": "TODAS"})
+df_oficinas = get_oficinas(pgEngine)
+lista_todas_oficinas = df_oficinas.to_dict(orient="records")
+lista_todas_oficinas.insert(0, {"LABEL": "TODAS"})
 
 # Obtem a lista de Seções
 df_secoes = get_secoes(pgEngine)
@@ -509,7 +509,10 @@ layout = dbc.Container(
                                                     dbc.Label("Oficinas"),
                                                     dcc.Dropdown(
                                                         id="input-select-oficina-visao-geral",
-                                                        options=lista_todas_garagens,
+                                                        options=[
+                                                            {"label": os["LABEL"], "value": os["LABEL"]}
+                                                            for os in lista_todas_oficinas
+                                                        ],
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione uma ou mais oficinas...",
