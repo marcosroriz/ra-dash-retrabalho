@@ -599,7 +599,7 @@ layout = dbc.Container(
                                             mb="xs",
                                         ),
                                     ),
-                                    dbc.CardFooter("Ranking do veículo em relaçao % retrabalho"),
+                                    dbc.CardFooter("Ranking do veículo % retrabalho/geral"),
                                 ],
                                 class_name="card-box-shadow",
                             ),
@@ -626,7 +626,7 @@ layout = dbc.Container(
                                             mb="xs",
                                         ),
                                     ),
-                                    dbc.CardFooter("Ranking do veiculo em relaçao % correção de primeira"),
+                                    dbc.CardFooter("Ranking do veiculo % correção de primeira/geral"),
                                 ],
                                 class_name="card-box-shadow",
                             ),
@@ -682,7 +682,7 @@ layout = dbc.Container(
                                             mb="xs",
                                         ),
                                     ),
-                                    dbc.CardFooter("Ranking do veículo % retrabalho modelo"),
+                                    dbc.CardFooter("Ranking do veículo % retrabalho/modelo"),
                                 ],
                                 class_name="card-box-shadow",
                             ),
@@ -709,7 +709,7 @@ layout = dbc.Container(
                                             mb="xs",
                                         ),
                                     ),
-                                    dbc.CardFooter("Ranking do veiculo % correção de primeira modelo"),
+                                    dbc.CardFooter("Ranking do veiculo % correção de primeira/modelo"),
                                 ],
                                 class_name="card-box-shadow",
                             ),
@@ -1464,6 +1464,11 @@ def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(datas, min_dias, lista
 
     lista_modelos = df["DESCRICAO DO MODELO"].dropna().unique().tolist() ## preciso da lista de nomes dos modelos
 
+    if len(lista_modelos) >= 1:
+        pass
+    else:
+        lista_modelos = [""]
+
     media_geral_modelos = media_geral_retrabalho_modelos(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos, lista_modelos)
 
     media_geral = media_geral_retrabalho_geral(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
@@ -1834,7 +1839,14 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     df = pd.read_sql(query, pgEngine)
 
     lista_modelos = df["DESCRICAO DO MODELO"].dropna().unique().tolist()
+
+    if len(lista_modelos) >= 1:
+        pass
+    else:
+        lista_modelos = [""]
+
     subquery_modelos_str = subquery_modelos_veiculos(lista_modelos)
+
 
     query_media_modelos = f"""
         WITH os_count AS (
@@ -1924,8 +1936,11 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     os_diferentes = int(df_unico['QUANTIDADE_DE_OS'].sum())
     os_totais_veiculo = int(df_soma_mes_veiculos['QUANTIDADE_DE_OS'].sum())
     
-    os_problema = os_totais_veiculo/total_problemas
-    os_problema = round(os_problema, 2)
+    if len(df_soma_mes_veiculos) >= 1:
+        os_problema = os_totais_veiculo/total_problemas
+        os_problema = round(os_problema, 2)
+    else:
+        os_problema = 0
 
     #print(mecanicos_diferentes)
 
@@ -2351,10 +2366,12 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
 
     return df.to_dict("records")
 
-# RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA
+# RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA 
 @callback(
     [Output("indicador-posicao-relaçao-retrabalho", "children"),
-     Output("indicador-posição-veiculo-correção-primeira","children") ],
+     Output("indicador-posição-veiculo-correção-primeira","children"),
+     Output("indicador-posicao-relaçao-retrabalho-modelo","children"),
+     Output("indicador-posição-veiculo-correção-primeira-modelo","children"),],
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
@@ -2367,7 +2384,7 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
 def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-        return "", ""
+        return "", "", "", ""
 
     # Datas
     data_inicio_str = datas[0]
@@ -2377,11 +2394,14 @@ def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, l
     data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
     data_fim_str = data_fim.strftime("%Y-%m-%d")
 
+    
+
     # Subqueries
     subquery_oficinas_str = subquery_oficinas(lista_oficinas)
     subquery_secoes_str = subquery_secoes(lista_secaos)
     subquery_os_str = subquery_os(lista_os)
     subquery_veiculos_str = subquery_veiculos(lista_veiculos)
+    
 
     query_ranking_retrabalho_correcao = f"""
             SELECT
@@ -2422,12 +2442,16 @@ def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, l
             ) subquery
             WHERE
                 ranking_retrabalho >= 1  -- Exemplo de filtro pelo ranking
-                {subquery_veiculos_str}
+                --{subquery_veiculos_str}
             ORDER BY 
                 ranking_retrabalho, ranking_correcao, ranking_correcao_primeira;                
 """
-    rk_correcao_primeira = f'0°'
-    rk_retrabalho = f'0°'
+    
+    rk_retrabalho_geral = f'0°'
+    rk_correcao_primeira_geral = f'0°'
+    
+    rk_retrabalho_modelo = f'0°'
+    rk_correcao_primeira_modelo = f'0°'
 
     if len(lista_veiculos) <= 1:
         df = pd.read_sql(query_ranking_retrabalho_correcao, pgEngine)
@@ -2435,12 +2459,77 @@ def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, l
             "PERC_RETRABALHO": "RETRABALHO",
             "PERC_CORRECAO_PRIMEIRA": "CORRECAO_PRIMEIRA"
         })
-        rk_n_retrabalho = df.iloc[0]["ranking_retrabalho"]
-        retra = df.iloc[0]["RETRABALHO"]
-        rk_retrabalho = f'{rk_n_retrabalho}°'
+        df_veiculo = df.loc[df["CODIGO DO VEICULO"] == lista_veiculos[0]]
 
-        rk_n_correcao_primeira = df.iloc[0]["ranking_correcao_primeira"]
-        rk_correcao_primeira = f'{rk_n_correcao_primeira}°'
+        if len(df_veiculo) >= 1:
+            contagem_ranking_geral = len(df)
 
+            rk_n_retrabalho = df_veiculo.iloc[0]["ranking_retrabalho"]
+            retra = df_veiculo.iloc[0]["RETRABALHO"]
+            rk_retrabalho_geral = f'{rk_n_retrabalho}°/{contagem_ranking_geral}'
 
-    return rk_retrabalho, rk_correcao_primeira
+            rk_n_correcao_primeira = df_veiculo.iloc[0]["ranking_correcao_primeira"]
+            rk_correcao_primeira_geral = f'{rk_n_correcao_primeira}°/{contagem_ranking_geral}'
+
+        ########################################################### POR MODELO AGORA
+            lista_modelos = df_veiculo["DESCRICAO DO MODELO"].dropna().unique().tolist()
+            sub_query_modelos_str = subquery_modelos_veiculos(lista_modelos)
+
+            query_ranking_retrabalho_correcao_modelos = f"""
+                SELECT
+                    "CODIGO DO VEICULO",
+                    "DESCRICAO DO MODELO",
+                    "TOTAL_RETRABALHO",
+                    "TOTAL_CORRECAO",
+                    "TOTAL_CORRECAO_PRIMEIRA",
+                    "PERC_RETRABALHO",
+                    "PERC_CORRECAO",
+                    "PERC_CORRECAO_PRIMEIRA",
+                    ranking_retrabalho,
+                    ranking_correcao,
+                    ranking_correcao_primeira
+                FROM (
+                    SELECT
+                        "CODIGO DO VEICULO",
+                        "DESCRICAO DO MODELO",
+                        SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+                        SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                        SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+                        100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+                        100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+                        100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+                        DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) ASC) AS ranking_retrabalho,
+                        DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) ASC) AS ranking_correcao,
+                        DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) desc)  ranking_correcao_primeira
+                    FROM
+                        mat_view_retrabalho_{min_dias}_dias
+                    WHERE
+                        "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                        {subquery_oficinas_str}
+                        {subquery_secoes_str}
+                        {subquery_os_str}
+                        {sub_query_modelos_str}
+                    GROUP BY
+                        "CODIGO DO VEICULO", "DESCRICAO DO MODELO"
+                ) subquery
+                WHERE
+                    ranking_retrabalho >= 1  -- Exemplo de filtro pelo ranking
+                ORDER BY 
+                    ranking_retrabalho, ranking_correcao, ranking_correcao_primeira;                
+                """
+
+            df_modelos = pd.read_sql(query_ranking_retrabalho_correcao_modelos, pgEngine)
+            df_modelos = df_modelos.rename(columns={
+                "PERC_RETRABALHO": "RETRABALHO",
+                "PERC_CORRECAO_PRIMEIRA": "CORRECAO_PRIMEIRA"
+            })
+            contagem_ranking_modelos = len(df_modelos)
+            df_veiculo_modelo = df_modelos.loc[df_modelos["CODIGO DO VEICULO"] == lista_veiculos[0]]
+
+            rk_n_retrabalho_modelo = df_veiculo_modelo.iloc[0]["ranking_retrabalho"]
+            rk_retrabalho_modelo = f'{rk_n_retrabalho_modelo}°/{contagem_ranking_modelos}'
+
+            rk_n_correcao_primeira_modelos = df_veiculo_modelo.iloc[0]["ranking_correcao_primeira"]
+            rk_correcao_primeira_modelo = f'{rk_n_correcao_primeira_modelos}°/{contagem_ranking_modelos}'
+
+    return rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo
