@@ -313,6 +313,63 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
+                                                    dbc.Label("Oficinas"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-oficina-colaborador",
+                                                        options=[
+                                                            {"label": "TODAS", "value": "TODAS"},
+                                                            {
+                                                                "label": "GARAGEM CENTRAL",
+                                                                "value": "GARAGEM CENTRAL - RAL",
+                                                            },
+                                                            {
+                                                                "label": "GARAGEM NOROESTE",
+                                                                "value": "GARAGEM NOROESTE - RAL",
+                                                            },
+                                                            {
+                                                                "label": "GARAGEM SUL",
+                                                                "value": "GARAGEM SUL - RAL",
+                                                            },
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione uma ou mais oficinas...",
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Modelo"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-modelos-colaborador",
+
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione um ou mais modelos...",
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dmc.Space(h=10),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
                                                     dbc.Label("Ordens de Serviço"),
                                                     dcc.Dropdown(
                                                         id="input-select-ordens-servico-colaborador",
@@ -676,6 +733,40 @@ def corrige_input_ordem_servico(lista_os, lista_secaos, id_colaborador, min_dias
         lista_os = df_lista_os_atual["LABEL"].tolist()
 
     return lista_options, colab.corrige_input(lista_os)
+
+
+@callback(
+    [
+        Output("input-select-modelos-colaborador", "options"),
+        Output("input-select-modelos-colaborador", "value"),
+    ],
+    [
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-lista-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value")
+    ],
+)
+def corrige_input_modelo(lista_modelos, lista_secaos, id_colaborador, min_dias, datas):
+    # Vamos pegar as OS possíveis para as seções selecionadas
+    df_lista_os_secao = colab.df_lista_os_colab_modelo(min_dias, id_colaborador, datas)
+
+    if "TODAS" not in lista_secaos:
+        df_lista_os_secao = df_lista_os_secao[df_lista_os_secao["SECAO"].isin(lista_secaos)]
+
+    # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
+    lista_modelos_possiveis = df_lista_os_secao.to_dict(orient="records")
+    lista_modelos_possiveis.insert(0, {"LABEL": "TODAS"})
+
+    lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_modelos_possiveis]
+
+    # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
+    if "TODAS" not in lista_modelos:
+        df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_modelos)]
+        lista_modelos = df_lista_os_atual["LABEL"].tolist()
+
+    return lista_options, colab.corrige_input(lista_modelos)
 
 
 

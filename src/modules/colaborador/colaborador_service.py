@@ -552,6 +552,30 @@ class ColaboradorService:
         
         return df_lista_os
     
+    def df_lista_os_colab_modelo(self, min_dias, id_colaborador, datas):
+        '''Retorna uma lista das OSs'''
+        
+        data_inicio_str = datas[0]
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+        
+        df_lista_os = pd.read_sql(
+            f"""
+            SELECT DISTINCT
+            "DESCRICAO DO MODELO" as "LABEL",
+            "DESCRICAO DA SECAO" as "SECAO"
+            FROM 
+                mat_view_retrabalho_{min_dias}_dias mvrd 
+            WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' and "DESCRICAO DO MODELO" is not null 
+            ORDER BY
+                "DESCRICAO DO MODELO"
+            """,
+            self.pgEngine,
+        )
+        print(df_lista_os)
+        return df_lista_os
+    
     def nota_media_colaborador(self, datas, min_dias, id_colaborador, lista_secaos, lista_os):
         '''Retorna a nota media do colaborador'''
         
