@@ -103,8 +103,12 @@ tbl_top_os_geral_retrabalho = [
 
 # Tabela Top OS Colaborador
 tbl_top_colaborador_geral_retrabalho = [
-    {"field": "NOME_COLABORADOR", "headerName": "Colaborador"},
-    {"field": "ID_COLABORADOR", "headerName": "ID", "filter": "agNumberColumnFilter"},
+    {
+        "field": "NOME_COLABORADOR",
+        "headerName": "Colaborador",
+        "pinned": "left",
+    },
+    {"field": "ID_COLABORADOR", "headerName": "ID", "filter": "agNumberColumnFilter", "minWidth": 100, "maxWidth": 100},
     {
         "field": "TOTAL_OS",
         "headerName": "TOTAL DE OS",
@@ -126,6 +130,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
+        "maxWidth": 160,
         "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
         "type": ["numericColumn"],
     },
@@ -134,6 +139,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "headerName": "TOTAL DE PROBLEMA",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
+        "maxWidth": 160,
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
@@ -144,6 +150,26 @@ tbl_top_colaborador_geral_retrabalho = [
         "autoHeaderHeight": True,
         "valueFormatter": {"function": "params.value.toLocaleString()"},
         "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "NOTA_MEDIA_SOLUCAO",
+        "headerName": "NOTA MÉDIA (LLM)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "valueFormatter": {"function": "params.value.toLocaleString()"},
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "PERC_SOLUCAO_COERENTE",
+        "headerName": "% SOLUÇÕES COERENTES (LLM)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "filter": "agNumberColumnFilter",
+        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
         "type": ["numericColumn"],
     },
 ]

@@ -583,4 +583,40 @@ class HomeService:
             df.at[ix, "NOME_COLABORADOR"] = f"{nome_colaborador}"
             df.at[ix, "ID_COLABORADOR"] = int(colaborador)
 
-        return df
+        # Novo DF com notas LLM
+        query_llm = f"""
+        SELECT
+            main."COLABORADOR QUE EXECUTOU O SERVICO",
+            AVG(osclass."SCORE_SOLUTION_TEXT_QUALITY") AS "NOTA_MEDIA_SOLUCAO",
+            100 * ROUND(SUM(CASE WHEN osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_COERENTE"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        LEFT JOIN 
+            os_dados_classificacao AS osclass
+        ON 
+            main."KEY_HASH" = osclass."KEY_HASH"
+        WHERE
+            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_oficinas_str}
+            {inner_subquery_secoes_str}
+            {inner_subquery_os_str}
+        GROUP BY
+            main."COLABORADOR QUE EXECUTOU O SERVICO"
+        """
+        print(query_llm)
+
+        # Executa a query
+        df_llm = pd.read_sql(query_llm, self.dbEngine)
+
+        # Arruma tipo
+        df_llm["COLABORADOR QUE EXECUTOU O SERVICO"] = df_llm["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+
+        # Lida com NaNs
+        df_llm = df_llm.fillna(0)
+
+        # Faz Merge
+        df_combinado = pd.merge(df, df_llm, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
+
+        print(df_combinado)
+        print(df.shape, df_combinado.shape)
+        return df_combinado

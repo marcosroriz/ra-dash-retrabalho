@@ -534,7 +534,7 @@ layout = dbc.Container(
                                                     dcc.Dropdown(
                                                         id="input-select-secao-visao-geral",
                                                         options=[
-                                                            {"label": "TODAS", "value": "TODAS"},
+                                                            # {"label": "TODAS", "value": "TODAS"},
                                                             # {
                                                             #     "label": "BORRACHARIA",
                                                             #     "value": "MANUTENCAO BORRACHARIA",
@@ -543,7 +543,7 @@ layout = dbc.Container(
                                                                 "label": "ELETRICA",
                                                                 "value": "MANUTENCAO ELETRICA",
                                                             },
-                                                            {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
+                                                            # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
                                                             # {
                                                             #     "label": "LANTERNAGEM",
                                                             #     "value": "MANUTENCAO LANTERNAGEM",
@@ -568,7 +568,7 @@ layout = dbc.Container(
                                                             # },
                                                         ],
                                                         multi=True,
-                                                        value=["TODAS"],
+                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],
@@ -788,7 +788,7 @@ layout = dbc.Container(
             columnDefs=home_tabelas.tbl_top_colaborador_geral_retrabalho,
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="responsiveSizeToFit",
+            columnSize="autoSize",
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
