@@ -957,13 +957,30 @@ layout = dbc.Container(
             enableEnterpriseModules=True,
             id="tabela-pecas-substituidas",
             columnDefs=[
-                {"field": "OS", "autoSize": True},
-                {"field": "EQUIPAMENTO", "autoSize": True},
-                {"field": "MODELO", "autoSize": True},
-                {"field": "PRODUTO", "autoSize": True},
-                {"field": "QUANTIDADE", "autoSize": True},
-                {"field": "VALOR", "autoSize": True},
-                {"field": "DATA", "autoSize": True}
+                {"field": "OS", "minWidth": 100},
+                {"field": "EQUIPAMENTO", "minWidth": 100},
+                {"field": "MODELO", "minWidth": 300},
+                {"field": "PRODUTO", "minWidth": 350},
+                {"field": "QUANTIDADE", "minWidth": 100},
+                {"field": "VALOR", "minWidth": 100},
+                {"field": "DATA", "minWidth": 130}
+            ],
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+        ),
+        dmc.Space(h=40),
+        dag.AgGrid(
+            enableEnterpriseModules=True,
+            id="tabela-pecas-substituidas",
+            columnDefs=[
+                {"field": "OS", "minWidth": 100},
+                {"field": "EQUIPAMENTO", "minWidth": 100},
+                {"field": "MODELO", "minWidth": 300},
+                {"field": "PRODUTO", "minWidth": 350},
+                {"field": "QUANTIDADE", "minWidth": 100},
+                {"field": "VALOR", "minWidth": 100},
+                {"field": "DATA", "minWidth": 130}
             ],
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
@@ -2170,9 +2187,6 @@ def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
 
     subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
 
-    # Obtém a data clicada no gráfico
-    #selected_month = pd.to_datetime(clickData["points"][0]["x"]).strftime('%Y-%m')
-
     query_detalhes = f"""
     SELECT "OS", 
         "EQUIPAMENTO", 
@@ -2189,6 +2203,8 @@ def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
             AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
             {subquery_veiculos_str}
     """
+
+    print(query_detalhes)
 
 
     query_ranking_veiculo = f"""
@@ -2215,13 +2231,16 @@ def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
 
         df_detalhes["DT"] = pd.to_datetime(df_detalhes["DATA"], dayfirst=True)
 
+        # Formatar a coluna "VALOR"
+        df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float) 
 
         num_meses = df_detalhes['DT'].dt.to_period('M').nunique()
 
         numero_pecas_veiculos_total = int(df_detalhes['QUANTIDADE'].sum())
-        valor_total_veiculos = int(df_detalhes['VALOR'].sum())
+        valor_total_veiculos = df_detalhes['VALOR'].replace('[R$,]', '', regex=True).astype(float).sum().round(2)
 
-        valor_total_veiculos_str = "R${:,.2f}".format(valor_total_veiculos)
+        valor_total_veiculos_str = f"R${valor_total_veiculos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
         if len(lista_veiculos) <= 1:
             df_rk = pd.read_sql(query_ranking_veiculo, pgEngine)
             rk_n = df_rk.iloc[0]["ranking"]
@@ -2229,18 +2248,12 @@ def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
         else:
             rk = f'0°'
 
-        #print(query_detalhes)
-        print(numero_pecas_veiculos_total)
-        print(num_meses)
+        pecas_mes = round((numero_pecas_veiculos_total / num_meses), 2)
+        valor_mes = round((valor_total_veiculos / num_meses), 2)
+        valor_mes_str = f"R$ {valor_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-        
-        pecas_mes = round((numero_pecas_veiculos_total/num_meses), 2)
-
-        valor_mes = round((valor_total_veiculos/num_meses), 2)
-        valor_mes_str = "R${:,.2f}".format(valor_mes)
-
-        #print(df_detalhes.head())
         return df_detalhes.to_dict("records"), valor_total_veiculos_str, valor_mes_str, rk
+
     except Exception as e:
         print(f"Erro ao executar a consulta da tabela: {e}")
         return [], 0, 0, 0
