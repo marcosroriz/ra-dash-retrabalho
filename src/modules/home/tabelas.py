@@ -11,8 +11,8 @@ tbl_top_os_geral_retrabalho = [
         "pinned": "left",
         "minWidth": 200,
     },
-    {"field": "DESCRICAO DA SECAO", "headerName": "SEÇÃO", "minWidth": 200},
-    {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "minWidth": 250},
+    # {"field": "DESCRICAO DA SECAO", "headerName": "SEÇÃO", "minWidth": 200},
+    {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "pinned": "left", "minWidth": 250},
     {
         "field": "TOTAL_OS",
         "headerName": "TOTAL DE OS",
@@ -132,7 +132,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "headerName": "Colaborador",
         "pinned": "left",
     },
-    {"field": "ID_COLABORADOR", "headerName": "ID", "filter": "agNumberColumnFilter", "minWidth": 100, "maxWidth": 100},
+    {"field": "ID_COLABORADOR", "headerName": "ID", "filter": "agNumberColumnFilter", "minWidth": 120, "maxWidth": 120},
     {
         "field": "TOTAL_OS",
         "headerName": "TOTAL DE OS",

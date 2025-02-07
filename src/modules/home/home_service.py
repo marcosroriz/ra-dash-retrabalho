@@ -347,6 +347,69 @@ class HomeService:
 
         return df_combinado
 
+    def get_evolucao_retrabalho_por_custo_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+        """Função para obter a evolução do retrabalho por custo por mes"""
+
+        # Extraí a data inicial (já em string)
+        data_inicio_str = datas[0]
+
+        # Extraí a data final
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+
+        query = f"""
+        SELECT
+            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month_str,
+            SUM(pg."VALOR") AS "TOTAL_GASTO",
+	        SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias AS main
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
+        WHERE
+            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_oficinas_str}
+            {subquery_secoes_str}
+            {subquery_os_str}
+        GROUP BY
+            year_month
+        ORDER BY
+            year_month;
+        """
+
+        # Executa Query
+        df = pd.read_sql(query, self.dbEngine)
+
+        # Arruma dt
+        df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m", errors="coerce")
+
+        # Computa Perc
+        df["PERC_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"] / df["TOTAL_GASTO"]
+
+        # Arredonda valores
+        df["TOTAL_GASTO"] = df["TOTAL_GASTO"].round(2)
+        df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].round(2)
+
+        # Funde (melt) colunas de retrabalho e correção dos sintomas
+        df_custo = df.melt(
+            id_vars=["year_month_dt", "PERC_GASTO_RETRABALHO"],
+            value_vars=["TOTAL_GASTO", "TOTAL_GASTO_RETRABALHO"],
+            var_name="CATEGORIA",
+            value_name="GASTO",
+        )
+
+        return df_custo
+
     def get_top_os_geral_retrabalho(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         """Função para obter as OSs com mais retrabalho"""
 
@@ -439,6 +502,9 @@ class HomeService:
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
+        print("----")
+        print(query)
+
         # Adicionaa campo de relação entre OS e problemas
         df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
 
@@ -503,7 +569,6 @@ class HomeService:
             main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO"
         """
-        print(query_custo)
 
         # Executa a query
         df_custo = pd.read_sql(query_custo, self.dbEngine)
@@ -516,7 +581,9 @@ class HomeService:
         df_custo = df_custo.fillna(0)
 
         # Faz merge novamente
-        df_combinado = pd.merge(df_combinado, df_custo, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"])
+        df_combinado = pd.merge(
+            df_combinado, df_custo, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"]
+        )
 
         return df_combinado
 

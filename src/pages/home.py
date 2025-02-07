@@ -298,6 +298,31 @@ def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_of
     return fig
 
 
+# Callbacks para o grafico de evolução do retrabalho por nota
+@callback(
+    Output("graph-evolucao-retrabalho-por-custo-por-mes", "figure"),
+    [
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+)
+def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    # Valida input
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+        return go.Figure()
+
+    # Obtem os dados
+    df = home_service.get_evolucao_retrabalho_por_custo_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+
+    # Gera o gráfico
+    fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_custo_por_mes(df)
+
+    return fig
+
+
 ##############################################################################
 # Callbacks para as tabelas ##################################################
 ##############################################################################
@@ -723,6 +748,27 @@ layout = dbc.Container(
         ),
         dcc.Graph(id="graph-evolucao-retrabalho-por-nota-por-mes"),
         dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="hugeicons:search-dollar", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução do custo (peças) do retrabalho por mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-evolucao-por-custo"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-retrabalho-por-custo-por-mes"),
+        dmc.Space(h=40),
         # Tabela com as estatísticas gerais de Retrabalho
         dbc.Row(
             [
@@ -785,6 +831,18 @@ layout = dbc.Container(
         dmc.Space(h=20),
         dag.AgGrid(
             id="tabela-top-os-colaborador-geral",
+            columnDefs=home_tabelas.tbl_top_colaborador_geral_retrabalho,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+            },
+            style={"height": 600},
+        ),
+        dmc.Space(h=20),
+        dag.AgGrid(
+            id="tabela-top-veiculos-geral",
             columnDefs=home_tabelas.tbl_top_colaborador_geral_retrabalho,
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},

@@ -329,3 +329,37 @@ def gerar_grafico_evolucao_retrabalho_por_nota_por_mes(df):
     fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
 
     return fig
+
+
+def gerar_grafico_evolucao_retrabalho_por_custo_por_mes(df):
+    """Gera o gráfico de linhas referentes a evolução do retrabalho por custo por mês"""
+
+    # Gera o gráfico
+    fig = px.line(
+        df,
+        x="year_month_dt",
+        y="GASTO",
+        color="CATEGORIA",
+        labels={"year_month_dt": "Ano-Mês"},
+        markers=True,
+    )
+
+    # Renomeia o eixo y
+    fig.update_layout(
+        yaxis=dict(
+            title="Custo em R$",
+            tickformat=",.2f",  # Arredonda
+            tickprefix="R$ ",  # Prefixo
+            tickmode="auto",
+            automargin=True,  # Adjusts margins dynamically
+        ),
+        margin=dict(b=100),
+    )
+
+    # Gera ticks todo mês
+    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
+
+    # Aumenta o espaçamento do titulo
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
+
+    return fig
