@@ -972,15 +972,14 @@ layout = dbc.Container(
         dmc.Space(h=40),
         dag.AgGrid(
             enableEnterpriseModules=True,
-            id="tabela-pecas-substituidas",
+            id="tabela-pecas-substituidas-por-descricao",
             columnDefs=[
-                {"field": "OS", "minWidth": 100},
-                {"field": "EQUIPAMENTO", "minWidth": 100},
-                {"field": "MODELO", "minWidth": 300},
+                {"field": "DESCRIÇÃO", "minWidth": 300},
                 {"field": "PRODUTO", "minWidth": 350},
-                {"field": "QUANTIDADE", "minWidth": 100},
+                {"field": "QUANTIDADE DE OS'S", "minWidth": 100},
+                {"field": "QUANTIDADE DE PEÇAS", "minWidth": 100},
+                {"field": "MODELO", "minWidth": 300},
                 {"field": "VALOR", "minWidth": 100},
-                {"field": "DATA", "minWidth": 130}
             ],
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
