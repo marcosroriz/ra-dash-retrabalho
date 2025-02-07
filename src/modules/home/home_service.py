@@ -479,6 +479,45 @@ class HomeService:
         # Faz Merge
         df_combinado = pd.merge(df, df_llm, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"])
 
+        # Novo DF com custo
+        query_custo = f"""
+        SELECT
+            main."DESCRICAO DA OFICINA",
+            main."DESCRICAO DA SECAO",
+            main."DESCRICAO DO SERVICO",
+            SUM(pg."VALOR") AS "TOTAL_GASTO",
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
+        WHERE
+            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_oficinas_str}
+            {inner_subquery_secoes_str}
+            {inner_subquery_os_str}
+        GROUP BY
+            main."DESCRICAO DA OFICINA",
+            main."DESCRICAO DA SECAO",
+            main."DESCRICAO DO SERVICO"
+        """
+        print(query_custo)
+
+        # Executa a query
+        df_custo = pd.read_sql(query_custo, self.dbEngine)
+
+        # Arredonda valores
+        df_custo["TOTAL_GASTO"] = df_custo["TOTAL_GASTO"].round(2)
+        df_custo["TOTAL_GASTO_RETRABALHO"] = df_custo["TOTAL_GASTO_RETRABALHO"].round(2)
+
+        # Lida com NaNs
+        df_custo = df_custo.fillna(0)
+
+        # Faz merge novamente
+        df_combinado = pd.merge(df_combinado, df_custo, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"])
+
         return df_combinado
 
     def get_top_os_colaboradores(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
@@ -603,7 +642,6 @@ class HomeService:
         GROUP BY
             main."COLABORADOR QUE EXECUTOU O SERVICO"
         """
-        print(query_llm)
 
         # Executa a query
         df_llm = pd.read_sql(query_llm, self.dbEngine)
@@ -617,6 +655,41 @@ class HomeService:
         # Faz Merge
         df_combinado = pd.merge(df, df_llm, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
 
-        print(df_combinado)
-        print(df.shape, df_combinado.shape)
+        # Novo DF com custo
+        query_custo = f"""
+        SELECT
+            main."COLABORADOR QUE EXECUTOU O SERVICO",
+            SUM(pg."VALOR") AS "TOTAL_GASTO",
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
+        WHERE
+            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_oficinas_str}
+            {inner_subquery_secoes_str}
+            {inner_subquery_os_str}
+        GROUP BY
+            main."COLABORADOR QUE EXECUTOU O SERVICO"
+        """
+
+        # Executa a query
+        df_custo = pd.read_sql(query_custo, self.dbEngine)
+
+        # Arruma tipo
+        df_custo["COLABORADOR QUE EXECUTOU O SERVICO"] = df_custo["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+
+        # Arredonda valores
+        df_custo["TOTAL_GASTO"] = df_custo["TOTAL_GASTO"].round(2)
+        df_custo["TOTAL_GASTO_RETRABALHO"] = df_custo["TOTAL_GASTO_RETRABALHO"].round(2)
+
+        # Lida com NaNs
+        df_custo = df_custo.fillna(0)
+
+        # Faz merge novamente
+        df_combinado = pd.merge(df_combinado, df_custo, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
+
         return df_combinado

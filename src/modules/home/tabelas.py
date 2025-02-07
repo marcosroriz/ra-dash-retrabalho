@@ -27,7 +27,7 @@ tbl_top_os_geral_retrabalho = [
         "headerName": "% RETRABALHOS",
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -37,7 +37,7 @@ tbl_top_os_geral_retrabalho = [
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -55,7 +55,7 @@ tbl_top_os_geral_retrabalho = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString()"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR')"},
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
@@ -65,7 +65,7 @@ tbl_top_os_geral_retrabalho = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString()"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR')"},
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
@@ -75,7 +75,7 @@ tbl_top_os_geral_retrabalho = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString()"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR')"},
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
@@ -86,7 +86,7 @@ tbl_top_os_geral_retrabalho = [
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -96,7 +96,31 @@ tbl_top_os_geral_retrabalho = [
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "TOTAL_GASTO",
+        "headerName": "TOTAL GASTO (PEÇAS)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "valueFormatter": {
+            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+        },
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "TOTAL_GASTO_RETRABALHO",
+        "headerName": "TOTAL GASTO RETRABALHO (PEÇAS)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 200,
+        "valueFormatter": {
+            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+        },
+        "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
 ]
@@ -121,7 +145,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "field": "PERC_RETRABALHO",
         "headerName": "% RETRABALHOS",
         "filter": "agNumberColumnFilter",
-        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -131,7 +155,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
         "type": ["numericColumn"],
     },
     {
@@ -148,7 +172,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "headerName": "REL OS/PROBLEMA",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
-        "valueFormatter": {"function": "params.value.toLocaleString()"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR')"},
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
@@ -158,7 +182,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value.toLocaleString()"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR')"},
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
@@ -169,7 +193,31 @@ tbl_top_colaborador_geral_retrabalho = [
         "autoHeaderHeight": True,
         "maxWidth": 160,
         "filter": "agNumberColumnFilter",
-        "valueFormatter": {"function": "params.value.toLocaleString() + '%'"},
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "TOTAL_GASTO",
+        "headerName": "TOTAL GASTO (PEÇAS)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "valueFormatter": {
+            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+        },
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "TOTAL_GASTO_RETRABALHO",
+        "headerName": "TOTAL GASTO RETRABALHO (PEÇAS)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 200,
+        "valueFormatter": {
+            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+        },
+        "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
 ]
