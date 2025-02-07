@@ -760,3 +760,166 @@ class HomeService:
         df_combinado = pd.merge(df_combinado, df_custo, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
 
         return df_combinado
+
+
+    def get_top_veiculos(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+        """Função para obter os veículos  com mais retrabalho"""
+
+        # Datas
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+
+        inner_subquery_oficinas_str = subquery_oficinas(lista_oficinas, "main.")
+        inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
+        inner_subquery_os_str = subquery_os(lista_os, "main.")
+
+        query = f"""
+            WITH normaliza_problema AS (
+                SELECT
+                    "DESCRICAO DO MODELO",
+                    "CODIGO DO VEICULO" AS cod_veiculo,
+                    "problem_no"
+                FROM
+                    mat_view_retrabalho_{min_dias}_dias
+                WHERE
+                    "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                    {subquery_oficinas_str}
+                    {subquery_secoes_str}
+                    {subquery_os_str}
+                GROUP BY
+                    "DESCRICAO DO MODELO",
+                    "CODIGO DO VEICULO",
+                    "problem_no"
+            ),
+            os_problema AS (
+                SELECT
+                    "DESCRICAO DO MODELO",
+                    cod_veiculo,
+                    COUNT(*) AS num_problema
+                FROM
+                    normaliza_problema
+                GROUP BY
+                    "DESCRICAO DO MODELO",
+                    cod_veiculo
+            )
+            SELECT
+                main."DESCRICAO DO MODELO",
+                main."CODIGO DO VEICULO",
+                COUNT(*) AS "TOTAL_OS",
+                SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+                SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+                100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+                100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+                100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+                COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA"
+            FROM
+                mat_view_retrabalho_{min_dias}_dias main
+            LEFT JOIN
+                os_problema op
+            ON
+                main."DESCRICAO DO MODELO" = op."DESCRICAO DO MODELO"
+                AND main."CODIGO DO VEICULO" = op.cod_veiculo
+            WHERE
+                main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {inner_subquery_oficinas_str}
+                {inner_subquery_secoes_str}
+                {inner_subquery_os_str}
+            GROUP BY
+                main."DESCRICAO DO MODELO",
+                main."CODIGO DO VEICULO",
+                op.num_problema
+            ORDER BY
+                "PERC_RETRABALHO" DESC;
+        """
+
+        # Executa Query
+        df = pd.read_sql(query, self.dbEngine)
+
+        df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
+
+        # TODO: Terminar aqui
+
+        print(df)
+        return df
+
+        # # Novo DF com notas LLM
+        # query_llm = f"""
+        # SELECT
+        #     main."COLABORADOR QUE EXECUTOU O SERVICO",
+        #     AVG(osclass."SCORE_SOLUTION_TEXT_QUALITY") AS "NOTA_MEDIA_SOLUCAO",
+        #     100 * ROUND(SUM(CASE WHEN osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_COERENTE"
+        # FROM
+        #     mat_view_retrabalho_{min_dias}_dias main
+        # LEFT JOIN 
+        #     os_dados_classificacao AS osclass
+        # ON 
+        #     main."KEY_HASH" = osclass."KEY_HASH"
+        # WHERE
+        #     main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+        #     {inner_subquery_oficinas_str}
+        #     {inner_subquery_secoes_str}
+        #     {inner_subquery_os_str}
+        # GROUP BY
+        #     main."COLABORADOR QUE EXECUTOU O SERVICO"
+        # """
+
+        # # Executa a query
+        # df_llm = pd.read_sql(query_llm, self.dbEngine)
+
+        # # Arruma tipo
+        # df_llm["COLABORADOR QUE EXECUTOU O SERVICO"] = df_llm["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+
+        # # Lida com NaNs
+        # df_llm = df_llm.fillna(0)
+
+        # # Faz Merge
+        # df_combinado = pd.merge(df, df_llm, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
+
+        # # Novo DF com custo
+        # query_custo = f"""
+        # SELECT
+        #     main."COLABORADOR QUE EXECUTOU O SERVICO",
+        #     SUM(pg."VALOR") AS "TOTAL_GASTO",
+        #     SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
+        # FROM
+        #     mat_view_retrabalho_{min_dias}_dias main
+        # JOIN
+        #     view_pecas_desconsiderando_combustivel pg 
+        # ON
+        #     main."NUMERO DA OS" = pg."OS"
+        # WHERE
+        #     main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+        #     {inner_subquery_oficinas_str}
+        #     {inner_subquery_secoes_str}
+        #     {inner_subquery_os_str}
+        # GROUP BY
+        #     main."COLABORADOR QUE EXECUTOU O SERVICO"
+        # """
+
+        # # Executa a query
+        # df_custo = pd.read_sql(query_custo, self.dbEngine)
+
+        # # Arruma tipo
+        # df_custo["COLABORADOR QUE EXECUTOU O SERVICO"] = df_custo["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+
+        # # Arredonda valores
+        # df_custo["TOTAL_GASTO"] = df_custo["TOTAL_GASTO"].round(2)
+        # df_custo["TOTAL_GASTO_RETRABALHO"] = df_custo["TOTAL_GASTO_RETRABALHO"].round(2)
+
+        # # Lida com NaNs
+        # df_custo = df_custo.fillna(0)
+
+        # # Faz merge novamente
+        # df_combinado = pd.merge(df_combinado, df_custo, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
+
+        # return df_combinado

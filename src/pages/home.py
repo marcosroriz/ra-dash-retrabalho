@@ -371,6 +371,27 @@ def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_of
     return df.to_dict("records")
 
 
+@callback(
+    Output("tabela-top-veiculos-geral", "rowData"),
+    [
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+)
+def atualiza_tabela_top_veiculos_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    # Valida input
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+        return []
+
+    # Obtem dados
+    df = home_service.get_top_veiculos(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+
+    return df.to_dict("records")
+
+
 ##############################################################################
 ### Callbacks para os labels #################################################
 ##############################################################################
