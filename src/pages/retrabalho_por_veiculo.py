@@ -74,20 +74,6 @@ lista_todos_modelos = df_lista_modelos.to_dict(orient="records")
 
 lista_todos_modelos.insert(0, {"LABEL": "TODAS", "MODELO": "TODAS"})
 
-df_lista_veiculos = pd.read_sql(
-    """
-    SELECT DISTINCT
-        "CODIGO DO VEICULO" AS "VEICULO",
-        "DESCRICAO DO MODELO" AS "MODELO"
-    FROM 
-        mat_view_retrabalho_10_dias mvrd
-    """,
-    pgEngine,
-)
-df_lista_veiculos = df_lista_veiculos.sort_values("VEICULO")
-
-lista_todos_veiculos = df_lista_veiculos.to_dict(orient="records")
-lista_todos_veiculos.insert(0, {"VEICULO": "TODAS", "MODELO": "TODOS OS VEÍCULOS"})
 
 # Tabela Top OS de Retrabalho
 tbl_top_os_geral_retrabalho = [
@@ -322,16 +308,8 @@ layout = dbc.Container(
                                                     dbc.Label("Veículos"),
                                                     dcc.Dropdown(
                                                         id="input-select-veiculos",
-                                                        options=[
-                                                            {
-                                                                "label": f'{os["VEICULO"]} ({os["MODELO"]})', 
-                                                                "value": os["VEICULO"]
-                                                            }
-                                                            for os in lista_todos_veiculos
-                                                        ],
                                                         multi=True,
-                                                        value=[lista_todos_veiculos[1]["VEICULO"]] if lista_todos_veiculos else [],
-                                                        placeholder="Selecione uma ou mais ordens de serviço...",
+                                                        placeholder="Selecione um ou mais veículos...",
                                                     )
                                                 ],
                                                 className="dash-bootstrap",
@@ -1127,11 +1105,56 @@ def subquery_equipamentos(lista_veiculos, prefix=""):
     return query
 
 def subquery_modelos_veiculos(lista_modelos, prefix=""):
-    query = ""
-    if "TODAS" not in lista_modelos:
-        query = f"""AND {prefix}"DESCRICAO DO MODELO" IN ({', '.join([f"'{x}'" for x in lista_modelos])})"""
-
+    #query = ""
+    if not lista_modelos or "TODAS" in lista_modelos:
+        return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODAS":
+    query = f"""AND {prefix}"DESCRICAO DO MODELO" IN ({', '.join([f"'{x}'" for x in lista_modelos])})"""
     return query
+
+
+# Callback para atualizar o dropdown de veículos
+@callback(
+    [
+        Output("input-select-veiculos", "options"),
+        Output("input-select-veiculos", "value"),
+    ],
+    Input("input-select-modelos", "value")
+)
+def atualizar_veiculos(modelos_selecionados):
+    if modelos_selecionados is None:
+        return [], []  # Retorna uma lista vazia de opções e sem valor padrão
+
+    subquery_modelos_veiculos_str = subquery_modelos_veiculos(modelos_selecionados)
+
+    df_lista_veiculos = pd.read_sql(
+        f"""
+        SELECT DISTINCT
+            "CODIGO DO VEICULO" AS "VEICULO",
+            "DESCRICAO DO MODELO" AS "MODELO"
+        FROM 
+            mat_view_retrabalho_10_dias mvrd
+        WHERE 1=1
+            {subquery_modelos_veiculos_str}
+        """,
+        pgEngine,
+    )
+
+    # Ordenar os resultados
+    df_lista_veiculos = df_lista_veiculos.sort_values("VEICULO")
+
+    # Adicionar a opção "TODAS" manualmente
+    lista_todos_veiculos = [{"VEICULO": "TODAS", "MODELO": "TODOS OS VEÍCULOS"}] + df_lista_veiculos.to_dict(orient="records")
+
+    # Formatar corretamente para o Dropdown
+    options = [
+        {"label": f'{veiculo["VEICULO"]} ({veiculo["MODELO"]})', "value": veiculo["VEICULO"]}
+        for veiculo in lista_todos_veiculos
+    ]
+
+    # Selecionar o segundo item como padrão, se existir
+    value = [options[1]["value"]] if len(options) > 1 else []
+
+    return options, value
 
 
 # GRÁFICO DE PIZZA GERAL
