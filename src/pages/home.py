@@ -822,7 +822,8 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
-            style={"height": 600},
+            # Permite resize --> https://community.plotly.com/t/anyone-have-better-ag-grid-resizing-scheme/78398/5
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
         # Tabela com as estatísticas gerais por Colaborador
@@ -859,19 +860,42 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
-            style={"height": 600},
+            # Permite resize --> https://community.plotly.com/t/anyone-have-better-ag-grid-resizing-scheme/78398/5
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
+        ),
+        dmc.Space(h=40),
+        # Tabela com as estatísticas gerais por Veículo
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:bus-wrench", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Detalhamento por veículo das OSs escolhidas",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-tabela-veiculo"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
         ),
         dmc.Space(h=20),
         dag.AgGrid(
             id="tabela-top-veiculos-geral",
-            columnDefs=home_tabelas.tbl_top_colaborador_geral_retrabalho,
+            columnDefs=home_tabelas.tbl_top_veiculo_retrabalho,
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
-            style={"height": 600},
+            # Permite resize --> https://community.plotly.com/t/anyone-have-better-ag-grid-resizing-scheme/78398/5
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
     ]

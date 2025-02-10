@@ -502,9 +502,6 @@ class HomeService:
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
-        print("----")
-        print(query)
-
         # Adicionaa campo de relação entre OS e problemas
         df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
 
@@ -543,7 +540,10 @@ class HomeService:
         df_llm = df_llm.fillna(0)
 
         # Faz Merge
-        df_combinado = pd.merge(df, df_llm, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"])
+        df_combinado = pd.merge(df, df_llm, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"], how="left")
+
+        # Lida com NaNs após merge
+        df_combinado = df_combinado.fillna(0)
 
         # Novo DF com custo
         query_custo = f"""
@@ -582,8 +582,11 @@ class HomeService:
 
         # Faz merge novamente
         df_combinado = pd.merge(
-            df_combinado, df_custo, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"]
+            df_combinado, df_custo, on=["DESCRICAO DA OFICINA", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO"], how="left"
         )
+
+        # Lida com NaNs após merge
+        df_combinado = df_combinado.fillna(0)
 
         return df_combinado
 
@@ -720,7 +723,10 @@ class HomeService:
         df_llm = df_llm.fillna(0)
 
         # Faz Merge
-        df_combinado = pd.merge(df, df_llm, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
+        df_combinado = pd.merge(df, df_llm, on=["COLABORADOR QUE EXECUTOU O SERVICO"], how="left")
+
+        # Lida com NaNs após merge
+        df_combinado = df_combinado.fillna(0)
 
         # Novo DF com custo
         query_custo = f"""
@@ -757,7 +763,10 @@ class HomeService:
         df_custo = df_custo.fillna(0)
 
         # Faz merge novamente
-        df_combinado = pd.merge(df_combinado, df_custo, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
+        df_combinado = pd.merge(df_combinado, df_custo, on=["COLABORADOR QUE EXECUTOU O SERVICO"], how="left")
+
+        # Lida com NaNs após merge
+        df_combinado = df_combinado.fillna(0)
 
         return df_combinado
 
@@ -847,79 +856,76 @@ class HomeService:
 
         df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
 
-        # TODO: Terminar aqui
+        # Novo DF com notas LLM
+        query_llm = f"""
+        SELECT
+            main."CODIGO DO VEICULO",
+            AVG(osclass."SCORE_SOLUTION_TEXT_QUALITY") AS "NOTA_MEDIA_SOLUCAO",
+            100 * ROUND(SUM(CASE WHEN osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_COERENTE"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        LEFT JOIN 
+            os_dados_classificacao AS osclass
+        ON 
+            main."KEY_HASH" = osclass."KEY_HASH"
+        WHERE
+            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_oficinas_str}
+            {inner_subquery_secoes_str}
+            {inner_subquery_os_str}
+        GROUP BY
+            main."CODIGO DO VEICULO"
+        """
 
-        print(df)
-        return df
+        # Executa a query
+        df_llm = pd.read_sql(query_llm, self.dbEngine)
 
-        # # Novo DF com notas LLM
-        # query_llm = f"""
-        # SELECT
-        #     main."COLABORADOR QUE EXECUTOU O SERVICO",
-        #     AVG(osclass."SCORE_SOLUTION_TEXT_QUALITY") AS "NOTA_MEDIA_SOLUCAO",
-        #     100 * ROUND(SUM(CASE WHEN osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_COERENTE"
-        # FROM
-        #     mat_view_retrabalho_{min_dias}_dias main
-        # LEFT JOIN 
-        #     os_dados_classificacao AS osclass
-        # ON 
-        #     main."KEY_HASH" = osclass."KEY_HASH"
-        # WHERE
-        #     main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        #     {inner_subquery_oficinas_str}
-        #     {inner_subquery_secoes_str}
-        #     {inner_subquery_os_str}
-        # GROUP BY
-        #     main."COLABORADOR QUE EXECUTOU O SERVICO"
-        # """
+        # Lida com NaNs
+        df_llm = df_llm.fillna(0)
 
-        # # Executa a query
-        # df_llm = pd.read_sql(query_llm, self.dbEngine)
+        # Faz Merge
+        df_combinado = pd.merge(df, df_llm, on=["CODIGO DO VEICULO"], how="left")
 
-        # # Arruma tipo
-        # df_llm["COLABORADOR QUE EXECUTOU O SERVICO"] = df_llm["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+        # Lida com NaNs após merge
+        df_combinado = df_combinado.fillna(0)
 
-        # # Lida com NaNs
-        # df_llm = df_llm.fillna(0)
+        # Novo DF com custo
+        query_custo = f"""
+        SELECT
+            main."CODIGO DO VEICULO",
+            SUM(pg."VALOR") AS "TOTAL_GASTO",
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
+        WHERE
+            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_oficinas_str}
+            {inner_subquery_secoes_str}
+            {inner_subquery_os_str}
+        GROUP BY
+            main."CODIGO DO VEICULO"
+        """
 
-        # # Faz Merge
-        # df_combinado = pd.merge(df, df_llm, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
+        # Executa a query
+        df_custo = pd.read_sql(query_custo, self.dbEngine)
 
-        # # Novo DF com custo
-        # query_custo = f"""
-        # SELECT
-        #     main."COLABORADOR QUE EXECUTOU O SERVICO",
-        #     SUM(pg."VALOR") AS "TOTAL_GASTO",
-        #     SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
-        # FROM
-        #     mat_view_retrabalho_{min_dias}_dias main
-        # JOIN
-        #     view_pecas_desconsiderando_combustivel pg 
-        # ON
-        #     main."NUMERO DA OS" = pg."OS"
-        # WHERE
-        #     main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        #     {inner_subquery_oficinas_str}
-        #     {inner_subquery_secoes_str}
-        #     {inner_subquery_os_str}
-        # GROUP BY
-        #     main."COLABORADOR QUE EXECUTOU O SERVICO"
-        # """
+        # Arredonda valores
+        df_custo["TOTAL_GASTO"] = df_custo["TOTAL_GASTO"].round(2)
+        df_custo["TOTAL_GASTO_RETRABALHO"] = df_custo["TOTAL_GASTO_RETRABALHO"].round(2)
 
-        # # Executa a query
-        # df_custo = pd.read_sql(query_custo, self.dbEngine)
+        # Lida com NaNs
+        df_custo = df_custo.fillna(0)
 
-        # # Arruma tipo
-        # df_custo["COLABORADOR QUE EXECUTOU O SERVICO"] = df_custo["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+        # Faz merge novamente
+        df_combinado = pd.merge(df_combinado, df_custo, on=["CODIGO DO VEICULO"], how="left")
 
-        # # Arredonda valores
-        # df_custo["TOTAL_GASTO"] = df_custo["TOTAL_GASTO"].round(2)
-        # df_custo["TOTAL_GASTO_RETRABALHO"] = df_custo["TOTAL_GASTO_RETRABALHO"].round(2)
+        # Lida com NaNs após merge
+        df_combinado = df_combinado.fillna(0)
 
-        # # Lida com NaNs
-        # df_custo = df_custo.fillna(0)
-
-        # # Faz merge novamente
-        # df_combinado = pd.merge(df_combinado, df_custo, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
-
-        # return df_combinado
+        print("-------")
+        print(df_combinado)
+        return df_combinado

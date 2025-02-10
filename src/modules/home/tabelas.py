@@ -42,7 +42,7 @@ tbl_top_os_geral_retrabalho = [
     },
     {
         "field": "TOTAL_PROBLEMA",
-        "headerName": "TOTAL DE PROBLEMA",
+        "headerName": "TOTAL DE PROBLEMAS",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
@@ -160,7 +160,112 @@ tbl_top_colaborador_geral_retrabalho = [
     },
     {
         "field": "TOTAL_PROBLEMA",
-        "headerName": "TOTAL DE PROBLEMA",
+        "headerName": "TOTAL DE PROBLEMAS",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "REL_OS_PROBLEMA",
+        "headerName": "REL OS/PROBLEMA",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR')"},
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "NOTA_MEDIA_SOLUCAO",
+        "headerName": "NOTA MÉDIA (LLM)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR')"},
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "PERC_SOLUCAO_COERENTE",
+        "headerName": "% SOLUÇÕES COERENTES (LLM)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "filter": "agNumberColumnFilter",
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "TOTAL_GASTO",
+        "headerName": "TOTAL GASTO (PEÇAS)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "valueFormatter": {
+            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+        },
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "TOTAL_GASTO_RETRABALHO",
+        "headerName": "TOTAL GASTO RETRABALHO (PEÇAS)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 200,
+        "valueFormatter": {
+            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+        },
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+]
+
+
+# Tabela Top Veiculo
+tbl_top_veiculo_retrabalho = [
+    {
+        "field": "DESCRICAO DO MODELO",
+        "headerName": "Modelo",
+        "minWidth": 250,
+        "pinned": "left",
+    },
+    {
+        "field": "CODIGO DO VEICULO",
+        "headerName": "ID",
+        "minWidth": 120,
+        "maxWidth": 120,
+        "pinned": "left",
+    },
+    {
+        "field": "TOTAL_OS",
+        "headerName": "TOTAL DE OS",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "PERC_RETRABALHO",
+        "headerName": "% RETRABALHOS",
+        "filter": "agNumberColumnFilter",
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "PERC_CORRECAO_PRIMEIRA",
+        "headerName": "% CORREÇÕES DE PRIMEIRA",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "filter": "agNumberColumnFilter",
+        "maxWidth": 160,
+        "valueFormatter": {"function": "params.value.toLocaleString('pt-BR') + '%'"},
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "TOTAL_PROBLEMA",
+        "headerName": "TOTAL DE PROBLEMAS",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 160,
