@@ -51,3 +51,17 @@ def get_lista_os(dbEngine):
         """,
         dbEngine,
     )
+
+def get_modelos(dbEngine):
+    # Lista de OS
+    return pd.read_sql(
+        """
+        SELECT DISTINCT
+            "DESCRICAO DO MODELO" AS "MODELO"
+        FROM 
+            mat_view_retrabalho_10_dias mvrd
+        """,
+        dbEngine,
+    )
+
+
