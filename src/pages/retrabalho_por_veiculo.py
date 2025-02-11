@@ -51,6 +51,9 @@ from modules.veiculos.helps import HelpsVeiculos
 pgDB = PostgresSingleton.get_instance()
 pgEngine = pgDB.get_engine()
 
+# Cria o serviço
+home_service_veiculos = HomeServiceVeiculo(pgEngine)
+
 # Colaboradores / Mecânicos
 df_mecanicos = get_mecanicos(pgEngine)
 
@@ -888,7 +891,6 @@ layout = dbc.Container(
 # CALLBACKS ##################################################################
 ##############################################################################
 
-
 # Callback para atualizar o dropdown de veículos
 @callback(
     [
@@ -900,7 +902,7 @@ layout = dbc.Container(
 def atualizar_veiculos(modelos_selecionados):
     if modelos_selecionados is None:
         return [], []  # Retorna uma lista vazia de opções e sem valor padrão
-    lista_todos_veiculos = HomeServiceVeiculo.atualizar_veiculos_func(modelos_selecionados)
+    lista_todos_veiculos = home_service_veiculos.atualizar_veiculos_func(modelos_selecionados)
     # Formatar corretamente para o Dropdown
     options = [
         {"label": f'{veiculo["VEICULO"]} ({veiculo["MODELO"]})', "value": veiculo["VEICULO"]}
@@ -929,7 +931,7 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure(), "", ""
-    total_retrabalho, total_correcao_primeira, labels, values = HomeServiceVeiculo.sintese_geral_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
+    total_retrabalho, total_correcao_primeira, labels, values = home_service_veiculos.sintese_geral_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     fig = grafico_pizza_sintese_geral(labels, values)
     return fig, total_retrabalho, total_correcao_primeira,
 
@@ -949,7 +951,7 @@ def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(datas, min_dias, lista
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure()
-    df = HomeServiceVeiculo.evolucao_retrabalho_por_veiculo_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
+    df = home_service_veiculos.evolucao_retrabalho_por_veiculo_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     fig = gerar_grafico_evolucao_retrabalho_por_veiculo_por_mes(df)
     return fig
 
@@ -969,7 +971,7 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure()
-    df = HomeServiceVeiculo.retrabalho_por_secao_por_mes()
+    df = home_service_veiculos.retrabalho_por_secao_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     fig = grafico_evolucao_retrabalho_por_secao_por_mes(df)
     # Exibe o gráfico
     return fig
@@ -1038,7 +1040,7 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure(), "", "", "", ""
     (os_diferentes, mecanicos_diferentes,os_totais_veiculo, 
-     os_problema,  df_soma_mes, df_os_unicas) = HomeServiceVeiculo.evolucao_quantidade_os_por_mes_fun(datas, min_dias, lista_oficinas, 
+     os_problema,  df_soma_mes, df_os_unicas) = home_service_veiculos.evolucao_quantidade_os_por_mes_fun(datas, min_dias, lista_oficinas, 
                                                                                       lista_secaos, lista_os, lista_veiculos)
     fig = grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas)
     return fig, os_diferentes, mecanicos_diferentes, os_totais_veiculo, os_problema
@@ -1058,7 +1060,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
     # Garante que equipamentos seja uma lista
     if isinstance(equipamentos, str):
         equipamentos = [equipamentos]
-        df_veiculos, df_media_geral = HomeServiceVeiculo.pecas_trocadas_por_mes_fun(datas, equipamentos)
+        df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, equipamentos)
         fig = grafico_tabela_pecas(df_veiculos, df_media_geral)
         return fig
 
@@ -1081,92 +1083,8 @@ def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
     # Valida input
     if not input_valido3(datas, min_dias, lista_veiculos):
         return [], 0, 0, 0
-
-    # Datas
-    data_inicio_str = datas[0]
-    
-    # Remove min_dias antes para evitar que a última OS não seja retrabalho
-    data_fim = pd.to_datetime(datas[1])
-    data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-
-    data_inicio_dt = pd.to_datetime(data_inicio_str)
-    data_inicio_str = data_inicio_dt.strftime("%d/%m/%Y")
-    data_fim_str = data_fim.strftime("%d/%m/%Y")
-
-    print(data_inicio_str)
-
-    subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
-
-    query_detalhes = f"""
-    SELECT "OS", 
-        "EQUIPAMENTO", 
-        "MODELO", 
-        "PRODUTO", 
-        "QUANTIDADE", 
-        "VALOR", 
-        "DATA"
-    FROM pecas_gerais 
-        WHERE 
-            TO_DATE("DATA", 'DD/MM/YY') 
-                BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
-                    AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-            AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-            {subquery_veiculos_str}
-    """
-
-    print(query_detalhes)
-
-
-    query_ranking_veiculo = f"""
-    WITH ranking_veiculos AS (
-        SELECT 
-            ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
-            "EQUIPAMENTO",  -- Veículo
-            SUM("VALOR") AS total_pecas
-        FROM pecas_gerais 
-        WHERE 
-            TO_DATE("DATA", 'DD/MM/YY') 
-            BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
-                    AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-            AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-        GROUP BY "EQUIPAMENTO"
-        )
-        SELECT * 
-        FROM ranking_veiculos
-            WHERE "EQUIPAMENTO" = '{lista_veiculos[0]}'
-        ORDER BY ranking;
-"""
-    try:
-        df_detalhes = pd.read_sql(query_detalhes, pgEngine)
-
-        df_detalhes["DT"] = pd.to_datetime(df_detalhes["DATA"], dayfirst=True)
-
-        # Formatar a coluna "VALOR"
-        df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float) 
-
-        num_meses = df_detalhes['DT'].dt.to_period('M').nunique()
-
-        numero_pecas_veiculos_total = int(df_detalhes['QUANTIDADE'].sum())
-        valor_total_veiculos = df_detalhes['VALOR'].replace('[R$,]', '', regex=True).astype(float).sum().round(2)
-
-        valor_total_veiculos_str = f"R${valor_total_veiculos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-        if len(lista_veiculos) <= 1:
-            df_rk = pd.read_sql(query_ranking_veiculo, pgEngine)
-            rk_n = df_rk.iloc[0]["ranking"]
-            rk = f'{rk_n}°'
-        else:
-            rk = f'0°'
-
-        pecas_mes = round((numero_pecas_veiculos_total / num_meses), 2)
-        valor_mes = round((valor_total_veiculos / num_meses), 2)
-        valor_mes_str = f"R$ {valor_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-        return df_detalhes.to_dict("records"), valor_total_veiculos_str, valor_mes_str, rk
-
-    except Exception as e:
-        print(f"Erro ao executar a consulta da tabela: {e}")
-        return [], 0, 0, 0
+    df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_veiculos)
+    return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk
 
 # TABELA DE DESCRIÇÃO DE SERVIÇOS
 @callback(
@@ -1185,109 +1103,9 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
         return []
+    df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
+    return df_dict
 
-    # Datas
-    data_inicio_str = datas[0]
-
-    # Remove min_dias antes para evitar que a última OS não seja retrabalho
-    data_fim = pd.to_datetime(datas[1])
-    data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-    data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-    # Subqueries
-    subquery_oficinas_str = subquery_oficinas(lista_oficinas)
-    subquery_secoes_str = subquery_secoes(lista_secaos)
-    subquery_os_str = subquery_os(lista_os)
-    subquery_veiculos_str = subquery_veiculos(lista_veiculo)
-
-    inner_subquery_oficinas_str = subquery_oficinas(lista_oficinas, "main.")
-    inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
-    inner_subquery_os_str = subquery_os(lista_os, "main.")
-    inner_subquery_veiculos_str = subquery_veiculos(lista_veiculo, "main.")
-
-    query = f"""
-    WITH normaliza_problema AS (
-        SELECT
-            "DESCRICAO DA OFICINA",
-            "DESCRICAO DA SECAO",
-            "DESCRICAO DO SERVICO" as servico,
-            "CODIGO DO VEICULO",
-            "problem_no"
-        FROM
-            mat_view_retrabalho_{min_dias}_dias
-        WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            {subquery_oficinas_str}
-            {subquery_secoes_str}
-            {subquery_os_str}
-            {subquery_veiculos_str}
-        GROUP BY
-            "DESCRICAO DA OFICINA",
-            "DESCRICAO DA SECAO",
-            "DESCRICAO DO SERVICO",
-            "CODIGO DO VEICULO",
-            "problem_no"
-    ),
-    os_problema AS (
-        SELECT
-            "DESCRICAO DA OFICINA",
-            "DESCRICAO DA SECAO",
-            servico,
-            COUNT(*) AS num_problema
-        FROM
-            normaliza_problema
-        GROUP BY
-            "DESCRICAO DA OFICINA",
-            "DESCRICAO DA SECAO",
-            servico
-    )
-    SELECT
-        main."DESCRICAO DA OFICINA",
-        main."DESCRICAO DA SECAO",
-        main."DESCRICAO DO SERVICO",
-        COUNT(*) AS "TOTAL_OS",
-        SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-        SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-        SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-        100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-        100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-        100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-        COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA",
-        SUM(pg."QUANTIDADE") as "QUANTIDADE DE PECAS" ,
-        COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") as "QUANTIDADE DE COLABORADORES" 
-    FROM
-        mat_view_retrabalho_{min_dias}_dias main
-    LEFT JOIN
-        os_problema op
-    ON
-        main."DESCRICAO DA OFICINA" = op."DESCRICAO DA OFICINA"
-        AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
-        AND main."DESCRICAO DO SERVICO" = op.servico
-    LEFT JOIN
-    	PECAS_GERAIS pg
-    ON 
-    	main."NUMERO DA OS" = pg."OS"
-    WHERE
-        main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        {inner_subquery_oficinas_str}
-        {inner_subquery_secoes_str}
-        {inner_subquery_os_str}
-        {inner_subquery_veiculos_str}
-    GROUP BY
-        main."DESCRICAO DA OFICINA",
-        main."DESCRICAO DA SECAO",
-        main."DESCRICAO DO SERVICO",
-        op.num_problema
-    ORDER BY
-        "PERC_RETRABALHO" DESC;
-    """
-
-    # Executa a query
-    df = pd.read_sql(query, pgEngine)
-
-    df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
-
-    return df.to_dict("records")
 
 # RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA 
 @callback(
@@ -1308,149 +1126,5 @@ def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, l
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return "", "", "", ""
-
-    # Datas
-    data_inicio_str = datas[0]
-
-    # Remove min_dias antes para evitar que a última OS não seja retrabalho
-    data_fim = pd.to_datetime(datas[1])
-    data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-    data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-    # Subqueries
-    subquery_oficinas_str = subquery_oficinas(lista_oficinas)
-    subquery_secoes_str = subquery_secoes(lista_secaos)
-    subquery_os_str = subquery_os(lista_os)
-    subquery_veiculos_str = subquery_veiculos(lista_veiculos)
-    
-
-    query_ranking_retrabalho_correcao = f"""
-            SELECT
-                "CODIGO DO VEICULO",
-                "DESCRICAO DO MODELO",
-                "TOTAL_RETRABALHO",
-                "TOTAL_CORRECAO",
-                "TOTAL_CORRECAO_PRIMEIRA",
-                "PERC_RETRABALHO",
-                "PERC_CORRECAO",
-                "PERC_CORRECAO_PRIMEIRA",
-                ranking_retrabalho,
-                ranking_correcao,
-                ranking_correcao_primeira
-            FROM (
-                SELECT
-                    "CODIGO DO VEICULO",
-                    "DESCRICAO DO MODELO",
-                    SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-                    SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-                    SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-                    100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-                    100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-                    100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-                    DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) ASC) AS ranking_retrabalho,
-                    DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) ASC) AS ranking_correcao,
-                    DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) desc)  ranking_correcao_primeira
-                FROM
-                    mat_view_retrabalho_{min_dias}_dias
-                WHERE
-                    "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-                    {subquery_oficinas_str}
-                    {subquery_secoes_str}
-                    {subquery_os_str}
-                    
-                GROUP BY
-                    "CODIGO DO VEICULO", "DESCRICAO DO MODELO"
-            ) subquery
-            WHERE
-                ranking_retrabalho >= 1  -- Exemplo de filtro pelo ranking
-                --{subquery_veiculos_str}
-            ORDER BY 
-                ranking_retrabalho, ranking_correcao, ranking_correcao_primeira;                
-"""
-    
-    rk_retrabalho_geral = f'0°'
-    rk_correcao_primeira_geral = f'0°'
-    
-    rk_retrabalho_modelo = f'0°'
-    rk_correcao_primeira_modelo = f'0°'
-
-    if len(lista_veiculos) <= 1:
-        df = pd.read_sql(query_ranking_retrabalho_correcao, pgEngine)
-        df = df.rename(columns={
-            "PERC_RETRABALHO": "RETRABALHO",
-            "PERC_CORRECAO_PRIMEIRA": "CORRECAO_PRIMEIRA"
-        })
-        df_veiculo = df.loc[df["CODIGO DO VEICULO"] == lista_veiculos[0]]
-
-        if len(df_veiculo) >= 1:
-            contagem_ranking_geral = len(df)
-
-            rk_n_retrabalho = df_veiculo.iloc[0]["ranking_retrabalho"]
-            retra = df_veiculo.iloc[0]["RETRABALHO"]
-            rk_retrabalho_geral = f'{rk_n_retrabalho}°/{contagem_ranking_geral}'
-
-            rk_n_correcao_primeira = df_veiculo.iloc[0]["ranking_correcao_primeira"]
-            rk_correcao_primeira_geral = f'{rk_n_correcao_primeira}°/{contagem_ranking_geral}'
-
-        ########################################################### POR MODELO AGORA
-            lista_modelos = df_veiculo["DESCRICAO DO MODELO"].dropna().unique().tolist()
-            sub_query_modelos_str = subquery_modelos_veiculos(lista_modelos)
-
-            query_ranking_retrabalho_correcao_modelos = f"""
-                SELECT
-                    "CODIGO DO VEICULO",
-                    "DESCRICAO DO MODELO",
-                    "TOTAL_RETRABALHO",
-                    "TOTAL_CORRECAO",
-                    "TOTAL_CORRECAO_PRIMEIRA",
-                    "PERC_RETRABALHO",
-                    "PERC_CORRECAO",
-                    "PERC_CORRECAO_PRIMEIRA",
-                    ranking_retrabalho,
-                    ranking_correcao,
-                    ranking_correcao_primeira
-                FROM (
-                    SELECT
-                        "CODIGO DO VEICULO",
-                        "DESCRICAO DO MODELO",
-                        SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-                        SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-                        SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-                        100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-                        100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-                        100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-                        DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) ASC) AS ranking_retrabalho,
-                        DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) ASC) AS ranking_correcao,
-                        DENSE_RANK() OVER (ORDER BY 100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) desc)  ranking_correcao_primeira
-                    FROM
-                        mat_view_retrabalho_{min_dias}_dias
-                    WHERE
-                        "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-                        {subquery_oficinas_str}
-                        {subquery_secoes_str}
-                        {subquery_os_str}
-                        {sub_query_modelos_str}
-                    GROUP BY
-                        "CODIGO DO VEICULO", "DESCRICAO DO MODELO"
-                ) subquery
-                WHERE
-                    ranking_retrabalho >= 1  -- Exemplo de filtro pelo ranking
-                ORDER BY 
-                    ranking_retrabalho, ranking_correcao, ranking_correcao_primeira;                
-                """
-
-            df_modelos = pd.read_sql(query_ranking_retrabalho_correcao_modelos, pgEngine)
-            df_modelos = df_modelos.rename(columns={
-                "PERC_RETRABALHO": "RETRABALHO",
-                "PERC_CORRECAO_PRIMEIRA": "CORRECAO_PRIMEIRA"
-            })
-            contagem_ranking_modelos = len(df_modelos)
-            df_veiculo_modelo = df_modelos.loc[df_modelos["CODIGO DO VEICULO"] == lista_veiculos[0]]
-
-            rk_n_retrabalho_modelo = df_veiculo_modelo.iloc[0]["ranking_retrabalho"]
-            rk_retrabalho_modelo = f'{rk_n_retrabalho_modelo}°/{contagem_ranking_modelos}'
-
-            rk_n_correcao_primeira_modelos = df_veiculo_modelo.iloc[0]["ranking_correcao_primeira"]
-            rk_correcao_primeira_modelo = f'{rk_n_correcao_primeira_modelos}°/{contagem_ranking_modelos}'
-
+    rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo = home_service_veiculos.ranking_retrabalho_veiculos_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     return rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo

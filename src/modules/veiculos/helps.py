@@ -15,7 +15,7 @@ class HelpsVeiculos:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
 
-    def media_geral_retrabalho_modelos(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos, lista_modelos):
+    def media_geral_retrabalho_modelos(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos, lista_modelos):
         # Chama a função input_valido com todos os parâmetros
         if not input_valido2(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos, lista_modelos):
             return go.Figure()
@@ -87,7 +87,7 @@ class HelpsVeiculos:
         
         return df_media
 
-    def media_geral_retrabalho_geral(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    def media_geral_retrabalho_geral(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         # Chama a função input_valido com todos os parâmetros
         if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
             return go.Figure()
