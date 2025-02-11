@@ -11,20 +11,6 @@ class ColaboradorService:
         pgDB = PostgresSingleton.get_instance()
         self.pgEngine = pgDB.get_engine()
 
-    def get_info_colaboradores(self)-> pd.DataFrame:
-        '''Obtem os dados dos mecânicos informados pela RA'''
-        try:
-            df_mecanicos = pd.read_sql(
-                """
-                SELECT * FROM colaboradores_frotas_os
-                """,
-                self.pgEngine
-            )
-            df_mecanicos["LABEL_COLABORADOR"] = df_mecanicos["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x))
-            return df_mecanicos
-        except Exception as e:
-            return pd.DataFrame()
-
     def get_mecanicos(self)->pd.DataFrame:
         '''Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados'''
         try:
@@ -177,6 +163,7 @@ class ColaboradorService:
         return df
         
     def obtem_estatistica_retrabalho_grafico_resumo(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
+        '''Obtem dados de retrabalho para grafico de resumo'''
         data_inicio_str = datas[0]
 
         # Remove min_dias antes para evitar que a última OS não seja retrabalho
@@ -216,6 +203,7 @@ class ColaboradorService:
 
 
     def dados_tabela_do_colaborador(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+        '''Obtem dados para tabela'''
         # Datas
         data_inicio_str = datas[0]
 
@@ -452,7 +440,7 @@ class ColaboradorService:
         return df
     
     def indcador_rank_servico(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        
+        '''Obtem dados para rank de serviços diferentes'''
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
@@ -489,7 +477,7 @@ class ColaboradorService:
         return df_mecanicos
     
     def indcador_rank_total_os(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        
+        '''Obtem dados para rank de total de OS'''
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)

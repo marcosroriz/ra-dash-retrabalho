@@ -51,8 +51,6 @@ colab = ColaboradorService()
 ##############################################################################
 # Obtêm os dados dos colaboradores
 ##############################################################################
-# Obtem os dados dos mecânicos informados pela RA
-df_mecanicos = colab.get_info_colaboradores()
 
 # Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados
 df_mecanicos_todos = colab.get_mecanicos()
@@ -624,9 +622,36 @@ layout = dbc.Container(
     ]
 )
 
+##############################################################################
+# CALLBACKS ##################################################################
+##############################################################################   
+
+##############################################################################
+# Callbacks para os inputs ###################################################
+##############################################################################
+
+# Função para validar o input
+def input_valido(id_colaborador, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if id_colaborador is None or not id_colaborador or None in id_colaborador:
+        return False
     
+    if datas is None or not datas or None in datas or min_dias is None:
+        return False
+
+    if lista_oficinas is None or not lista_oficinas or None in lista_oficinas:
+        return False
+
+    if lista_secaos is None or not lista_secaos or None in lista_secaos:
+        return False
+
+    if lista_os is None or not lista_os or None in lista_os:
+        return False
+
+    return True
+
+
+# Corrige o input para garantir que "TODAS" não seja selecionado junto com outras opções
 def corrige_input(lista):
-    '''Corrige o input para garantir que "TODAS" não seja selecionado junto com outras opções'''
     # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
     if not lista:
         return ["TODAS"]
@@ -642,9 +667,7 @@ def corrige_input(lista):
     # Por fim, se não caiu em nenhum caso, retorna o valor original
     return lista
 
-##############################################################################
-# CALLBACKS ##################################################################
-##############################################################################
+
 @callback(
     Output("input-select-oficina-colaborador", "value"),
     Input("input-select-oficina-colaborador", "value"),
@@ -957,7 +980,7 @@ def computa_atuacao_mecanico_tipo_os(data):
     ],
 )
 def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    if id_colaborador is None:
+    if not id_colaborador:
         return go.Figure()
 
     # Obtem OS

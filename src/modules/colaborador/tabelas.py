@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 # Arquivo que centraliza as tabelas utilizadas na página retrabalho colaboraddor
 
 # Tabela Top OS de Retrabalho

@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 import plotly.graph_objs as go
 from datetime import datetime
 import plotly.express as px
