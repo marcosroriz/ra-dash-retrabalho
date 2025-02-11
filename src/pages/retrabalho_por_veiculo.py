@@ -64,8 +64,7 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 
 df_lista_modelos = get_modelos(pgEngine)
 lista_todos_modelos = df_lista_modelos.to_dict(orient="records")
-
-lista_todos_modelos.insert(0, {"LABEL": "TODAS", "MODELO": "TODAS"})
+lista_todos_modelos.insert(0, {"LABEL": "TODOS", "MODELO": "TODOS"})
 
 
 ##############################################################################
@@ -183,8 +182,8 @@ layout = dbc.Container(
                                                             }
                                                             for os in lista_todos_modelos
                                                         ],
-                                                        multi=True,
-                                                        value=["TODAS"],
+                                                        #multi=True,
+                                                        value="TODOS", #ANTES ERA ["TODAS"], AGORA COMO É UMA VARIAVEL SÓ NO DROP, ENTÃO SE CONSIDERA APENAS UMA STRIN.
                                                         placeholder="Selecione um ou mais modelos...",
                                                     )
                                                 ],
@@ -886,7 +885,6 @@ layout = dbc.Container(
 )
 
 
-
 ##############################################################################
 # CALLBACKS ##################################################################
 ##############################################################################
@@ -902,7 +900,7 @@ layout = dbc.Container(
 def atualizar_veiculos(modelos_selecionados):
     if modelos_selecionados is None:
         return [], []  # Retorna uma lista vazia de opções e sem valor padrão
-    lista_todos_veiculos = home_service_veiculos.atualizar_veiculos_func(modelos_selecionados)
+    lista_todos_veiculos = home_service_veiculos.atualizar_veiculos_func([modelos_selecionados])
     # Formatar corretamente para o Dropdown
     options = [
         {"label": f'{veiculo["VEICULO"]} ({veiculo["MODELO"]})', "value": veiculo["VEICULO"]}
@@ -1105,7 +1103,6 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
         return []
     df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
     return df_dict
-
 
 # RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA 
 @callback(

@@ -52,7 +52,7 @@ def subquery_equipamentos(lista_veiculos, prefix=""):
 
 def subquery_modelos_veiculos(lista_modelos, prefix=""):
     #query = ""
-    if not lista_modelos or "TODAS" in lista_modelos:
-        return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODAS":
+    if not lista_modelos or "TODOS" in lista_modelos:
+        return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODOS":
     query = f"""AND {prefix}"DESCRICAO DO MODELO" IN ({', '.join([f"'{x}'" for x in lista_modelos])})"""
     return query
