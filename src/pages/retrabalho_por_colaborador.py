@@ -43,7 +43,7 @@ pgDB = PostgresSingleton.get_instance()
 pgEngine = pgDB.get_engine()
 
 from modules.colaborador.colaborador_service import ColaboradorService
-from modules.colaborador.functions import *
+from modules.colaborador.graficos import *
 
 colab = ColaboradorService()
 
