@@ -215,9 +215,9 @@ layout = dbc.Container(
                                                         id="input-intervalo-datas-colaborador",
                                                         allowSingleDateInRange=True,
                                                         type="range",
-                                                        minDate=date(2024, 1, 1),
+                                                        minDate=date(2024, 8, 1),
                                                         maxDate=datetime.now().date(),
-                                                        value=[date(2024, 1, 1), datetime.now().date()],
+                                                        value=[date(2024, 8, 1), datetime.now().date()],
                                                     ),
                                                 ],
                                                 className="dash-bootstrap",
@@ -692,7 +692,12 @@ layout = dbc.Container(
 ##############################################################################
 # CALLBACKS ##################################################################
 ##############################################################################
-
+@callback(
+    Output("input-select-oficina-colaborador", "value"),
+    Input("input-select-oficina-colaborador", "value"),
+)
+def corrige_input_oficina(lista_oficinas):
+    return colab.corrige_input(lista_oficinas)
 
 @callback(
     Output("input-select-secao-colaborador", "value"),
@@ -743,17 +748,16 @@ def corrige_input_ordem_servico(lista_os, lista_secaos, id_colaborador, min_dias
     [
         Input("input-select-modelos-colaborador", "value"),
         Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
         Input("input-lista-colaborador", "value"),
         Input("input-min-dias-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value")
     ],
 )
-def corrige_input_modelo(lista_modelos, lista_secaos, id_colaborador, min_dias, datas):
+def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, min_dias, datas):
     # Vamos pegar as OS possíveis para as seções selecionadas
-    df_lista_os_secao = colab.df_lista_os_colab_modelo(min_dias, id_colaborador, datas)
+    df_lista_os_secao = colab.df_lista_os_colab_modelo(lista_secaos, lista_os, min_dias, id_colaborador, datas)
 
-    if "TODAS" not in lista_secaos:
-        df_lista_os_secao = df_lista_os_secao[df_lista_os_secao["SECAO"].isin(lista_secaos)]
 
     # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
     lista_modelos_possiveis = df_lista_os_secao.to_dict(orient="records")
@@ -788,10 +792,12 @@ def corrige_input_modelo(lista_modelos, lista_secaos, id_colaborador, min_dias, 
         Input("input-min-dias-colaborador", "value"),
         Input("input-select-secao-colaborador", "value"),
         Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
     ],
     running=[(Output("loading-overlay", "visible"), True, False)],
 )
-def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os):
+def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     
     id_colaborador = 3295 if id_colaborador is None else id_colaborador
     # Validação dos inputs
@@ -804,7 +810,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     # Obtém análise estatística
     df_os_analise = colab.obtem_estatistica_retrabalho_sql(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
 
     if df_os_analise.empty:
@@ -837,7 +844,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         
     df_rank_servico = colab.indcador_rank_servico(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
     
     if df_rank_servico.empty:
@@ -854,7 +862,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     
     df_rank_os = colab.indcador_rank_total_os(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
     if df_rank_os.empty:
         return (
@@ -873,7 +882,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     
     df_nota_media = colab.nota_media_colaborador(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
     
     if df_nota_media.empty:
@@ -891,7 +901,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     
     df_nota_posicao = colab.posicao_rank_nota_media(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
     if df_nota_posicao.empty:
         return (
@@ -988,16 +999,19 @@ def computa_atuacao_mecanico_tipo_os(data):
         Input("input-min-dias-colaborador", "value"),
         Input("input-select-secao-colaborador", "value"),
         Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
     ],
 )
-def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_secaos, lista_os):
+def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     if id_colaborador is None:
         return go.Figure()
 
     # Obtem OS
     df_os_mecanico = colab.dados_grafico_top_10_do_colaborador(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     ).sort_values('TOTAL_OS',ascending=False)
 
     if df_os_mecanico.empty:
@@ -1030,9 +1044,11 @@ def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_seca
         Input("input-min-dias-colaborador", "value"),
         Input("input-select-secao-colaborador", "value"),
         Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
     ],
 )
-def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os):
+def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     '''plota grafico de evolução de retrabalho por ano'''
     
     dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
@@ -1043,7 +1059,8 @@ def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
     # Obtém análise estatística
     df_os_analise = colab.obtem_estatistica_retrabalho_grafico(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
     if df_os_analise.empty:
         return go.Figure()
@@ -1059,9 +1076,11 @@ def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
         Input("input-min-dias-colaborador", "value"),
         Input("input-select-secao-colaborador", "value"),
         Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
     ],
 )
-def grafico_retrabalho_resumo(id_colaborador, datas, min_dias, lista_secaos, lista_os):
+def grafico_retrabalho_resumo(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     '''plota grafico de evolução de retrabalho por ano'''
     dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
     # Validação dos inputs
@@ -1071,7 +1090,8 @@ def grafico_retrabalho_resumo(id_colaborador, datas, min_dias, lista_secaos, lis
     # Obtém análise estatística
     df_os_analise = colab.obtem_estatistica_retrabalho_grafico_resumo(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
 
     if df_os_analise.empty:
@@ -1088,16 +1108,19 @@ def grafico_retrabalho_resumo(id_colaborador, datas, min_dias, lista_secaos, lis
         Input("input-min-dias-colaborador", "value"),
         Input("input-select-secao-colaborador", "value"),
         Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
     ],
 )
-def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos, lista_os):
+def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     
     if (id_colaborador is None) or (datas is None) or (min_dias is None):
         return []
     
     return colab.dados_tabela_do_colaborador(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
     
 @callback(
@@ -1108,10 +1131,12 @@ def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos
         Input("input-min-dias-colaborador", "value"),
         Input("input-select-secao-colaborador", "value"),
         Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
     ],
     running=[(Output("loading-overlay", "visible"), True, False)],
 )
-def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os):
+def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     '''plota grafico de evolução de retrabalho por ano'''
     
     # Validação dos inputs
@@ -1121,7 +1146,8 @@ def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
     # Obtém análise estatística
     df_os_analise = colab.evolucao_nota_media_colaborador(
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
     )
     if df_os_analise.empty:
         return go.Figure()
