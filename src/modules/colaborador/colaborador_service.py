@@ -4,6 +4,7 @@ import traceback
 import re
 
 from db import PostgresSingleton
+from ..sql_utils import *
 
 class ColaboradorService:
     def __init__(self):
@@ -45,34 +46,6 @@ class ColaboradorService:
         except Exception as e:
             return pd.DataFrame()
         
-    def subquery_secoes(self, lista_secaos, prefix=""):
-        query = ""
-        if "TODAS" not in lista_secaos:
-            query = f"""AND {prefix}"DESCRICAO DA SECAO" IN ({', '.join([f"'{x}'" for x in lista_secaos])})"""
-
-        return query
-
-    def subquery_os(self, lista_os, prefix=""):
-        query = ""
-        if "TODAS" not in lista_os:
-            query = f"""AND {prefix}"DESCRICAO DO SERVICO" IN ({', '.join([f"'{x}'" for x in lista_os])})"""
-
-        return query
-    
-    def subquery_modelo(self, lista_modelo, prefix=""):
-        query = ""
-        if "TODAS" not in lista_modelo:
-            query = f"""AND {prefix}"DESCRICAO DO MODELO" IN ({', '.join([f"'{x}'" for x in lista_modelo])})"""
-
-        return query
-    
-    # Subqueries para filtrar as oficinas, seções e ordens de serviço quando TODAS não for selecionado
-    def subquery_oficinas(self, lista_oficinas, prefix=""):
-        query = ""
-        if "TODAS" not in lista_oficinas:
-            query = f"""AND {prefix}"DESCRICAO DA OFICINA" IN ({', '.join([f"'{x}'" for x in lista_oficinas])})"""
-
-        return query
 
     def obtem_dados_os_mecanico(self, id_mecanico: str):
         # Query
@@ -100,10 +73,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
         query = f"""
         SELECT
             COUNT("DESCRICAO DO SERVICO") AS "TOTAL_OS",
@@ -138,10 +111,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
         
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
         
         query = f"""
             WITH oficina_colaborador AS (
@@ -189,6 +162,8 @@ class ColaboradorService:
             AND "DESCRICAO DA SECAO" IN (SELECT "DESCRICAO DA SECAO" FROM mat_view_retrabalho_{min_dias}_dias)
             {subquery_secoes_str}
             {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_ofcina_str}
         GROUP BY
             year_month, "DESCRICAO DA SECAO"
 
@@ -209,10 +184,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
         
         query = f"""
         SELECT
@@ -228,6 +203,8 @@ class ColaboradorService:
             "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
             {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_ofcina_str}
     
         """
         
@@ -248,20 +225,20 @@ class ColaboradorService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
 
-        inner_subquery_secoes_str1 = self.subquery_secoes(lista_secaos, "mt.")
-        inner_subquery_os_str1= self.subquery_os(lista_os, "mt.")
-        inner_subquery_modelo_str1= self.subquery_modelo(lista_modelo, "mt.")
-        inner_subquery_ofcina_str1= self.subquery_oficinas(lista_oficina, "mt.")
+        inner_subquery_secoes_str1 = subquery_secoes(lista_secaos, "mt.")
+        inner_subquery_os_str1= subquery_os(lista_os, "mt.")
+        inner_subquery_modelo_str1= subquery_modelos(lista_modelo, "mt.")
+        inner_subquery_ofcina_str1= subquery_oficinas(lista_oficina, "mt.")
         
-        inner_subquery_secoes_str2 = self.subquery_secoes(lista_secaos, "main.")
-        inner_subquery_os_str2 = self.subquery_os(lista_os, "main.")
-        inner_subquery_modelo_str2 = self.subquery_modelo(lista_modelo, "main.")
-        inner_subquery_oficina_str2 = self.subquery_oficinas(lista_oficina, "main.")
+        inner_subquery_secoes_str2 = subquery_secoes(lista_secaos, "main.")
+        inner_subquery_os_str2 = subquery_os(lista_os, "main.")
+        inner_subquery_modelo_str2 = subquery_modelos(lista_modelo, "main.")
+        inner_subquery_oficina_str2 = subquery_oficinas(lista_oficina, "main.")
         
         query = f"""
         WITH normaliza_problema AS (
@@ -387,15 +364,15 @@ class ColaboradorService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_modelo)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_modelo)
 
-        inner_subquery_secoes_str = self.subquery_secoes(lista_secaos, "main.")
-        inner_subquery_os_str = self.subquery_os(lista_os, "main.")
-        inner_subquery_modelo_str = self.subquery_modelo(lista_modelo, "main.")
-        inner_subquery_oficina_str = self.subquery_oficinas(lista_oficina, "main.") 
+        inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
+        inner_subquery_os_str = subquery_os(lista_os, "main.")
+        inner_subquery_modelo_str = subquery_modelos(lista_modelo, "main.")
+        inner_subquery_oficina_str = subquery_oficinas(lista_oficina, "main.") 
         
         query = f"""
         WITH normaliza_problema AS (
@@ -481,10 +458,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
         
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
         
         query = F"""
             with TABELA_RANK as (SELECT 
@@ -518,10 +495,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
         
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
         
         query = F"""
             with TABELA_RANK as (SELECT 
@@ -546,24 +523,7 @@ class ColaboradorService:
         )
         
         return df_mecanicos
-    
-    @staticmethod
-    def corrige_input(lista):
-        '''Corrige o input para garantir que "TODAS" não seja selecionado junto com outras opções'''
-        # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
-        if not lista:
-            return ["TODAS"]
 
-        # Caso 2: Se "TODAS" foi selecionado após outras opções, reseta para "TODAS"
-        if len(lista) > 1 and "TODAS" in lista[1:]:
-            return ["TODAS"]
-
-        # Caso 3: Se alguma opção foi selecionada após "TODAS", remove "TODAS"
-        if "TODAS" in lista and len(lista) > 1:
-            return [value for value in lista if value != "TODAS"]
-
-        # Por fim, se não caiu em nenhum caso, retorna o valor original
-        return lista
     
     def df_lista_os(self):
         '''Retorna uma lista das OSs'''
@@ -616,8 +576,8 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
         
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
         
         df_lista_os = pd.read_sql(
             f"""
@@ -644,10 +604,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
         
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
         
         
         query = f"""
@@ -678,10 +638,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
         
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
         
         query = f"""
             WITH oficina_colaborador AS (
@@ -743,10 +703,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
         
-        subquery_secoes_str = self.subquery_secoes(lista_secaos)
-        subquery_os_str = self.subquery_os(lista_os)
-        subquery_modelo_str = self.subquery_modelo(lista_modelo)
-        subquery_ofcina_str = self.subquery_oficinas(lista_oficina)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
         
         query = f'''
         with TABELA_RANK as (

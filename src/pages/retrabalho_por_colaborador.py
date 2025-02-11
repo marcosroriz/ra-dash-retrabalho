@@ -29,11 +29,11 @@ import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
-import tema
 import locale_utils
 
 # Banco de Dados
 from db import PostgresSingleton
+from modules.colaborador.tabelas import *
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -68,69 +68,7 @@ dash.register_page(
     __name__, name="Retrabalho por Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline"
 )
 
-# Tabela Top OS de Retrabalho
-tbl_top_os_geral_retrabalho = [
-    {"field": "DESCRICAO DA OFICINA", "headerName": "OFICINA", "filter": "agSetColumnFilter", "minWidth": 200},
-    {"field": "DESCRICAO DA SECAO", "headerName": "SEÇÃO", "filter": "agSetColumnFilter", "minWidth": 200},
-    {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "filter": "agSetColumnFilter", "minWidth": 250},
-    {
-        "field": "TOTAL_OS",
-        "headerName": "TOTAL DE OS",
-        "wrapHeaderText": True,
-        "autoHeaderHeight": True,
-        "maxWidth": 160,
-        "filter": "agNumberColumnFilter",
-        "type": ["numericColumn"],
-    },
-    {
-        "field": "PERC_TOTAL_OS",
-        "headerName": "% OS",
-        "filter": "agNumberColumnFilter",
-        "maxWidth": 160,
-        "valueFormatter": {"function": "params.value + '%'"},
-        "type": ["numericColumn"],
-    },
-    {
-        "field": "PERC_RETRABALHO",
-        "headerName": "% RETRABALHOS",
-        "filter": "agNumberColumnFilter",
-        "maxWidth": 160,
-        "valueFormatter": {"function": "params.value + '%'"},
-        "type": ["numericColumn"],
-    },
-    {
-        "field": "PERC_CORRECAO_PRIMEIRA",
-        "headerName": "% CORREÇÕES DE PRIMEIRA",
-        "wrapHeaderText": True,
-        "autoHeaderHeight": True,
-        "filter": "agNumberColumnFilter",
-        "maxWidth": 250,
-        "valueFormatter": {"function": "params.value + '%'"},
-        "type": ["numericColumn"],
-        "minWidth": 200
-    },
-    {
-        "field": "nota_media_colaborador",
-        "headerName": "NOTA MEDIA DO COLABORADOR",
-        "wrapHeaderText": True,
-        "autoHeaderHeight": True,
-        "filter": "agNumberColumnFilter",
-        "maxWidth": 150,
-        "type": ["numericColumn"],
-        "minWidth": 200
-    },
-    {
-        "field": "nota_media_os",
-        "headerName": "NOTA MEDIA DA OS",
-        "wrapHeaderText": True,
-        "autoHeaderHeight": True,
-        "filter": "agNumberColumnFilter",
-        "maxWidth": 150,
-        "type": ["numericColumn"],
-        "minWidth": 200
-    },
 
-]
 
 ##############################################################################
 layout = dbc.Container(
@@ -687,7 +625,22 @@ layout = dbc.Container(
 )
 
     
+def corrige_input(lista):
+    '''Corrige o input para garantir que "TODAS" não seja selecionado junto com outras opções'''
+    # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
+    if not lista:
+        return ["TODAS"]
 
+    # Caso 2: Se "TODAS" foi selecionado após outras opções, reseta para "TODAS"
+    if len(lista) > 1 and "TODAS" in lista[1:]:
+        return ["TODAS"]
+
+    # Caso 3: Se alguma opção foi selecionada após "TODAS", remove "TODAS"
+    if "TODAS" in lista and len(lista) > 1:
+        return [value for value in lista if value != "TODAS"]
+
+    # Por fim, se não caiu em nenhum caso, retorna o valor original
+    return lista
 
 ##############################################################################
 # CALLBACKS ##################################################################
@@ -697,14 +650,14 @@ layout = dbc.Container(
     Input("input-select-oficina-colaborador", "value"),
 )
 def corrige_input_oficina(lista_oficinas):
-    return colab.corrige_input(lista_oficinas)
+    return corrige_input(lista_oficinas)
 
 @callback(
     Output("input-select-secao-colaborador", "value"),
     Input("input-select-secao-colaborador", "value"),
 )
 def corrige_input_secao(lista_secaos):
-    return colab.corrige_input(lista_secaos)
+    return corrige_input(lista_secaos)
 
 @callback(
     [
@@ -737,7 +690,7 @@ def corrige_input_ordem_servico(lista_os, lista_secaos, id_colaborador, min_dias
         df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_os)]
         lista_os = df_lista_os_atual["LABEL"].tolist()
 
-    return lista_options, colab.corrige_input(lista_os)
+    return lista_options, corrige_input(lista_os)
 
 
 @callback(
@@ -770,7 +723,7 @@ def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, 
         df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_modelos)]
         lista_modelos = df_lista_os_atual["LABEL"].tolist()
 
-    return lista_options, colab.corrige_input(lista_modelos)
+    return lista_options, corrige_input(lista_modelos)
 
 
 
