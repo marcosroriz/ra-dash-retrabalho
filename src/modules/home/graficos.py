@@ -329,3 +329,4 @@ def gerar_grafico_evolucao_retrabalho_por_nota_por_mes(df):
     fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
 
     return fig
+
