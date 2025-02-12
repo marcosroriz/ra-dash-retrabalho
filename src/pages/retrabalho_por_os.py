@@ -727,16 +727,31 @@ def obtem_dados_os_sql(lista_os, data_inicio, data_fim, min_dias):
     query = f"""
     WITH os_diff_days AS (
         SELECT 
+            od."KEY_HASH",
+            od."PRIORIDADE SERVICO",
+            od."DESCRICAO DA SECAO",
+            od."DESCRICAO DA OFICINA",
+            od."OBSERVACAO DA OS",
+            od."COMPLEMENTO DO SERVICO",
             od."NUMERO DA OS",
             od."CODIGO DO VEICULO",
             od."DESCRICAO DO SERVICO",
+            od."DATA DA ABERTURA DA OS",
+            od."DATA DO FECHAMENTO DA OS",
             od."DESCRICAO DO MODELO",
             od."DATA INICIO SERVIÇO",
             od."DATA DE FECHAMENTO DO SERVICO",
             od."COLABORADOR QUE EXECUTOU O SERVICO",
-            od."COMPLEMENTO DO SERVICO",
-            EXTRACT(day FROM od."DATA INICIO SERVIÇO"::timestamp without time zone - lag(od."DATA INICIO SERVIÇO"::timestamp without time zone) OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY (od."DATA INICIO SERVIÇO"::timestamp without time zone))) AS prev_days,
-            EXTRACT(day FROM lead(od."DATA INICIO SERVIÇO"::timestamp without time zone) OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY (od."DATA INICIO SERVIÇO"::timestamp without time zone)) - od."DATA INICIO SERVIÇO"::timestamp without time zone) AS next_days
+            lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") AS "PREV_DATA_FECHAMENTO",
+            lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DE FECHAMENTO DO SERVICO") AS "NEXT_DATA_ABERTURA",
+                CASE
+                    WHEN lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") IS NOT NULL AND od."DATA DA ABERTURA DA OS" IS NOT NULL THEN date_part('day'::text, od."DATA DA ABERTURA DA OS"::timestamp without time zone - lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS")::timestamp without time zone)
+                    ELSE NULL::double precision
+                END AS prev_days,
+                CASE
+                    WHEN od."DATA DE FECHAMENTO DO SERVICO" IS NOT NULL AND lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DE FECHAMENTO DO SERVICO") IS NOT NULL THEN date_part('day'::text, lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DE FECHAMENTO DO SERVICO")::timestamp without time zone - od."DATA DE FECHAMENTO DO SERVICO"::timestamp without time zone)
+                    ELSE NULL::double precision
+                END AS next_days
         FROM 
             os_dados od
         WHERE 
@@ -745,19 +760,6 @@ def obtem_dados_os_sql(lista_os, data_inicio, data_fim, min_dias):
             AND od."DATA INICIO SERVIÇO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
             AND od."DATA DE FECHAMENTO DO SERVICO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
             AND od."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
-            AND od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio}' AND '{data_fim_corrigida_str}'
-            AND od."DESCRICAO DO SERVICO" IN ({', '.join([f"'{x}'" for x in lista_os])})
-            -- AND (
-                --"DESCRICAO DO SERVICO" = 'Motor cortando alimentação'
-                --OR
-                --"DESCRICAO DO SERVICO" = 'Motor sem força'
-            --)
-            --AND 
-            --(
-            -- AND od."CODIGO DO VEICULO" ='50803'
-            --OR
-            --od."CODIGO DO VEICULO" ='50530'
-            --)
         ), 
     os_with_flags AS (
         SELECT 
@@ -834,6 +836,21 @@ def obtem_dados_os_sql(lista_os, data_inicio, data_fim, min_dias):
         problem_grouping.correcao_primeira
     FROM 
         problem_grouping
+    WHERE
+        problem_grouping."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio}' AND '{data_fim_corrigida_str}'
+        AND problem_grouping."DESCRICAO DO SERVICO" IN ({', '.join([f"'{x}'" for x in lista_os])})
+        AND problem_grouping."DESCRICAO DO MODELO" IN ('M.BENZ O 500/INDUSCAR MILLEN A')
+            -- AND (
+                --"DESCRICAO DO SERVICO" = 'Motor cortando alimentação'
+                --OR
+                --"DESCRICAO DO SERVICO" = 'Motor sem força'
+            --)
+            --AND 
+            --(
+            -- AND od."CODIGO DO VEICULO" ='50803'
+            --OR
+            --od."CODIGO DO VEICULO" ='50530'
+            --)
     ORDER BY 
         problem_grouping."DATA INICIO SERVIÇO";
     """
