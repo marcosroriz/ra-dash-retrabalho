@@ -768,6 +768,46 @@ class HomeService:
         # Lida com NaNs após merge
         df_combinado = df_combinado.fillna(0)
 
+        # Novo DF com tempo
+        query_tempo = f"""
+        SELECT
+            main."COLABORADOR QUE EXECUTOU O SERVICO",
+            SUM(od."TEMPO PADRAO") AS "TOTAL_TEMPO",
+            SUM(CASE WHEN retrabalho THEN od."TEMPO PADRAO" ELSE NULL END) AS "TOTAL_TEMPO_RETRABALHO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        JOIN
+            os_dados od
+        ON
+            main."KEY_HASH" = od."KEY_HASH"
+        WHERE
+            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_oficinas_str}
+            {inner_subquery_secoes_str}
+            {inner_subquery_os_str}
+        GROUP BY
+            main."COLABORADOR QUE EXECUTOU O SERVICO"
+        """
+
+        # Executa a query
+        df_tempo = pd.read_sql(query_tempo, self.dbEngine)
+
+        # Arredonda valores
+        df_tempo["TOTAL_TEMPO"] = df_tempo["TOTAL_TEMPO"].round(2)
+        df_tempo["TOTAL_TEMPO_RETRABALHO"] = df_tempo["TOTAL_TEMPO_RETRABALHO"].round(2)
+
+        # Arruma tipo
+        df_tempo["COLABORADOR QUE EXECUTOU O SERVICO"] = df_tempo["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+
+        # Lida com NaNs
+        df_tempo = df_tempo.fillna(0)
+
+        # Faz merge novamente
+        df_combinado = pd.merge(df_combinado, df_tempo, on=["COLABORADOR QUE EXECUTOU O SERVICO"], how="left")
+
+        # Lida com NaNs após merge
+        df_combinado = df_combinado.fillna(0)
+
         return df_combinado
 
 
@@ -926,6 +966,4 @@ class HomeService:
         # Lida com NaNs após merge
         df_combinado = df_combinado.fillna(0)
 
-        print("-------")
-        print(df_combinado)
         return df_combinado
