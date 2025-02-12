@@ -53,6 +53,8 @@ class HomeService:
                 {subquery_secoes_str}
                 {subquery_os_str}
         """
+        print("----")
+        print(query)
 
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)

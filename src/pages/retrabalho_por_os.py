@@ -216,9 +216,9 @@ layout = dbc.Container(
                                         id="input-intervalo-datas",
                                         allowSingleDateInRange=True,
                                         type="range",
-                                        minDate=date(2024, 1, 1),
+                                        minDate=date(2024, 8, 1),
                                         maxDate=date.today(),
-                                        value=[date(2024, 1, 1), date.today()],
+                                        value=[date(2024, 8, 1), date.today()],
                                     ),
                                 ],
                                 className="dash-bootstrap",
@@ -717,6 +717,12 @@ layout = dbc.Container(
 
 
 def obtem_dados_os_sql(lista_os, data_inicio, data_fim, min_dias):
+    # Extraí a data final
+    # Remove min_dias antes para evitar que a última OS não seja retrabalho
+    data_fim_dt = pd.to_datetime(data_fim)
+    data_fim_corrigida_dt = data_fim_dt - pd.DateOffset(days=min_dias + 1)
+    data_fim_corrigida_str = data_fim_corrigida_dt.strftime("%Y-%m-%d")
+
     # Query
     query = f"""
     WITH os_diff_days AS (
@@ -735,8 +741,11 @@ def obtem_dados_os_sql(lista_os, data_inicio, data_fim, min_dias):
             os_dados od
         WHERE 
             od."DATA INICIO SERVIÇO" IS NOT NULL 
-            AND od."DATA INICIO SERVIÇO" >= '{data_inicio}'
-            AND od."DATA DE FECHAMENTO DO SERVICO" <= '{data_fim}'
+            AND od."DATA DE FECHAMENTO DO SERVICO" IS NOT NULL 
+            AND od."DATA INICIO SERVIÇO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+            AND od."DATA DE FECHAMENTO DO SERVICO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+            AND od."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
+            AND od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio}' AND '{data_fim_corrigida_str}'
             AND od."DESCRICAO DO SERVICO" IN ({', '.join([f"'{x}'" for x in lista_os])})
             -- AND (
                 --"DESCRICAO DO SERVICO" = 'Motor cortando alimentação'
@@ -829,7 +838,7 @@ def obtem_dados_os_sql(lista_os, data_inicio, data_fim, min_dias):
         problem_grouping."DATA INICIO SERVIÇO";
     """
 
-    # print(query)
+    print(query)
     df_os_query = pd.read_sql_query(query, pgEngine)
 
     # Tratamento de datas
