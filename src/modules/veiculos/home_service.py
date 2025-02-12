@@ -531,8 +531,27 @@ class HomeServiceVeiculo:
                 WHERE "EQUIPAMENTO" = '{lista_veiculos[0]}'
             ORDER BY ranking;
     """
+        query_quantidade_ranking_veiculos = f"""
+        WITH ranking_veiculos AS (
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
+                "EQUIPAMENTO",  -- Veículo
+                SUM("VALOR") AS total_pecas
+            FROM pecas_gerais 
+            WHERE 
+                TO_DATE("DATA", 'DD/MM/YY') 
+                BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
+                        AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+            GROUP BY "EQUIPAMENTO"
+        )
+        SELECT COUNT(DISTINCT "EQUIPAMENTO") AS "QTD_VEICULOS"
+        FROM ranking_veiculos;
+
+    """
         try:
             df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
+            
 
             df_detalhes["DT"] = pd.to_datetime(df_detalhes["DATA"], dayfirst=True)
 
@@ -546,10 +565,19 @@ class HomeServiceVeiculo:
 
             valor_total_veiculos_str = f"R${valor_total_veiculos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+            df_quantidade_veiculos = pd.read_sql(query_quantidade_ranking_veiculos, self.dbEngine)
+            
+            if not df_quantidade_veiculos.empty:
+                qtd_veiculos = df_quantidade_veiculos.iloc[0]["QTD_VEICULOS"]
+            else:
+                qtd_veiculos = 0  # Ou outro valor padrão
+
+            print(df_quantidade_veiculos.head())
+            
             if len(lista_veiculos) <= 1:
                 df_rk = pd.read_sql(query_ranking_veiculo, self.dbEngine)
                 rk_n = df_rk.iloc[0]["ranking"]
-                rk = f'{rk_n}°'
+                rk = f'{rk_n}°/{qtd_veiculos}'
             else:
                 rk = f'0°'
 

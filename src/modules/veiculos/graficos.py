@@ -201,54 +201,55 @@ def grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas):
 
 
 def grafico_tabela_pecas(df_veiculos, df_media_geral):
-    
-        # Cria o gráfico de linhas
-        fig = go.Figure()
-        # Adiciona linhas para cada veículo selecionado
-        for equip in df_veiculos["EQUIPAMENTO"].unique():
-            df_equip = df_veiculos[df_veiculos["EQUIPAMENTO"] == equip]
-            fig.add_trace(
-                go.Scatter(
-                    x=df_equip["year_month_dt"],
-                    y=df_equip["total_pecas"],
-                    mode="lines+markers",
-                    name=f"Veículo {equip}",
-                    line=dict(width=2),
-                    marker=dict(size=8),
-                    hovertemplate=(
-                        "<b>Veículo:</b> %{text}<br>"
-                        "<b>Mês:</b> %{x|%Y-%m}<br>"
-                        "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
-                    ),
-                    text=df_equip["EQUIPAMENTO"]  # Adiciona o nome do veículo ao hover
-                )
-            )
-
-        # Adiciona a linha para a média geral
+    # Cria o gráfico de linhas
+    fig = go.Figure()
+    # Adiciona linhas para cada veículo selecionado
+    for equip in df_veiculos["EQUIPAMENTO"].unique():
+        df_equip = df_veiculos[df_veiculos["EQUIPAMENTO"] == equip]
         fig.add_trace(
             go.Scatter(
-                x=df_media_geral["year_month_dt"],
-                y=df_media_geral["media_geral"],
-                mode="lines",
-                name="Média Geral",
-                line=dict(color="orange", dash="dot", width=2),
+                x=df_equip["year_month_dt"],
+                y=df_equip["total_pecas"],
+                mode="lines+markers",
+                name=f"Veículo {equip}",
+                line=dict(width=2),
+                marker=dict(size=8),
                 hovertemplate=(
-                    "<br>"
-                    "<b>Média Geral</b><br>"
+                    "<b>Veículo:</b> %{text}<br>"
                     "<b>Mês:</b> %{x|%Y-%m}<br>"
                     "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
                 ),
+                text=df_equip["EQUIPAMENTO"]  # Adiciona o nome do veículo ao hover
             )
         )
 
-        # Layout melhorado
-        fig.update_layout(
-            title="Valor das Peças Trocadas por Mês",
-            xaxis_title="Mês",
-            yaxis_title="Valor (R$)",
-            hovermode="x unified",  # Exibir todos os valores ao passar o mouse
-            template="plotly_white"  # Tema mais moderno
+    # Adiciona a linha para a média geral
+    fig.add_trace(
+        go.Scatter(
+            x=df_media_geral["year_month_dt"],
+            y=df_media_geral["media_geral"],
+            mode="lines",
+            name="Média Geral",
+            line=dict(color="orange", dash="dot", width=2),
+            hovertemplate=(
+                "<br>"
+                "<b>Média Geral</b><br>"
+                "<b>Mês:</b> %{x|%Y-%m}<br>"
+                "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
+            ),
         )
+    )
+
+    # Layout melhorado
+    fig.update_layout(
+        title="Valor das Peças Trocadas por Mês",
+        xaxis_title="Mês",
+        yaxis_title="Valor (R$)",
+        hovermode="x unified",  # Exibir todos os valores ao passar o mouse
+        template="plotly_white"  # Tema mais moderno
+    )
+
+    return fig
 
 def gerar_grafico_evolucao_retrabalho_por_veiculo_por_mes(df):
         # Gera o gráfico
