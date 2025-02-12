@@ -258,7 +258,7 @@ class HomeServiceVeiculo:
                 "DESCRICAO DO MODELO",
                 COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO") AS "QTD_COLABORADORES"
             FROM
-                os_dados
+                mat_view_retrabalho_{min_dias}_dias
             WHERE
                 "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
@@ -279,7 +279,7 @@ class HomeServiceVeiculo:
                 SELECT 
                 COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO") AS "TOTAL_COLABORADORES_DIFERENTES"
             FROM 
-                os_dados
+                mat_view_retrabalho_{min_dias}_dias
             WHERE 
                 "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
@@ -301,7 +301,7 @@ class HomeServiceVeiculo:
                 {subquery_os_str}
                 {subquery_veiculos_str};
         """
-
+        print(query_descobrir_problemas)
         query_ranking_os_problemas = f"""
             SELECT
                 "CODIGO DO VEICULO",
@@ -328,7 +328,7 @@ class HomeServiceVeiculo:
         ### INDICADORES DE PROBLEMAS
         df_problemas = pd.read_sql(query_descobrir_problemas, self.dbEngine)
         total_problemas = df_problemas["TOTAL_CORRECAO"].iloc[0]
-        total_os = df_problemas["TOTAL_OS"].iloc[0]
+        os_veiculo_filtradas = df_problemas["TOTAL_OS"].iloc[0]
 
         query_media = f"""
             WITH os_count AS (
@@ -337,7 +337,7 @@ class HomeServiceVeiculo:
                     DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp) AS "MÊS",
                     COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                     COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QUANTIDADE_DE_DESCRICOES_DISTINTAS"
-                FROM os_dados
+                FROM mat_view_retrabalho_{min_dias}_dias
                 WHERE 
                 "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
@@ -378,23 +378,6 @@ class HomeServiceVeiculo:
 
         subquery_modelos_str = subquery_modelos_veiculos(lista_modelos)
 
-        query_ranking_os_problemas_modelos = f"""
-            SELECT
-                "CODIGO DO VEICULO",
-                SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-                SUM(CASE WHEN "NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS"
-            FROM
-                mat_view_retrabalho_{min_dias}_dias
-            WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-                {subquery_oficinas_str}
-                {subquery_secoes_str}
-                {subquery_os_str}
-                {subquery_modelos_str}
-            GROUP BY
-                "CODIGO DO VEICULO";
-        """
-
         query_media_modelos = f"""
             WITH os_count AS (
                 SELECT 
@@ -403,7 +386,7 @@ class HomeServiceVeiculo:
                     COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                     COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QUANTIDADE_DE_DESCRICOES_DISTINTAS",
                     "DESCRICAO DO MODELO"
-                FROM os_dados
+                FROM mat_view_retrabalho_{min_dias}_dias
                 WHERE 
                 "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
@@ -462,10 +445,10 @@ class HomeServiceVeiculo:
         
         mecanicos_diferentes = int(df_colab_dif['TOTAL_COLABORADORES_DIFERENTES'].sum())
         os_diferentes = int(df_unico['QUANTIDADE_DE_OS'].sum())
-        os_totais_veiculo = int(df_soma_mes_veiculos['QUANTIDADE_DE_OS'].sum()) #VERIFICAR QUAL INDICADOR DE OSs totais usar !!!!
+        os_totais_veiculo = int(df_soma_mes_veiculos['QUANTIDADE_DE_OS'].sum()) # 
         
         if len(df_soma_mes_veiculos) >= 1:
-            os_problema = total_os/total_problemas
+            os_problema = os_veiculo_filtradas/total_problemas
             os_problema = round(os_problema, 2)
 
         else:
@@ -488,15 +471,18 @@ class HomeServiceVeiculo:
                 contagem_ranking_modelos = len(df_ranking_modelos)
                 rk_os_problema_modelos = f'{rk_n_problema_mode}°/{contagem_ranking_modelos}'
 
-        return os_diferentes, mecanicos_diferentes, total_os, os_problema, df_soma_mes, df_os_unicas, rk_os_problema_geral, rk_os_problema_modelos
+        return os_diferentes, mecanicos_diferentes, os_veiculo_filtradas, os_problema, df_soma_mes, df_os_unicas, rk_os_problema_geral, rk_os_problema_modelos
     
-    def pecas_trocadas_por_mes_fun(self, datas, equipamentos):
+    def pecas_trocadas_por_mes_fun(self, datas, min_dias, equipamentos):
             # Converte equipamentos para formato compatível com SQL (lista formatada)
         equipamentos_sql = ", ".join(f"'{equip}'" for equip in equipamentos)
 
         # Datas
         data_inicio_str = datas[0]
-        data_fim_str = datas[1]
+
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         if data_inicio_str is None:
             data_inicio_str = '1900-01-01'  # Ou algum valor padrão válido
@@ -585,6 +571,8 @@ class HomeServiceVeiculo:
                 AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 {subquery_veiculos_str}
         """
+        print("QUERY DETAKHES")
+        print(query_detalhes)
         query_ranking_veiculo = f"""
         WITH ranking_veiculos AS (
             SELECT 
@@ -917,3 +905,132 @@ class HomeServiceVeiculo:
                 rk_correcao_primeira_modelo = f'{rk_n_correcao_primeira_modelos}°/{contagem_ranking_modelos}'
 
         return rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo
+    
+    def tabela_pecas_por_descricao_fun(self, datas, min_dias, lista_veiculos):
+        data_inicio_str = datas[0]
+ 
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+ 
+        data_inicio_dt = pd.to_datetime(data_inicio_str)
+        data_inicio_str = data_inicio_dt.strftime("%d/%m/%Y")
+        data_fim_str = data_fim.strftime("%d/%m/%Y")
+
+        if data_inicio_str is None:
+            return go.Figure()  # Ou algum valor padrão válido
+        if data_fim_str is None:
+            return go.Figure()  # Ou algum valor padrão válido
+        
+        subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
+ 
+        query_detalhes = f"""
+        SELECT
+            od."DESCRICAO DO SERVICO" AS "DESCRIÇÃO DE SERVIÇO",
+            COUNT(DISTINCT pg."OS") AS "QUANTIDADE DE OS'S",
+            SUM(pg."QUANTIDADE") AS "QUANTIDADE DE PEÇAS",
+            pg."MODELO",
+            SUM(pg."VALOR") AS "VALOR"
+        FROM pecas_gerais pg
+        JOIN os_dados od ON pg."OS" = od."NUMERO DA OS"
+        WHERE
+            TO_DATE(pg."DATA", 'DD/MM/YY')
+                BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
+                    AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+            AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+            {subquery_veiculos_str}
+        GROUP BY
+            od."DESCRICAO DO SERVICO",
+            pg."MODELO"
+        ORDER BY
+            COUNT(DISTINCT pg."OS") DESC;
+        """
+       
+        try:
+            df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
+ 
+            # Converter VALOR para float e formatar como moeda (R$)
+            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+ 
+            # Número de meses distintos
+            num_meses = len(datas)  
+ 
+            # Cálculo de totais
+            numero_pecas_veiculos_total = int(df_detalhes['QUANTIDADE DE PEÇAS'].sum())
+            valor_total_veiculos = df_detalhes['VALOR'].str.replace("R$ ", "").str.replace(".", "").str.replace(",", ".").astype(float).sum().round(2)
+ 
+            # Formatação dos valores totais
+            valor_total_veiculos_str = f"R$ {valor_total_veiculos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            pecas_mes = round((numero_pecas_veiculos_total / num_meses), 2)
+            valor_mes = round((valor_total_veiculos / num_meses), 2)
+            valor_mes_str = f"R$ {valor_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+ 
+            # Converter para dicionário
+            df_detalhes_dict = df_detalhes.to_dict("records")
+
+            # Seleciona a coluna "DESCRIÇÃO DE SERVIÇO" e obtém os valores únicos
+            descricao_servico_unicas = df_detalhes["DESCRIÇÃO DE SERVIÇO"].unique()
+
+            # Converte para uma lista
+            descricao_servico_unicas_lista = descricao_servico_unicas.tolist()
+
+            return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, descricao_servico_unicas_lista
+ 
+        except Exception as e:
+            print(f"Erro ao executar a consulta da tabela: {e}")
+            return [], "R$ 0,00", "R$ 0,00",[]
+        
+    def atualizar_pecas_fun(self, datas, min_dias, lista_veiculos, descricao_servico):
+        data_inicio_str = datas[0]
+    
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+    
+        data_inicio_dt = pd.to_datetime(data_inicio_str)
+        data_inicio_str = data_inicio_dt.strftime("%d/%m/%Y")
+        data_fim_str = data_fim.strftime("%d/%m/%Y")
+    
+        subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
+
+        
+        if data_inicio_str is None:
+            return go.Figure()  # Ou algum valor padrão válido
+        if data_fim_str is None:
+            return go.Figure()  # Ou algum valor padrão válido
+        
+        # Ajustar para múltiplos serviços selecionados
+        if isinstance(descricao_servico, list):
+            descricao_servico_str = "', '".join(descricao_servico)  # Transforma lista em string separada por vírgula
+            filtro_servico = f"od.\"DESCRICAO DO SERVICO\" IN ('{descricao_servico_str}')"
+        else:
+            filtro_servico = f"od.\"DESCRICAO DO SERVICO\" = '{descricao_servico}'"
+    
+        query_detalhes = f"""
+            SELECT
+                pg."OS" AS "NÚMERO DA OS",
+                pg."PRODUTO" AS "PEÇA TROCADA",
+                pg."QUANTIDADE" AS "QUANTIDADE DE PEÇAS",
+                od."DESCRICAO DO SERVICO",
+                pg."MODELO" AS "MODELO",
+                pg."VALOR" AS "VALOR"
+            FROM pecas_gerais pg
+            JOIN os_dados as od ON pg."OS" = od."NUMERO DA OS"
+            WHERE
+                {filtro_servico}
+                AND TO_DATE(pg."DATA", 'DD/MM/YY')
+                    BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
+                        AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+            {subquery_veiculos_str}
+            ORDER BY
+                pg."OS" ASC, pg."PRODUTO" ASC;
+        """
+        #print(query_detalhes)
+    
+        try:
+            df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
+            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            return df_detalhes
+    
+        except Exception as e:
+            print(f"Erro ao executar a consulta da tabela: {e}")
+            return pd.DataFrame()

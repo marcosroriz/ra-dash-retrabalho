@@ -846,10 +846,32 @@ layout = dbc.Container(
             enableEnterpriseModules=True,
             id="tabela-pecas-substituidas-por-descricao",
             columnDefs=[
-                {"field": "DESCRIÇÃO", "minWidth": 300},
-                {"field": "PRODUTO", "minWidth": 350},
+                {"field": "DESCRIÇÃO DE SERVIÇO", "minWidth": 370},
                 {"field": "QUANTIDADE DE OS'S", "minWidth": 100},
+                {"field": "QUANTIDADE DE PEÇAS", "minWidth": 120},
+                {"field": "MODELO", "minWidth": 350},
+                {"field": "VALOR", "minWidth": 150},
+            ],
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+        ),
+        dmc.Space(h=40),
+        dbc.Label("SELEÇÃO DA DESCRIÇÃO DE SERVIÇO"),
+        dcc.Dropdown(
+            id="descricao_servico_unicas_lista",
+            multi=True,
+            placeholder="Selecione uma ou mais descrições...",
+        ),
+        dmc.Space(h=20),
+        dag.AgGrid(
+            enableEnterpriseModules=True,
+            id="tabela-pecas-substituidas-por-descricao-especifica",
+            columnDefs=[
+                {"field": "NÚMERO DA OS", "minWidth": 100},
+                {"field": "PEÇA TROCADA", "minWidth": 350},
                 {"field": "QUANTIDADE DE PEÇAS", "minWidth": 100},
+                {"field": "DESCRICAO DO SERVICO", "minWidth": 280},
                 {"field": "MODELO", "minWidth": 300},
                 {"field": "VALOR", "minWidth": 100},
             ],
@@ -861,7 +883,7 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela por descrição de serviço", className="align-self-center"), width=True),
+                dbc.Col(html.H4("Tabela de retrabalho por descrição de serviço", className="align-self-center"), width=True),
             ],
             align="center",
         ),
@@ -974,49 +996,6 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     # Exibe o gráfico
     return fig
 
-######### RASCUNHO
-@callback(
-    [
-        #Output("indicador-porcentagem-retrabalho-veiculo", "children"),
-        #Output("indicador-porcentagem-correcao-primeira", "children"),
-        #Output("indicador-relacao-os-problema", "children"),
-        #Output("indicador-posicao-relaçao-retrabalho", "children"),
-        #Output("indicador-posição-veiculo-correção-primeira", "children"),
-        #Output("indicador-posição-veiculo-relaçao-osproblema", "children"),
-        #Output("indicador-pecas-totais", "children"),
-        #Output("indicador-pecas-mes", "children"),
-        #Output("indicador-ranking-pecas", "children"),
-        #Output("indicador-oss-diferentes", "children"),
-        #Output("indicador-problemas-diferentes", "children"),
-        #Output("indicador-mecanicos-diferentes", "children"),
-    ],
-    Input("store-dados-os", "data"),
-)
-def atualiza_indicadores(data):
-    # if data["vazio"]:
-    #     return ["", "", "", "", "", "", "", "", "", "", "", ""]
-
-    porcentagem_retrabalho_veiculo = '0'
-    porcentagem_correcao_primeira = '0'
-    rel_os_problemas = '0'
-    posicao_relaçao_retrabalho = '0'
-
-
-    return [
-        f"{porcentagem_retrabalho_veiculo} %",
-        f"{porcentagem_correcao_primeira} %",
-        f"{rel_os_problemas} OS/prob",
-        f"{posicao_relaçao_retrabalho}º",
-        f"{posicao_veiculo_correção_primeira}º",
-        f"{posicao_relaçao_relaçao-osproblema}º",
-        f"{pecas_mes} peças por mês",
-        f"{ranking_pecas} º",
-        f"{oss_diferentes} Os's",
-        f"{problemas_diferentess} diferentes",
-        f"{mecanicos_diferentes} diferentes",
-    ]
-######### RASCUNHO
-
 # GRAFICO DA QUANTIDADE DE OSs, INDICADORES DE : PROBLEMAS DIFERENTES, MECANICOS DIFERENTES, OS DIFERENTES
 @callback(
     [Output('graph-evolucao-os-mes-veiculo', 'figure'),
@@ -1039,22 +1018,23 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure(), "", "", "", "", "", ""
-    (os_diferentes, mecanicos_diferentes,os_totais_veiculo, 
+    (os_diferentes, mecanicos_diferentes,os_veiculo_filtradas, 
      os_problema, df_soma_mes, df_os_unicas, rk_os_problema_geral,
      rk_os_problema_modelos) = home_service_veiculos.evolucao_quantidade_os_por_mes_fun(datas, min_dias, lista_oficinas, 
                                                                                       lista_secaos, lista_os, lista_veiculos)
     fig = grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas)
-    return fig, os_diferentes, mecanicos_diferentes, os_totais_veiculo, os_problema, rk_os_problema_geral, rk_os_problema_modelos
+    return fig, os_diferentes, mecanicos_diferentes, os_veiculo_filtradas, os_problema, rk_os_problema_geral, rk_os_problema_modelos
 
 # GRAFICO DA TABELA DE PEÇAS
 @callback(
     Output("graph-pecas-trocadas-por-mes", "figure"),
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
-def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
+def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, equipamentos):
     # Valida input
     if not datas or not equipamentos:
         return go.Figure()
@@ -1069,7 +1049,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
     # Garante que equipamentos seja uma lista
     if isinstance(equipamentos, str):
         equipamentos = [equipamentos]
-    df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, equipamentos)
+    df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, min_dias, equipamentos)
     fig = grafico_tabela_pecas(df_veiculos, df_media_geral)
     return fig
 
@@ -1136,3 +1116,57 @@ def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, l
         return "", "", "", ""
     rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo = home_service_veiculos.ranking_retrabalho_veiculos_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     return rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo
+
+# TABELA DE DESCRIÇÃO SUBSTITUIÇÃO DE PECAS POR DESCRIÇÃO E INPUT DE DESCRIÇÃO
+@callback(
+    [
+        Output("tabela-pecas-substituidas-por-descricao", "rowData"),
+        Output("descricao_servico_unicas_lista", "options"),
+    ],
+    [
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-veiculos", "value"),
+    ],
+)
+def atualiza_tabela_pecas_por_descricao(datas, min_dias, lista_veiculos):
+    # Valida input
+    if not input_valido3(datas, min_dias, lista_veiculos):
+        return [], []
+    
+    # Obtém os dados necessários
+    df_detalhes_dict, _, _, descricao_servico_unicas_lista = home_service_veiculos.tabela_pecas_por_descricao_fun(
+        datas, min_dias, lista_veiculos
+    )
+    
+    # Configura a lista de opções para o dropdown
+    options = [{"label": desc, "value": desc} for desc in descricao_servico_unicas_lista]
+    
+    return df_detalhes_dict, options
+
+# PECAS DETALHADAS DA DESCRIÇÃO
+@callback(
+    Output("tabela-pecas-substituidas-por-descricao-especifica", "rowData"),
+    [
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-veiculos", "value"),
+        Input("descricao_servico_unicas_lista", "value"),
+    ],
+)
+def atualizar_veiculos(datas, min_dias, lista_veiculos, descricoes_selecionadas):
+    if not descricoes_selecionadas:
+        return []  # Retorna uma lista vazia corretamente
+    # Chama a função para obter os dados da consulta SQL
+    df = home_service_veiculos.atualizar_pecas_fun(datas, min_dias, lista_veiculos, descricoes_selecionadas)
+ 
+    # Se não houver dados, retorna uma lista vazia corretamente
+    if df.empty:
+        return []
+ 
+    # Converte o DataFrame para uma lista de dicionários
+    row_data = df.to_dict("records")
+ 
+    return row_data 
+
+ 
