@@ -244,6 +244,10 @@ class HomeServiceVeiculo:
         subquery_os_str = subquery_os(lista_os)
         subquery_veiculos_str = subquery_veiculos(lista_veiculos)
 
+        if data_inicio_str is None:
+            data_inicio_str = '1900-01-01'  # Ou algum valor padrão válido
+        if data_fim_str is None:
+            data_fim_str = '1901-01-01'  # Ou algum valor padrão válido
 
         query = f"""
             SELECT 
@@ -286,7 +290,8 @@ class HomeServiceVeiculo:
 
         query_descobrir_problemas = f"""
             SELECT
-                SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO"
+                SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                SUM(CASE WHEN "NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS"
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
@@ -297,8 +302,33 @@ class HomeServiceVeiculo:
                 {subquery_veiculos_str};
         """
 
+        query_ranking_os_problemas = f"""
+            SELECT
+                "CODIGO DO VEICULO",
+                "DESCRICAO DO MODELO",
+                SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                SUM(CASE WHEN "NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS"
+            FROM
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_oficinas_str}
+                {subquery_secoes_str}
+                {subquery_os_str}
+            GROUP BY
+                "CODIGO DO VEICULO",
+                "DESCRICAO DO MODELO";
+        """
+        #### RANKING DE OS/PROBLEMA GERAL
+        df_ranking = pd.read_sql(query_ranking_os_problemas, self.dbEngine)
+        df_ranking["OS_POR_PROBLEMAS_RAW"] = df_ranking["TOTAL_OS"] / df_ranking["TOTAL_CORRECAO"]
+        df_ranking["RANKING"] = df_ranking["OS_POR_PROBLEMAS_RAW"].rank(ascending=True, method='min')
+        df_ranking_sorted = df_ranking.sort_values(by="RANKING", ascending=True)
+
+        ### INDICADORES DE PROBLEMAS
         df_problemas = pd.read_sql(query_descobrir_problemas, self.dbEngine)
         total_problemas = df_problemas["TOTAL_CORRECAO"].iloc[0]
+        total_os = df_problemas["TOTAL_OS"].iloc[0]
 
         query_media = f"""
             WITH os_count AS (
@@ -339,8 +369,31 @@ class HomeServiceVeiculo:
         else:
             lista_modelos = [""]
 
+        ### RANKING DE OS/PROBLEMA POR MODELO AGORA
+        df_ranking_modelos = df_ranking[df_ranking["DESCRICAO DO MODELO"].isin(lista_modelos)]
+        df_ranking_modelos["OS_POR_PROBLEMAS_RAW"] = df_ranking_modelos["TOTAL_OS"] / df_ranking_modelos["TOTAL_CORRECAO"]
+        df_ranking_modelos["RANKING"] = df_ranking_modelos["OS_POR_PROBLEMAS_RAW"].rank(ascending=True, method='min')
+        df_ranking_modelos = df_ranking_modelos.sort_values(by="RANKING", ascending=True)
+
+
         subquery_modelos_str = subquery_modelos_veiculos(lista_modelos)
 
+        query_ranking_os_problemas_modelos = f"""
+            SELECT
+                "CODIGO DO VEICULO",
+                SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                SUM(CASE WHEN "NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS"
+            FROM
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_oficinas_str}
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelos_str}
+            GROUP BY
+                "CODIGO DO VEICULO";
+        """
 
         query_media_modelos = f"""
             WITH os_count AS (
@@ -385,7 +438,7 @@ class HomeServiceVeiculo:
 
         #print(df_media_modelos_str.head())
 
-    # Novo DataFrame com a soma de OS por mês
+        # Novo DataFrame com a soma de OS por mês
         df_soma_mes_veiculos = df.groupby(["MÊS", "CODIGO DO VEICULO"], as_index=False)["QUANTIDADE_DE_OS"].sum()
 
         df_soma_mes = pd.concat([df_soma_mes_veiculos, df_media_geral, df_media_modelos_os], ignore_index=True)
@@ -409,15 +462,33 @@ class HomeServiceVeiculo:
         
         mecanicos_diferentes = int(df_colab_dif['TOTAL_COLABORADORES_DIFERENTES'].sum())
         os_diferentes = int(df_unico['QUANTIDADE_DE_OS'].sum())
-        os_totais_veiculo = int(df_soma_mes_veiculos['QUANTIDADE_DE_OS'].sum())
+        os_totais_veiculo = int(df_soma_mes_veiculos['QUANTIDADE_DE_OS'].sum()) #VERIFICAR QUAL INDICADOR DE OSs totais usar !!!!
         
         if len(df_soma_mes_veiculos) >= 1:
-            os_problema = os_totais_veiculo/total_problemas
+            os_problema = total_os/total_problemas
             os_problema = round(os_problema, 2)
+
         else:
             os_problema = 0
 
-        return os_diferentes, mecanicos_diferentes, os_totais_veiculo, os_problema, df_soma_mes, df_os_unicas
+        
+        rk_os_problema_geral = f'0°'
+        rk_os_problema_modelos = f'0°'
+        if len(lista_veiculos) <= 1:
+            df_rk_veic = df_ranking_sorted.loc[df_ranking_sorted["CODIGO DO VEICULO"] == lista_veiculos[0]]
+
+            if len(df_rk_veic) >= 1:
+                rk_n_problema_geral = int(df_rk_veic.iloc[0]["RANKING"])
+                contagem_ranking_geral = len(df_ranking_sorted)
+                rk_os_problema_geral = f'{rk_n_problema_geral}°/{contagem_ranking_geral}'
+
+            df_rk_veic_mode = df_ranking_modelos.loc[df_ranking_modelos["CODIGO DO VEICULO"] == lista_veiculos[0]]
+            if len(df_rk_veic_mode) >= 1:
+                rk_n_problema_mode = int(df_rk_veic_mode.iloc[0]["RANKING"])
+                contagem_ranking_modelos = len(df_ranking_modelos)
+                rk_os_problema_modelos = f'{rk_n_problema_mode}°/{contagem_ranking_modelos}'
+
+        return os_diferentes, mecanicos_diferentes, total_os, os_problema, df_soma_mes, df_os_unicas, rk_os_problema_geral, rk_os_problema_modelos
     
     def pecas_trocadas_por_mes_fun(self, datas, equipamentos):
             # Converte equipamentos para formato compatível com SQL (lista formatada)
@@ -427,6 +498,11 @@ class HomeServiceVeiculo:
         data_inicio_str = datas[0]
         data_fim_str = datas[1]
 
+        if data_inicio_str is None:
+            data_inicio_str = '1900-01-01'  # Ou algum valor padrão válido
+        if data_fim_str is None:
+            data_fim_str = '1901-01-01'  # Ou algum valor padrão válido
+            
         # Query para buscar peças trocadas por mês para os veículos selecionados
         query_veiculos = f"""
         SELECT 
@@ -469,10 +545,7 @@ class HomeServiceVeiculo:
 
             # Verifica se há dados
             if df_veiculos.empty and df_media_geral.empty:
-                return go.Figure().update_layout(
-                    title_text="Nenhum dado disponível para o equipamento e intervalo selecionados."
-                )
-
+                return [], []
             # Converte a coluna de datas para datetime
             df_veiculos["year_month_dt"] = pd.to_datetime(df_veiculos["year_month"], format="%Y-%m", errors="coerce")
             df_media_geral["year_month_dt"] = pd.to_datetime(df_media_geral["year_month"], format="%Y-%m", errors="coerce")
@@ -480,7 +553,7 @@ class HomeServiceVeiculo:
             return df_veiculos, df_media_geral
         except Exception as e:
             print(f"Erro ao executar as consultas: {e}")
-            return go.Figure().update_layout(title_text=f"Erro ao carregar os dados: {e}")
+            return [], []
         
     def tabela_pecas_fun(self, datas, min_dias, lista_veiculos):
             # Datas
@@ -566,7 +639,7 @@ class HomeServiceVeiculo:
             valor_total_veiculos_str = f"R${valor_total_veiculos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
             df_quantidade_veiculos = pd.read_sql(query_quantidade_ranking_veiculos, self.dbEngine)
-            
+
             if not df_quantidade_veiculos.empty:
                 qtd_veiculos = df_quantidade_veiculos.iloc[0]["QTD_VEICULOS"]
             else:

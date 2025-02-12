@@ -203,6 +203,7 @@ def grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas):
 def grafico_tabela_pecas(df_veiculos, df_media_geral):
     # Cria o gráfico de linhas
     fig = go.Figure()
+
     # Adiciona linhas para cada veículo selecionado
     for equip in df_veiculos["EQUIPAMENTO"].unique():
         df_equip = df_veiculos[df_veiculos["EQUIPAMENTO"] == equip]
@@ -250,6 +251,7 @@ def grafico_tabela_pecas(df_veiculos, df_media_geral):
     )
 
     return fig
+
 
 def gerar_grafico_evolucao_retrabalho_por_veiculo_por_mes(df):
         # Gera o gráfico

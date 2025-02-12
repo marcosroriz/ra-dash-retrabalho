@@ -982,7 +982,7 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
         #Output("indicador-relacao-os-problema", "children"),
         #Output("indicador-posicao-relaçao-retrabalho", "children"),
         #Output("indicador-posição-veiculo-correção-primeira", "children"),
-        Output("indicador-posição-veiculo-relaçao-osproblema", "children"),
+        #Output("indicador-posição-veiculo-relaçao-osproblema", "children"),
         #Output("indicador-pecas-totais", "children"),
         #Output("indicador-pecas-mes", "children"),
         #Output("indicador-ranking-pecas", "children"),
@@ -1023,7 +1023,9 @@ def atualiza_indicadores(data):
      Output("indicador-problemas-diferentes", "children"),
      Output("indicador-mecanicos-diferentes", "children"),
      Output("indicador-oss-diferentes", "children"),
-     Output("indicador-relacao-os-problema", "children")],
+     Output("indicador-relacao-os-problema", "children"),
+     Output("indicador-posição-veiculo-relaçao-osproblema", "children"),
+     Output("indicador-posição-veiculo-relaçao-osproblema-modelo", "children"),],
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
@@ -1036,12 +1038,13 @@ def atualiza_indicadores(data):
 def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-        return go.Figure(), "", "", "", ""
+        return go.Figure(), "", "", "", "", "", ""
     (os_diferentes, mecanicos_diferentes,os_totais_veiculo, 
-     os_problema,  df_soma_mes, df_os_unicas) = home_service_veiculos.evolucao_quantidade_os_por_mes_fun(datas, min_dias, lista_oficinas, 
+     os_problema, df_soma_mes, df_os_unicas, rk_os_problema_geral,
+     rk_os_problema_modelos) = home_service_veiculos.evolucao_quantidade_os_por_mes_fun(datas, min_dias, lista_oficinas, 
                                                                                       lista_secaos, lista_os, lista_veiculos)
     fig = grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas)
-    return fig, os_diferentes, mecanicos_diferentes, os_totais_veiculo, os_problema
+    return fig, os_diferentes, mecanicos_diferentes, os_totais_veiculo, os_problema, rk_os_problema_geral, rk_os_problema_modelos
 
 # GRAFICO DA TABELA DE PEÇAS
 @callback(
@@ -1054,13 +1057,21 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
 def plota_grafico_pecas_trocadas_por_mes(datas, equipamentos):
     # Valida input
     if not datas or not equipamentos:
-        return go.Figure().update_layout(title_text="Parâmetros inválidos")
+        return go.Figure()
+    data_inicio_str = datas[0]
+    data_fim_str = datas[1]
+
+    if data_inicio_str is None:
+            return go.Figure()  # Ou algum valor padrão válido
+    if data_fim_str is None:
+            return go.Figure()  # Ou algum valor padrão válido
+    
     # Garante que equipamentos seja uma lista
     if isinstance(equipamentos, str):
         equipamentos = [equipamentos]
-        df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, equipamentos)
-        fig = grafico_tabela_pecas(df_veiculos, df_media_geral)
-        return fig
+    df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, equipamentos)
+    fig = grafico_tabela_pecas(df_veiculos, df_media_geral)
+    return fig
 
 # TABELA DE PEÇAS, INDICADORES DE: VALORES DE PECAS, VALOR DE PECAS/MES, RANKING DO VALOR DE PECAS
 @callback(
