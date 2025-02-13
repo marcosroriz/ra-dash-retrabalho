@@ -66,6 +66,570 @@ dash.register_page(
     __name__, name="Retrabalho por Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline"
 )
 
+##############################################################################
+# CALLBACKS ##################################################################
+##############################################################################   
+
+##############################################################################
+# Callbacks para os inputs ###################################################
+##############################################################################
+
+# Função para validar o input
+def input_valido(id_colaborador, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if id_colaborador is None or not id_colaborador or None in id_colaborador:
+        return False
+    
+    if datas is None or not datas or None in datas or min_dias is None:
+        return False
+
+    if lista_oficinas is None or not lista_oficinas or None in lista_oficinas:
+        return False
+
+    if lista_secaos is None or not lista_secaos or None in lista_secaos:
+        return False
+
+    if lista_os is None or not lista_os or None in lista_os:
+        return False
+
+    return True
+
+
+# Corrige o input para garantir que "TODAS" não seja selecionado junto com outras opções
+def corrige_input(lista):
+    # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
+    if not lista:
+        return ["TODAS"]
+
+    # Caso 2: Se "TODAS" foi selecionado após outras opções, reseta para "TODAS"
+    if len(lista) > 1 and "TODAS" in lista[1:]:
+        return ["TODAS"]
+
+    # Caso 3: Se alguma opção foi selecionada após "TODAS", remove "TODAS"
+    if "TODAS" in lista and len(lista) > 1:
+        return [value for value in lista if value != "TODAS"]
+
+    # Por fim, se não caiu em nenhum caso, retorna o valor original
+    return lista
+
+def gera_labels_inputs(campo):
+    # Cria o callback
+    @callback(
+        [
+            Output(component_id=f"{campo}-labels", component_property="children"),
+        ],
+        [
+            Input("input-min-dias-colaborador", "value"),
+            Input("input-select-secao-colaborador", "value"),
+            Input("input-select-ordens-servico-colaborador", "value"),
+            Input("input-select-modelos-colaborador", "value"),
+            Input("input-select-oficina-colaborador", "value"),
+        ],
+    )
+    def atualiza_labels_inputs( min_dias, lista_secaos, lista_os, lista_modelo, lista_oficinas):
+        labels_antes = [
+            # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
+            dmc.Badge("Filtro", color="gray", variant="outline"),
+        ]
+        min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
+        lista_oficinas_labels = []
+        lista_secaos_labels = []
+        lista_os_labels = []
+
+        if lista_oficinas is None or not lista_oficinas or "TODAS" in lista_oficinas:
+            lista_oficinas_labels.append(dmc.Badge("Todas as oficinas", variant="outline"))
+        else:
+            for oficina in lista_oficinas:
+                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+                
+        if lista_modelo is None or not lista_modelo or "TODAS" in lista_modelo:
+            lista_oficinas_labels.append(dmc.Badge("Todos os modelos", variant="outline"))
+        else:
+            for oficina in lista_modelo:
+                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+
+        if lista_secaos is None or not lista_secaos or "TODAS" in lista_secaos:
+            lista_secaos_labels.append(dmc.Badge("Todas as seções", variant="outline"))
+        else:
+            for secao in lista_secaos:
+                lista_secaos_labels.append(dmc.Badge(secao, variant="dot"))
+
+        if lista_os is None or not lista_os or "TODAS" in lista_os:
+            lista_os_labels.append(dmc.Badge("Todas as ordens de serviço", variant="outline"))
+        else:
+            for os in lista_os:
+                lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
+
+        return [
+            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels)
+        ]
+
+    # Cria o componente
+    return dmc.Group(id=f"{campo}-labels", children=[])
+
+
+@callback(
+    Output("input-select-oficina-colaborador", "value"),
+    Input("input-select-oficina-colaborador", "value"),
+)
+def corrige_input_oficina(lista_oficinas):
+    return corrige_input(lista_oficinas)
+
+@callback(
+    Output("input-select-secao-colaborador", "value"),
+    Input("input-select-secao-colaborador", "value"),
+)
+def corrige_input_secao(lista_secaos):
+    return corrige_input(lista_secaos)
+
+@callback(
+    [
+        Output("input-select-ordens-servico-colaborador", "options"),
+        Output("input-select-ordens-servico-colaborador", "value"),
+    ],
+    [
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-lista-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value")
+    ],
+)
+def corrige_input_ordem_servico(lista_os, lista_secaos, id_colaborador, min_dias, datas):
+    # Vamos pegar as OS possíveis para as seções selecionadas
+    df_lista_os_secao = colab.df_lista_os_colab(min_dias, id_colaborador, datas)
+
+    if "TODAS" not in lista_secaos:
+        df_lista_os_secao = df_lista_os_secao[df_lista_os_secao["SECAO"].isin(lista_secaos)]
+
+    # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
+    lista_os_possiveis = df_lista_os_secao.to_dict(orient="records")
+    lista_os_possiveis.insert(0, {"LABEL": "TODAS"})
+
+    lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_os_possiveis]
+
+    # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
+    if "TODAS" not in lista_os:
+        df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_os)]
+        lista_os = df_lista_os_atual["LABEL"].tolist()
+
+    return lista_options, corrige_input(lista_os)
+
+
+@callback(
+    [
+        Output("input-select-modelos-colaborador", "options"),
+        Output("input-select-modelos-colaborador", "value"),
+    ],
+    [
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-lista-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value")
+    ],
+)
+def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, min_dias, datas):
+    # Vamos pegar as OS possíveis para as seções selecionadas
+    df_lista_os_secao = colab.df_lista_os_colab_modelo(lista_secaos, lista_os, min_dias, id_colaborador, datas)
+
+
+    # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
+    lista_modelos_possiveis = df_lista_os_secao.to_dict(orient="records")
+    lista_modelos_possiveis.insert(0, {"LABEL": "TODAS"})
+
+    lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_modelos_possiveis]
+
+    # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
+    if "TODAS" not in lista_modelos:
+        df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_modelos)]
+        lista_modelos = df_lista_os_atual["LABEL"].tolist()
+
+    return lista_options, corrige_input(lista_modelos)
+
+
+
+@callback(
+    [
+        Output("indicador-total-os-trabalho", "children"),
+        Output("indicador-quantidade-servico", "children"),
+        Output("indicador-correcao-de-primeira", "children"),
+        Output("indicador-retrabalho", "children"),
+        Output("indicador-rank-servico", "children"),
+        Output("indicador-rank-os", "children"),
+        Output("indicador-nota-colaborador", "children"),
+        Output("indicador-rank-posicao-nota", "children"),
+        
+    ],
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+    running=[(Output("loading-overlay", "visible"), True, False)],
+)
+def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    
+    id_colaborador = 3295 if id_colaborador is None else id_colaborador
+    # Validação dos inputs
+    if datas is None or not datas or None in datas or min_dias is None:
+        return False
+    if not id_colaborador or not datas or any(d is None for d in datas) or not isinstance(min_dias, int) or min_dias < 1:
+        return '', '', '', '','', '', '', ''
+    
+    
+    # Obtém análise estatística
+    df_os_analise = colab.obtem_estatistica_retrabalho_sql(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+
+    if df_os_analise.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
+
+    # Indicador 1: Total de OSs trabalhadas
+    total_os = f"{df_os_analise['TOTAL_OS'].iloc[0]}"
+    # Indicador 2: Quantidade de serviços únicos realizados
+    servicos_diferentes = df_os_analise['QTD_SERVICOS_DIFERENTES'].iloc[0]
+    quantidade_servicos = f"{servicos_diferentes}"
+
+    # Indicadores de correção de primeira e retrabalho
+    if not df_os_analise.empty and all(
+        col in df_os_analise.columns for col in ["PERC_CORRECAO_PRIMEIRA", "PERC_RETRABALHO"]
+    ):
+        correcao_primeira = f"{df_os_analise['PERC_CORRECAO_PRIMEIRA'].iloc[0]}%"
+        retrabalho = f"{df_os_analise['PERC_RETRABALHO'].iloc[0] if not df_os_analise['PERC_RETRABALHO'].iloc[0] == None else 0}%"
+    else:
+        correcao_primeira = "Dados insuficientes para calcular correções de primeira"
+        retrabalho = "Dados insuficientes para calcular retrabalho"
+        
+    df_rank_servico = colab.indcador_rank_servico(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    
+    if df_rank_servico.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
+    
+    df_rank_os = colab.indcador_rank_total_os(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    if df_rank_os.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
+    # Indicadores Rank
+    rank_servico = f"{df_rank_servico['rank_colaborador'].iloc[0]}"
+    rank_os_absoluta = f"{df_rank_os['rank_colaborador'].iloc[0]}"
+    
+    df_nota_media = colab.nota_media_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    
+    if df_nota_media.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
+    nota_media = f"{df_nota_media['nota_media_colaborador'].iloc[0] if not df_nota_media['nota_media_colaborador'].iloc[0]  is None else 0}"
+    
+    df_nota_posicao = colab.posicao_rank_nota_media(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    if df_nota_posicao.empty:
+        return (
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+        )
+
+    rank_nota_posicao = f"{df_nota_posicao['rank_colaborador'].iloc[0]}"
+    
+    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao
+
+
+
+@callback(
+    Output("store-dados-colaborador-retrabalho", "data"),
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+    ],
+)
+def computa_retrabalho_mecanico(id_colaborador, datas, min_dias):
+    dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
+
+    if (id_colaborador is None) or (datas is None or not datas or None in datas) or (min_dias is None or min_dias < 1):
+        return dados_vazios
+
+    # Obtem os dados de retrabalho
+    df_os_mecanico = colab.obtem_dados_os_mecanico(id_colaborador)
+
+    # Filtrar as datas
+    inicio = pd.to_datetime(datas[0])
+    fim = pd.to_datetime(datas[1])
+
+    return {"df_os_mecanico": df_os_mecanico.to_dict("records"), "vazio": False}
+
+
+@callback(Output("graph-barra-atuacao-geral", "figure"), Input("store-dados-colaborador-retrabalho", "data"), running=[(Output("loading-overlay", "visible"), True, False)])
+def computa_atuacao_mecanico_tipo_os(data):
+    if data["vazio"]:
+        return go.Figure()
+
+    # Obtem OS
+    df_os_mecanico = pd.DataFrame(data["df_os_mecanico"])
+
+    # Prepara os dados para o gráfico
+    df_agg_atuacao = (
+        df_os_mecanico.groupby(["DESCRICAO DO TIPO DA OS"])
+        .size()
+        .reset_index(name="QUANTIDADE")
+        .sort_values(by="QUANTIDADE", ascending=True)
+    )
+
+    # Percentagem
+    df_agg_atuacao["PERCENTAGE"] = (df_agg_atuacao["QUANTIDADE"] / df_agg_atuacao["QUANTIDADE"].sum()) * 100
+
+    # Gera o Gráfico
+    fig = px.pie(
+        df_agg_atuacao,
+        values="QUANTIDADE",
+        names="DESCRICAO DO TIPO DA OS",
+        hole=0.2,
+    )
+
+    # Update the chart to show percentages as labels
+    fig.update_traces(
+        textinfo="label+percent",
+        texttemplate="%{value}<br>%{percent:.2%}",
+    )
+
+    fig.update_layout(
+        legend=dict(
+            orientation="h",  # Horizontal orientation
+            y=0,  # Position the legend below the chart
+            x=0.5,  # Center align the legend
+            xanchor="center",
+        ),
+    )
+
+    return fig
+
+
+@callback(
+    Output("graph-principais-os", "figure"), 
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+)
+def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    if not id_colaborador:
+        return go.Figure()
+
+    # Obtem OS
+    df_os_mecanico = colab.dados_grafico_top_10_do_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    ).sort_values('TOTAL_OS',ascending=False)
+
+    if df_os_mecanico.empty:
+        return go.Figure()
+    # Top 10 serviços
+    df_agg_servico_top10 = df_os_mecanico.head(10)
+
+    # Gera o Gráfico
+    fig = px.bar(
+        df_agg_servico_top10,
+        x="DESCRICAO DO SERVICO",
+        y="TOTAL_OS",
+        # orientation="h",
+        text="TOTAL_OS",  # Initial text for display
+    )
+
+    fig.update_traces(
+        texttemplate="%{y} (%{customdata:.1f}%)",
+        customdata=df_agg_servico_top10["PERC_TOTAL_OS"],  # Add percentage data
+        textposition="inside",
+    )
+    fig.update_layout(xaxis_title="")
+    return fig
+
+@callback(
+    Output("graph-evolucao-retrabalho-por-mes", "figure"), 
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+)
+def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    '''plota grafico de evolução de retrabalho por ano'''
+    
+    dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
+    # Validação dos inputs
+    if (id_colaborador is None) or (datas is None) or (min_dias is None):
+        return go.Figure()
+    
+    # Obtém análise estatística
+    df_os_analise = colab.obtem_estatistica_retrabalho_grafico(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    if df_os_analise.empty:
+        return go.Figure()
+
+    fig = generate_grafico_evolucao(df_os_analise)
+    return fig
+
+@callback(
+    Output("graph-pizza-sintese-colaborador", "figure"), 
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+)
+def grafico_retrabalho_resumo(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    '''plota grafico de evolução de retrabalho por ano'''
+    dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
+    # Validação dos inputs
+    if (id_colaborador is None) or (datas is None) or (min_dias is None):
+        return go.Figure()
+    
+    # Obtém análise estatística
+    df_os_analise = colab.obtem_estatistica_retrabalho_grafico_resumo(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+
+    if df_os_analise.empty:
+        return go.Figure()
+    
+    fig = grafico_pizza_colaborador(df_os_analise)
+    return fig
+
+@callback(
+    Output("tabela-top-os-colaborador", "rowData"), 
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+)
+def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    
+    if (id_colaborador is None) or (datas is None) or (min_dias is None):
+        return []
+    
+    return colab.dados_tabela_do_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    
+@callback(
+    Output("graph-evolucao-nota-por-mes", "figure"), 
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+    running=[(Output("loading-overlay", "visible"), True, False)],
+)
+def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    '''plota grafico de evolução de retrabalho por ano'''
+    
+    # Validação dos inputs
+    if (id_colaborador is None) or (datas is None) or (min_dias is None):
+        return go.Figure()
+    
+    # Obtém análise estatística
+    df_os_analise = colab.evolucao_nota_media_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    if df_os_analise.empty:
+        return go.Figure()
+
+    fig = generate_grafico_evolucao_nota(df_os_analise)
+    return fig
+    
 
 
 ##############################################################################
@@ -580,7 +1144,18 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Evolução das Métricas: Retrabalho e Correção de Primeira por mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução das Métricas: Retrabalho e Correção de Primeira por mês",
+                                className="align-self-center"
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("colaborador-grafico-evolucao-nota-os"),
+                        ]
+                    ), width=True
+                ),
             ],
             align="center",
         ),
@@ -590,7 +1165,19 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Evolução das Métricas: Nota media ", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução das Métricas: Nota media ",
+                                className="align-self-center"
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("colaborador-grafico-evolucao-retrabalho"),
+                        ]
+                    ),width=True
+                    
+                ),
             ],
             align="center",
         ),
@@ -600,13 +1187,33 @@ layout = dbc.Container(
         dbc.Row(
             [
                 # Gráfico de Pizza
-                dbc.Col(dbc.Row([html.H4("Atuação Geral"), dcc.Graph(id="graph-barra-atuacao-geral")]), md=4),
+                dbc.Col(dbc.Row([html.H4("Atuação Geral"),dmc.Space(h=5), gera_labels_inputs("colaborador-grafico-atuacao-geral"), dcc.Graph(id="graph-barra-atuacao-geral")]), md=4),
                 # Indicadores
-                dbc.Col(dbc.Row([html.H4("Atuação OS (TOP 10)"), dcc.Graph(id="graph-principais-os")]), md=8),
+                dbc.Col(dbc.Row([html.H4("Atuação OS (TOP 10)"), dmc.Space(h=5),gera_labels_inputs("colaborador-graficos-atuacao-os"), dcc.Graph(id="graph-principais-os")]), md=8),
             ],
             align="center",
         ),
         dmc.Space(h=30),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Detalhamento do colaborador das OSs escolhidas",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("tabela-colaborador-os"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),    
         dag.AgGrid(
             id="tabela-top-os-colaborador",
             columnDefs=tbl_top_os_geral_retrabalho,
@@ -622,512 +1229,3 @@ layout = dbc.Container(
     ]
 )
 
-##############################################################################
-# CALLBACKS ##################################################################
-##############################################################################   
-
-##############################################################################
-# Callbacks para os inputs ###################################################
-##############################################################################
-
-# Função para validar o input
-def input_valido(id_colaborador, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
-    if id_colaborador is None or not id_colaborador or None in id_colaborador:
-        return False
-    
-    if datas is None or not datas or None in datas or min_dias is None:
-        return False
-
-    if lista_oficinas is None or not lista_oficinas or None in lista_oficinas:
-        return False
-
-    if lista_secaos is None or not lista_secaos or None in lista_secaos:
-        return False
-
-    if lista_os is None or not lista_os or None in lista_os:
-        return False
-
-    return True
-
-
-# Corrige o input para garantir que "TODAS" não seja selecionado junto com outras opções
-def corrige_input(lista):
-    # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
-    if not lista:
-        return ["TODAS"]
-
-    # Caso 2: Se "TODAS" foi selecionado após outras opções, reseta para "TODAS"
-    if len(lista) > 1 and "TODAS" in lista[1:]:
-        return ["TODAS"]
-
-    # Caso 3: Se alguma opção foi selecionada após "TODAS", remove "TODAS"
-    if "TODAS" in lista and len(lista) > 1:
-        return [value for value in lista if value != "TODAS"]
-
-    # Por fim, se não caiu em nenhum caso, retorna o valor original
-    return lista
-
-
-@callback(
-    Output("input-select-oficina-colaborador", "value"),
-    Input("input-select-oficina-colaborador", "value"),
-)
-def corrige_input_oficina(lista_oficinas):
-    return corrige_input(lista_oficinas)
-
-@callback(
-    Output("input-select-secao-colaborador", "value"),
-    Input("input-select-secao-colaborador", "value"),
-)
-def corrige_input_secao(lista_secaos):
-    return corrige_input(lista_secaos)
-
-@callback(
-    [
-        Output("input-select-ordens-servico-colaborador", "options"),
-        Output("input-select-ordens-servico-colaborador", "value"),
-    ],
-    [
-        Input("input-select-ordens-servico-colaborador", "value"),
-        Input("input-select-secao-colaborador", "value"),
-        Input("input-lista-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value")
-    ],
-)
-def corrige_input_ordem_servico(lista_os, lista_secaos, id_colaborador, min_dias, datas):
-    # Vamos pegar as OS possíveis para as seções selecionadas
-    df_lista_os_secao = colab.df_lista_os_colab(min_dias, id_colaborador, datas)
-
-    if "TODAS" not in lista_secaos:
-        df_lista_os_secao = df_lista_os_secao[df_lista_os_secao["SECAO"].isin(lista_secaos)]
-
-    # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
-    lista_os_possiveis = df_lista_os_secao.to_dict(orient="records")
-    lista_os_possiveis.insert(0, {"LABEL": "TODAS"})
-
-    lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_os_possiveis]
-
-    # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
-    if "TODAS" not in lista_os:
-        df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_os)]
-        lista_os = df_lista_os_atual["LABEL"].tolist()
-
-    return lista_options, corrige_input(lista_os)
-
-
-@callback(
-    [
-        Output("input-select-modelos-colaborador", "options"),
-        Output("input-select-modelos-colaborador", "value"),
-    ],
-    [
-        Input("input-select-modelos-colaborador", "value"),
-        Input("input-select-secao-colaborador", "value"),
-        Input("input-select-ordens-servico-colaborador", "value"),
-        Input("input-lista-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value")
-    ],
-)
-def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, min_dias, datas):
-    # Vamos pegar as OS possíveis para as seções selecionadas
-    df_lista_os_secao = colab.df_lista_os_colab_modelo(lista_secaos, lista_os, min_dias, id_colaborador, datas)
-
-
-    # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
-    lista_modelos_possiveis = df_lista_os_secao.to_dict(orient="records")
-    lista_modelos_possiveis.insert(0, {"LABEL": "TODAS"})
-
-    lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_modelos_possiveis]
-
-    # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
-    if "TODAS" not in lista_modelos:
-        df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_modelos)]
-        lista_modelos = df_lista_os_atual["LABEL"].tolist()
-
-    return lista_options, corrige_input(lista_modelos)
-
-
-
-@callback(
-    [
-        Output("indicador-total-os-trabalho", "children"),
-        Output("indicador-quantidade-servico", "children"),
-        Output("indicador-correcao-de-primeira", "children"),
-        Output("indicador-retrabalho", "children"),
-        Output("indicador-rank-servico", "children"),
-        Output("indicador-rank-os", "children"),
-        Output("indicador-nota-colaborador", "children"),
-        Output("indicador-rank-posicao-nota", "children"),
-        
-    ],
-    [
-        Input("input-lista-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-        Input("input-select-secao-colaborador", "value"),
-        Input("input-select-ordens-servico-colaborador", "value"),
-        Input("input-select-modelos-colaborador", "value"),
-        Input("input-select-oficina-colaborador", "value"),
-    ],
-    running=[(Output("loading-overlay", "visible"), True, False)],
-)
-def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    
-    id_colaborador = 3295 if id_colaborador is None else id_colaborador
-    # Validação dos inputs
-    if datas is None or not datas or None in datas or min_dias is None:
-        return False
-    if not id_colaborador or not datas or any(d is None for d in datas) or not isinstance(min_dias, int) or min_dias < 1:
-        return '', '', '', '','', '', '', ''
-    
-    
-    # Obtém análise estatística
-    df_os_analise = colab.obtem_estatistica_retrabalho_sql(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-
-    if df_os_analise.empty:
-        return (
-            "Nenhuma OS realizada no período selecionado.",
-            "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-        )
-
-    # Indicador 1: Total de OSs trabalhadas
-    total_os = f"{df_os_analise['TOTAL_OS'].iloc[0]} OSs trabalhadas"
-    # Indicador 2: Quantidade de serviços únicos realizados
-    servicos_diferentes = df_os_analise['QTD_SERVICOS_DIFERENTES'].iloc[0]
-    quantidade_servicos = f"{servicos_diferentes} tipos de serviços"
-
-    # Indicadores de correção de primeira e retrabalho
-    if not df_os_analise.empty and all(
-        col in df_os_analise.columns for col in ["PERC_CORRECAO_PRIMEIRA", "PERC_RETRABALHO"]
-    ):
-        correcao_primeira = f"{df_os_analise['PERC_CORRECAO_PRIMEIRA'].iloc[0]}% correções de primeira"
-        retrabalho = f"{df_os_analise['PERC_RETRABALHO'].iloc[0] if not df_os_analise['PERC_RETRABALHO'].iloc[0] == None else 0}% de retrabalho"
-    else:
-        correcao_primeira = "Dados insuficientes para calcular correções de primeira"
-        retrabalho = "Dados insuficientes para calcular retrabalho"
-        
-    df_rank_servico = colab.indcador_rank_servico(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-    
-    if df_rank_servico.empty:
-        return (
-            "Nenhuma OS realizada no período selecionado.",
-            "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-        )
-    
-    df_rank_os = colab.indcador_rank_total_os(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-    if df_rank_os.empty:
-        return (
-            "Nenhuma OS realizada no período selecionado.",
-            "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-        )
-    # Indicadores Rank
-    rank_servico = f"{df_rank_servico['rank_colaborador'].iloc[0]}° posição"
-    rank_os_absoluta = f"{df_rank_os['rank_colaborador'].iloc[0]}°  posição"
-    
-    df_nota_media = colab.nota_media_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-    
-    if df_nota_media.empty:
-        return (
-            "Nenhuma OS realizada no período selecionado.",
-            "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-        )
-    nota_media = f"{df_nota_media['nota_media_colaborador'].iloc[0] if not df_nota_media['nota_media_colaborador'].iloc[0]  is None else 0} nota media"
-    
-    df_nota_posicao = colab.posicao_rank_nota_media(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-    if df_nota_posicao.empty:
-        return (
-            "Nenhuma OS realizada no período selecionado.",
-            "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-        )
-
-    rank_nota_posicao = f"{df_nota_posicao['rank_colaborador'].iloc[0]}° posição da nota media"
-    
-    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao
-
-
-
-@callback(
-    Output("store-dados-colaborador-retrabalho", "data"),
-    [
-        Input("input-lista-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-    ],
-)
-def computa_retrabalho_mecanico(id_colaborador, datas, min_dias):
-    dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
-
-    if (id_colaborador is None) or (datas is None or not datas or None in datas) or (min_dias is None or min_dias < 1):
-        return dados_vazios
-
-    # Obtem os dados de retrabalho
-    df_os_mecanico = colab.obtem_dados_os_mecanico(id_colaborador)
-
-    # Filtrar as datas
-    inicio = pd.to_datetime(datas[0])
-    fim = pd.to_datetime(datas[1])
-
-    return {"df_os_mecanico": df_os_mecanico.to_dict("records"), "vazio": False}
-
-
-@callback(Output("graph-barra-atuacao-geral", "figure"), Input("store-dados-colaborador-retrabalho", "data"), running=[(Output("loading-overlay", "visible"), True, False)])
-def computa_atuacao_mecanico_tipo_os(data):
-    if data["vazio"]:
-        return go.Figure()
-
-    # Obtem OS
-    df_os_mecanico = pd.DataFrame(data["df_os_mecanico"])
-
-    # Prepara os dados para o gráfico
-    df_agg_atuacao = (
-        df_os_mecanico.groupby(["DESCRICAO DO TIPO DA OS"])
-        .size()
-        .reset_index(name="QUANTIDADE")
-        .sort_values(by="QUANTIDADE", ascending=True)
-    )
-
-    # Percentagem
-    df_agg_atuacao["PERCENTAGE"] = (df_agg_atuacao["QUANTIDADE"] / df_agg_atuacao["QUANTIDADE"].sum()) * 100
-
-    # Gera o Gráfico
-    fig = px.pie(
-        df_agg_atuacao,
-        values="QUANTIDADE",
-        names="DESCRICAO DO TIPO DA OS",
-        hole=0.2,
-    )
-
-    # Update the chart to show percentages as labels
-    fig.update_traces(
-        textinfo="label+percent",
-        texttemplate="%{value}<br>%{percent:.2%}",
-    )
-
-    fig.update_layout(
-        legend=dict(
-            orientation="h",  # Horizontal orientation
-            y=0,  # Position the legend below the chart
-            x=0.5,  # Center align the legend
-            xanchor="center",
-        ),
-    )
-
-    return fig
-
-
-@callback(
-    Output("graph-principais-os", "figure"), 
-    [
-        Input("input-lista-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-        Input("input-select-secao-colaborador", "value"),
-        Input("input-select-ordens-servico-colaborador", "value"),
-        Input("input-select-modelos-colaborador", "value"),
-        Input("input-select-oficina-colaborador", "value"),
-    ],
-)
-def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    if not id_colaborador:
-        return go.Figure()
-
-    # Obtem OS
-    df_os_mecanico = colab.dados_grafico_top_10_do_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    ).sort_values('TOTAL_OS',ascending=False)
-
-    if df_os_mecanico.empty:
-        return go.Figure()
-    # Top 10 serviços
-    df_agg_servico_top10 = df_os_mecanico.head(10)
-
-    # Gera o Gráfico
-    fig = px.bar(
-        df_agg_servico_top10,
-        x="DESCRICAO DO SERVICO",
-        y="TOTAL_OS",
-        # orientation="h",
-        text="TOTAL_OS",  # Initial text for display
-    )
-
-    fig.update_traces(
-        texttemplate="%{y} (%{customdata:.1f}%)",
-        customdata=df_agg_servico_top10["PERC_TOTAL_OS"],  # Add percentage data
-        textposition="inside",
-    )
-    fig.update_layout(xaxis_title="")
-    return fig
-
-@callback(
-    Output("graph-evolucao-retrabalho-por-mes", "figure"), 
-    [
-        Input("input-lista-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-        Input("input-select-secao-colaborador", "value"),
-        Input("input-select-ordens-servico-colaborador", "value"),
-        Input("input-select-modelos-colaborador", "value"),
-        Input("input-select-oficina-colaborador", "value"),
-    ],
-)
-def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    '''plota grafico de evolução de retrabalho por ano'''
-    
-    dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
-    # Validação dos inputs
-    if (id_colaborador is None) or (datas is None) or (min_dias is None):
-        return go.Figure()
-    
-    # Obtém análise estatística
-    df_os_analise = colab.obtem_estatistica_retrabalho_grafico(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-    if df_os_analise.empty:
-        return go.Figure()
-
-    fig = generate_grafico_evolucao(df_os_analise)
-    return fig
-
-@callback(
-    Output("graph-pizza-sintese-colaborador", "figure"), 
-    [
-        Input("input-lista-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-        Input("input-select-secao-colaborador", "value"),
-        Input("input-select-ordens-servico-colaborador", "value"),
-        Input("input-select-modelos-colaborador", "value"),
-        Input("input-select-oficina-colaborador", "value"),
-    ],
-)
-def grafico_retrabalho_resumo(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    '''plota grafico de evolução de retrabalho por ano'''
-    dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
-    # Validação dos inputs
-    if (id_colaborador is None) or (datas is None) or (min_dias is None):
-        return go.Figure()
-    
-    # Obtém análise estatística
-    df_os_analise = colab.obtem_estatistica_retrabalho_grafico_resumo(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-
-    if df_os_analise.empty:
-        return go.Figure()
-    
-    fig = grafico_pizza_colaborador(df_os_analise)
-    return fig
-
-@callback(
-    Output("tabela-top-os-colaborador", "rowData"), 
-    [
-        Input("input-lista-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-        Input("input-select-secao-colaborador", "value"),
-        Input("input-select-ordens-servico-colaborador", "value"),
-        Input("input-select-modelos-colaborador", "value"),
-        Input("input-select-oficina-colaborador", "value"),
-    ],
-)
-def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    
-    if (id_colaborador is None) or (datas is None) or (min_dias is None):
-        return []
-    
-    return colab.dados_tabela_do_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-    
-@callback(
-    Output("graph-evolucao-nota-por-mes", "figure"), 
-    [
-        Input("input-lista-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value"),
-        Input("input-min-dias-colaborador", "value"),
-        Input("input-select-secao-colaborador", "value"),
-        Input("input-select-ordens-servico-colaborador", "value"),
-        Input("input-select-modelos-colaborador", "value"),
-        Input("input-select-oficina-colaborador", "value"),
-    ],
-    running=[(Output("loading-overlay", "visible"), True, False)],
-)
-def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    '''plota grafico de evolução de retrabalho por ano'''
-    
-    # Validação dos inputs
-    if (id_colaborador is None) or (datas is None) or (min_dias is None):
-        return go.Figure()
-    
-    # Obtém análise estatística
-    df_os_analise = colab.evolucao_nota_media_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    )
-    if df_os_analise.empty:
-        return go.Figure()
-
-    fig = generate_grafico_evolucao_nota(df_os_analise)
-    return fig
-    

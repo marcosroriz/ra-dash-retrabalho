@@ -5,9 +5,14 @@
 
 # Tabela Top OS de Retrabalho
 tbl_top_os_geral_retrabalho = [
-    {"field": "DESCRICAO DA OFICINA", "headerName": "OFICINA", "filter": "agSetColumnFilter", "minWidth": 200},
-    {"field": "DESCRICAO DA SECAO", "headerName": "SEÇÃO", "filter": "agSetColumnFilter", "minWidth": 200},
-    {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "filter": "agSetColumnFilter", "minWidth": 250},
+    {
+        "field": "DESCRICAO DA OFICINA",
+        "headerName": "OFICINA",
+        "pinned": "left",
+        "minWidth": 200,
+    },
+    {"field": "DESCRICAO DA SECAO", "headerName": "SEÇÃO", "minWidth": 200},
+    {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "minWidth": 250},
     {
         "field": "TOTAL_OS",
         "headerName": "TOTAL DE OS",

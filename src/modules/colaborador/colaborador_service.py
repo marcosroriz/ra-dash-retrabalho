@@ -464,9 +464,15 @@ class ColaboradorService:
                 {subquery_os_str}
                 {subquery_modelo_str}
                 {subquery_ofcina_str}
-            GROUP BY "COLABORADOR QUE EXECUTOU O SERVICO")
-            
-            SELECT rank_colaborador FROM TABELA_RANK where  "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador};
+            GROUP BY "COLABORADOR QUE EXECUTOU O SERVICO"),
+            TOTAL AS (
+                SELECT COUNT(*) AS total_colaboradores FROM TABELA_RANK
+            ) 
+            SELECT 
+                tr.rank_colaborador || '/' || t.total_colaboradores AS rank_colaborador
+            FROM 
+                TABELA_RANK tr, TOTAL t
+            where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             """
         
         df_mecanicos = pd.read_sql(
@@ -501,9 +507,15 @@ class ColaboradorService:
                 {subquery_os_str}
                 {subquery_modelo_str}
                 {subquery_ofcina_str}
-            GROUP BY "COLABORADOR QUE EXECUTOU O SERVICO")
-            
-            SELECT rank_colaborador FROM TABELA_RANK where  "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+            GROUP BY "COLABORADOR QUE EXECUTOU O SERVICO"),
+            TOTAL AS (
+                SELECT COUNT(*) AS total_colaboradores FROM TABELA_RANK
+            ) 
+            SELECT 
+                tr.rank_colaborador || '/' || t.total_colaboradores AS rank_colaborador
+            FROM 
+                TABELA_RANK tr, TOTAL t
+        where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
         """
         df_mecanicos = pd.read_sql(
             query,
@@ -581,7 +593,6 @@ class ColaboradorService:
             """,
             self.pgEngine,
         )
-        print(df_lista_os)
         return df_lista_os
     
     def nota_media_colaborador(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
@@ -717,11 +728,14 @@ class ColaboradorService:
             {subquery_ofcina_str}
         GROUP BY 
             "COLABORADOR QUE EXECUTOU O SERVICO"
-        )
-            
-        select
-            rank_colaborador 
-        from TABELA_RANK
+        ), 
+        TOTAL AS (
+            SELECT COUNT(*) AS total_colaboradores FROM TABELA_RANK
+        ) 
+        SELECT 
+            tr.rank_colaborador || '/' || t.total_colaboradores AS rank_colaborador
+        FROM 
+            TABELA_RANK tr, TOTAL t
         where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
         '''
         

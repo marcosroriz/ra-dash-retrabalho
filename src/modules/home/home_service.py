@@ -603,7 +603,6 @@ class HomeService:
         GROUP BY
             main."COLABORADOR QUE EXECUTOU O SERVICO"
         """
-        print(query_llm)
 
         # Executa a query
         df_llm = pd.read_sql(query_llm, self.dbEngine)
@@ -617,6 +616,5 @@ class HomeService:
         # Faz Merge
         df_combinado = pd.merge(df, df_llm, on=["COLABORADOR QUE EXECUTOU O SERVICO"])
 
-        print(df_combinado)
-        print(df.shape, df_combinado.shape)
+       
         return df_combinado

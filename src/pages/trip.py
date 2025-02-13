@@ -104,7 +104,6 @@ def update_components(selected_vehicle, selected_date, selected_events):
         vehicles = db.get_vehicles()
     except Exception as e:
         vehicles = []
-        print(f"Erro ao buscar veículos: {e}")
 
     dropdown_options = [{'label': vehicle, 'value': vehicle} for vehicle in vehicles]
     
@@ -120,7 +119,6 @@ def update_components(selected_vehicle, selected_date, selected_events):
         events = db.get_events(selected_vehicle)
         events['data_evento'] = pd.to_datetime(events['data_evento'], format='%Y-%m-%d %H:%M:%S')
     except Exception as e:
-        print(f"Erro ao buscar eventos: {e}")
         return dropdown_options, [], go.Figure()
 
     # Filtrar apenas os eventos do dia selecionado
