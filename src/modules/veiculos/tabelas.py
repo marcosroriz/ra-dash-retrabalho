@@ -1,8 +1,8 @@
 # Tabela Top OS de Retrabalho
 tbl_top_os_geral_retrabalho = [
-    {"field": "DESCRICAO DO SERVICO", "headerName": "DESCRIÇÃO (PROBLEMA)", "filter": "agSetColumnFilter", "minWidth": 300},
-    {"field": "TOTAL_OS", "headerName": "QTD DE OS'S", "filter": "agSetColumnFilter", "minWidth": 200},
-    {"field": "PERC_RETRABALHO", "headerName": "% RETRABALHO", "filter": "agSetColumnFilter", "minWidth": 200, "valueFormatter": {"function": "params.value + '%'"},},
+    {"field": "DESCRICAO DO SERVICO", "headerName": "DESCRIÇÃO (PROBLEMA)", "minWidth": 300},
+    {"field": "TOTAL_OS", "headerName": "QTD DE OS'S", "minWidth": 200},
+    {"field": "PERC_RETRABALHO", "headerName": "% RETRABALHO", "minWidth": 200, "valueFormatter": {"function": "params.value + '%'"},},
     # {
     #     "field": "TOTAL_OS",
     #     "headerName": "MÉDIA",
