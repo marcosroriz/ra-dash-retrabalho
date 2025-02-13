@@ -243,7 +243,6 @@ def grafico_tabela_pecas(df_veiculos, df_media_geral):
 
     # Layout melhorado
     fig.update_layout(
-        title="Valor das Peças Trocadas por Mês",
         xaxis_title="Mês",
         yaxis_title="Valor (R$)",
         hovermode="x unified",  # Exibir todos os valores ao passar o mouse
