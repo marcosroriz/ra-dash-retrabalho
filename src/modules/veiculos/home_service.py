@@ -617,7 +617,9 @@ class HomeServiceVeiculo:
             df_detalhes["DT"] = pd.to_datetime(df_detalhes["DATA"], dayfirst=True)
 
             # Formatar a coluna "VALOR"
-            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float) 
+            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).round(2)
+            df_detalhes["VALOR"] = df_detalhes["VALOR"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
+
 
             num_meses = df_detalhes['DT'].dt.to_period('M').nunique()
 
