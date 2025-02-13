@@ -725,6 +725,7 @@ class HomeServiceVeiculo:
             COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA",
             SUM(pg."QUANTIDADE") as "QUANTIDADE DE PECAS" ,
             SUM(pg."VALOR") as "VALOR",
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO",
             COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") as "QUANTIDADE DE COLABORADORES" 
         FROM
             mat_view_retrabalho_{min_dias}_dias main
