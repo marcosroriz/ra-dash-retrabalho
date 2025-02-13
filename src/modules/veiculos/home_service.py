@@ -760,10 +760,13 @@ class HomeServiceVeiculo:
         df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
 
         df["QUANTIDADE DE PECAS"] = df["QUANTIDADE DE PECAS"].fillna(0).astype(int)
-        df["VALOR"] = df["VALOR"].fillna(0).astype(float).round(2)
 
-        # Formatar "VALOR" para R$ no formato brasileiro
+        # Formatar "VALOR" para R$ no formato brasileiro e substituindo por 0 os valores nulos
+        df["VALOR"] = df["VALOR"].fillna(0).astype(float).round(2)
         df["VALOR"] = df["VALOR"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
+
+        df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
+        df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
 
         df_dict = df.to_dict("records")
 
