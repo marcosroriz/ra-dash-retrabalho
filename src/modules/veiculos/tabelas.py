@@ -29,6 +29,15 @@ tbl_top_os_geral_retrabalho = [
         "maxWidth": 230,
         "type": ["numericColumn"],
     },
+    {
+        "field": "VALOR",
+        "headerName": "VALOR TOTAL",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "filter": "agNumberColumnFilter",
+        "maxWidth": 160,
+        "type": ["numericColumn"],
+    },
     # {
     #     "field": "TOTAL_PROBLEMA",
     #     "headerName": "MÉDIA DE TROCA DE PEÇAS PARA ESSE MODELO",

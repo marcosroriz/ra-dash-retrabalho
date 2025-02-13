@@ -722,6 +722,7 @@ class HomeServiceVeiculo:
             100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
             COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA",
             SUM(pg."QUANTIDADE") as "QUANTIDADE DE PECAS" ,
+            SUM(pg."VALOR") as "VALOR",
             COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") as "QUANTIDADE DE COLABORADORES" 
         FROM
             mat_view_retrabalho_{min_dias}_dias main
