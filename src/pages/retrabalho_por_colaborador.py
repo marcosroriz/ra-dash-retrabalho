@@ -1076,7 +1076,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Nota do colaborador"),
+                            dbc.CardFooter("% das OS são retrabalho"),
                         ],
                         class_name="card-box-shadow",
                     ),
