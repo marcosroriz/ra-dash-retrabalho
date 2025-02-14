@@ -834,7 +834,11 @@ layout = dbc.Container(
                 {"field": "MODELO", "minWidth": 300},
                 {"field": "PRODUTO", "minWidth": 350},
                 {"field": "QUANTIDADE", "minWidth": 100},
-                {"field": "VALOR", "minWidth": 100},
+                {"field": "VALOR", "minWidth": 100,
+                     "type": ["numericColumn"],
+                     "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
+                     "sort": "desc"
+                },
                 {"field": "DATA", "minWidth": 130}
             ],
             rowData=[],
@@ -850,7 +854,11 @@ layout = dbc.Container(
                 {"field": "QUANTIDADE DE OS'S", "minWidth": 100},
                 {"field": "QUANTIDADE DE PEÇAS", "minWidth": 120},
                 {"field": "MODELO", "minWidth": 350},
-                {"field": "VALOR", "minWidth": 150},
+                {"field": "VALOR", "minWidth": 100,
+                     "type": ["numericColumn"],
+                     "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
+                     "sort": "desc"
+                },
             ],
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
@@ -873,7 +881,11 @@ layout = dbc.Container(
                 {"field": "QUANTIDADE DE PEÇAS", "minWidth": 100},
                 {"field": "DESCRICAO DO SERVICO", "minWidth": 280},
                 {"field": "MODELO", "minWidth": 300},
-                {"field": "VALOR", "minWidth": 100},
+                {"field": "VALOR", "minWidth": 100,
+                     "type": ["numericColumn"],
+                     "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
+                     "sort": "desc"
+                },
             ],
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},

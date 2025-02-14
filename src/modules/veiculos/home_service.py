@@ -571,8 +571,8 @@ class HomeServiceVeiculo:
                 AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 {subquery_veiculos_str}
         """
-        print("QUERY DETAKHES")
-        print(query_detalhes)
+        #print("QUERY DETAKHES")
+        #print(query_detalhes)
         query_ranking_veiculo = f"""
         WITH ranking_veiculos AS (
             SELECT 
@@ -617,9 +617,9 @@ class HomeServiceVeiculo:
             df_detalhes["DT"] = pd.to_datetime(df_detalhes["DATA"], dayfirst=True)
 
             # Formatar a coluna "VALOR"
+            
+            #df_detalhes["VALOR_T"] = df_detalhes["VALOR"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
             df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).round(2)
-            df_detalhes["VALOR"] = df_detalhes["VALOR"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
-
 
             num_meses = df_detalhes['DT'].dt.to_period('M').nunique()
 
@@ -736,7 +736,7 @@ class HomeServiceVeiculo:
             AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
             AND main."DESCRICAO DO SERVICO" = op.servico
         LEFT JOIN
-            PECAS_GERAIS pg
+            view_pecas_desconsiderando_combustivel pg
         ON 
             main."NUMERO DA OS" = pg."OS"
         WHERE
@@ -763,9 +763,11 @@ class HomeServiceVeiculo:
 
         # Formatar "VALOR" para R$ no formato brasileiro e substituindo por 0 os valores nulos
         df["VALOR"] = df["VALOR"].fillna(0).astype(float).round(2)
+        df["VALOR_"] = df["VALOR"].fillna(0).astype(float).round(2)
         df["VALOR"] = df["VALOR"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
 
         df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
+        df["TOTAL_GASTO_RETRABALHO_"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
         df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
 
         df_dict = df.to_dict("records")
@@ -962,14 +964,16 @@ class HomeServiceVeiculo:
             df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
  
             # Converter VALOR para float e formatar como moeda (R$)
-            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
- 
+            
+            df_detalhes["VALOR_T"] = df_detalhes["VALOR"].astype(float).apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float)
+
             # Número de meses distintos
             num_meses = len(datas)  
  
             # Cálculo de totais
             numero_pecas_veiculos_total = int(df_detalhes['QUANTIDADE DE PEÇAS'].sum())
-            valor_total_veiculos = df_detalhes['VALOR'].str.replace("R$ ", "").str.replace(".", "").str.replace(",", ".").astype(float).sum().round(2)
+            valor_total_veiculos = df_detalhes['VALOR_T'].str.replace("R$ ", "").str.replace(".", "").str.replace(",", ".").astype(float).sum().round(2)
  
             # Formatação dos valores totais
             valor_total_veiculos_str = f"R$ {valor_total_veiculos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -1041,7 +1045,7 @@ class HomeServiceVeiculo:
     
         try:
             df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
-            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).round(2)#.apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
             return df_detalhes
     
         except Exception as e:

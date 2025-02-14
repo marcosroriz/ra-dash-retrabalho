@@ -30,22 +30,24 @@ tbl_top_os_geral_retrabalho = [
         "type": ["numericColumn"],
     },
     {
-        "field": "VALOR",
+        "field": "VALOR_",
         "headerName": "VALOR TOTAL",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
         "type": ["numericColumn"],
+        "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
     },
     {
-        "field": "TOTAL_GASTO_RETRABALHO",
+        "field": "TOTAL_GASTO_RETRABALHO_",
         "headerName": "VALOR DO RETRABALHO",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
         "type": ["numericColumn"],
+        "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
     },
 
     # {
