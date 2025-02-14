@@ -130,9 +130,9 @@ layout = dbc.Container(
                                                         id="input-intervalo-datas-por-veiculo",
                                                         allowSingleDateInRange=True,
                                                         type="range",
-                                                        minDate=date(2024, 1, 1),
+                                                        minDate=date(2024, 8, 1),
                                                         maxDate=date.today(),
-                                                        value=[date(2024, 1, 1), date.today()],
+                                                        value=[date(2024, 8, 1), date.today()],
                                                     ),
                                                 ],
                                                 className="dash-bootstrap",
@@ -259,40 +259,40 @@ layout = dbc.Container(
                                                         id="input-select-secao-visao-geral",
                                                         options=[
                                                             {"label": "TODAS", "value": "TODAS"},
-                                                            {
-                                                                "label": "BORRACHARIA",
-                                                                "value": "MANUTENCAO BORRACHARIA",
-                                                            },
+                                                            # {
+                                                            #     "label": "BORRACHARIA",
+                                                            #     "value": "MANUTENCAO BORRACHARIA",
+                                                            # },
                                                             {
                                                                 "label": "ELETRICA",
                                                                 "value": "MANUTENCAO ELETRICA",
                                                             },
-                                                            {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            {
-                                                                "label": "LANTERNAGEM",
-                                                                "value": "MANUTENCAO LANTERNAGEM",
-                                                            },
-                                                            {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
+                                                            # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
+                                                            # {
+                                                            #     "label": "LANTERNAGEM",
+                                                            #     "value": "MANUTENCAO LANTERNAGEM",
+                                                            # },
+                                                            # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
                                                             {
                                                                 "label": "MECANICA",
                                                                 "value": "MANUTENCAO MECANICA",
                                                             },
-                                                            {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            {
-                                                                "label": "SERVIÇOS DE TERCEIROS",
-                                                                "value": "SERVIÇOS DE TERCEIROS",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE ALINHAMENTO",
-                                                                "value": "SETOR DE ALINHAMENTO",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE POLIMENTO",
-                                                                "value": "SETOR DE POLIMENTO",
-                                                            },
+                                                            # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
+                                                            # {
+                                                            #     "label": "SERVIÇOS DE TERCEIROS",
+                                                            #     "value": "SERVIÇOS DE TERCEIROS",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE ALINHAMENTO",
+                                                            #     "value": "SETOR DE ALINHAMENTO",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE POLIMENTO",
+                                                            #     "value": "SETOR DE POLIMENTO",
+                                                            # },
                                                         ],
                                                         multi=True,
-                                                        value=["TODAS"],
+                                                        value=["ELETRICA","MECANICA"],
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],

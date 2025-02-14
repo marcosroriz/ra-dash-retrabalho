@@ -946,7 +946,7 @@ class HomeServiceVeiculo:
             pg."MODELO",
             SUM(pg."VALOR") AS "VALOR"
         FROM pecas_gerais pg
-        JOIN os_dados od ON pg."OS" = od."NUMERO DA OS"
+        JOIN mat_view_retrabalho_{min_dias}_dias od ON pg."OS" = od."NUMERO DA OS"
         WHERE
             TO_DATE(pg."DATA", 'DD/MM/YY')
                 BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
@@ -1030,7 +1030,7 @@ class HomeServiceVeiculo:
                 pg."MODELO" AS "MODELO",
                 pg."VALOR" AS "VALOR"
             FROM pecas_gerais pg
-            JOIN os_dados as od ON pg."OS" = od."NUMERO DA OS"
+            JOIN mat_view_retrabalho_{min_dias}_dias as od ON pg."OS" = od."NUMERO DA OS"
             WHERE
                 {filtro_servico}
                 AND TO_DATE(pg."DATA", 'DD/MM/YY')
