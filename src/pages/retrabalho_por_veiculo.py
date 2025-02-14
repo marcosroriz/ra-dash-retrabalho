@@ -292,7 +292,7 @@ layout = dbc.Container(
                                                             # },
                                                         ],
                                                         multi=True,
-                                                        value=["ELETRICA","MECANICA"],
+                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],
