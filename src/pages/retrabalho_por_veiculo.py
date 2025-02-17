@@ -939,6 +939,13 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-pecas-trocadas-por-mes"),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+                dbc.Col(html.H4("Tabela de retrabalho por descrição de serviço", className="align-self-center"), width=True),
+            ],
+            align="center",
+        ),
         dag.AgGrid(
             enableEnterpriseModules=True,
             id="tabela-pecas-substituidas",
@@ -958,6 +965,7 @@ layout = dbc.Container(
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
         dag.AgGrid(
@@ -977,6 +985,7 @@ layout = dbc.Container(
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
         dbc.Label("SELEÇÃO DA DESCRIÇÃO DE SERVIÇO"),
@@ -1004,6 +1013,7 @@ layout = dbc.Container(
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
         dbc.Row(
@@ -1024,6 +1034,7 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=60),
         
