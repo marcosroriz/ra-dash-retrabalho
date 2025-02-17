@@ -844,6 +844,7 @@ layout = dbc.Container(
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
         dag.AgGrid(
@@ -863,6 +864,7 @@ layout = dbc.Container(
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
         dbc.Label("SELEÇÃO DA DESCRIÇÃO DE SERVIÇO"),
@@ -890,6 +892,7 @@ layout = dbc.Container(
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
         dbc.Row(
@@ -910,6 +913,7 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=60),
         
