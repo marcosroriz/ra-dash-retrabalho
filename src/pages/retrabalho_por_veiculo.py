@@ -67,6 +67,71 @@ lista_todos_modelos = df_lista_modelos.to_dict(orient="records")
 lista_todos_modelos.insert(0, {"LABEL": "TODOS", "MODELO": "TODOS"})
 
 
+        # Input("input-intervalo-datas-por-veiculo", "value"),
+        # Input("input-select-dias-geral-retrabalho", "value"),
+        # Input("input-select-oficina-visao-geral", "value"),
+        # Input("input-select-secao-visao-geral", "value"),
+        # Input("input-select-ordens-servico-visao-geral", "value"),
+        # Input("input-select-veiculos", "value"),
+
+
+
+
+def gera_labels_inputs_veiculos(campo):
+    # Cria o callback
+    @callback(
+        [
+            Output(component_id=f"{campo}-labels", component_property="children"),
+        ],
+        [
+            Input("input-select-dias-geral-retrabalho", "value"),
+            Input(component_id="input-select-oficina-visao-geral", component_property="value"),
+            Input(component_id="input-select-secao-visao-geral", component_property="value"),
+            Input(component_id="input-select-ordens-servico-visao-geral", component_property="value"),
+            Input(component_id="input-select-veiculos", component_property="value"),
+        ],
+    )
+    def atualiza_labels_inputs(min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+        labels_antes = [
+            # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
+            dmc.Badge("Filtro", color="gray", variant="outline"),
+        ]
+        min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
+        lista_oficinas_labels = []
+        lista_secaos_labels = []
+        lista_os_labels = []
+        lista_veiculos_labels = []
+
+        if lista_oficinas is None or not lista_oficinas or "TODAS" in lista_oficinas:
+            lista_oficinas_labels.append(dmc.Badge("Todas as oficinas", variant="outline"))
+        else:
+            for oficina in lista_oficinas:
+                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+
+        if lista_secaos is None or not lista_secaos or "TODAS" in lista_secaos:
+            lista_secaos_labels.append(dmc.Badge("Todas as seções", variant="outline"))
+        else:
+            for secao in lista_secaos:
+                lista_secaos_labels.append(dmc.Badge(secao, variant="dot"))
+
+        if lista_os is None or not lista_os or "TODAS" in lista_os:
+            lista_os_labels.append(dmc.Badge("Todas as ordens de serviço", variant="outline"))
+        else:
+            for os in lista_os:
+                lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
+            
+        if lista_veiculos is None or not lista_veiculos or "TODAS" in lista_veiculos:
+            lista_veiculos_labels.append(dmc.Badge("Todas os veículos", variant="outline"))
+        else:
+            for os in lista_veiculos:
+                lista_veiculos_labels.append(dmc.Badge(f"VEICULO: {os}", variant="dot"))
+        return [
+            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels + lista_veiculos_labels)
+        ]
+
+    # Cria o componente
+    return dmc.Group(id=f"{campo}-labels", children=[])
+
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
@@ -789,7 +854,19 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Relaçao de OS / mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Relaçao de OS / mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("evolucao-os-mes-veiculo"),
+                        ]
+                    ),
+                    width=True,
+                ),
             ],
             align="center",
         ),
@@ -800,7 +877,19 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Relações de retrabalho / mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Relações de retrabalho",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("evolucao-retrabalho-por-garagem-por-mes-veiculos"),
+                        ]
+                    ),
+                    width=True,
+                ),
             ],
             align="center",
         ),
@@ -809,7 +898,19 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Relações de retrabalho / mês / seção", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Relações de retrabalho / mês / seção",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("evolucao-retrabalho-por-secao-por-mes-veiculos"),
+                        ]
+                    ),
+                    width=True,
+                ),
             ],
             align="center",
         ),
@@ -820,7 +921,20 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Valor das peças trocadas por mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Valor das peças trocadas por mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("pecas-trocadas-por-mes"),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
             ],
             align="center",
         ),
@@ -1181,4 +1295,3 @@ def atualizar_veiculos(datas, min_dias, lista_veiculos, descricoes_selecionadas)
  
     return row_data 
 
- 
