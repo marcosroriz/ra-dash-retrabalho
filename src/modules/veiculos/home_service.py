@@ -473,7 +473,7 @@ class HomeServiceVeiculo:
 
         return os_diferentes, mecanicos_diferentes, os_veiculo_filtradas, os_problema, df_soma_mes, df_os_unicas, rk_os_problema_geral, rk_os_problema_modelos
     
-    def pecas_trocadas_por_mes_fun(self, datas, min_dias, equipamentos):
+    def pecas_trocadas_por_mes_fun(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
             # Converte equipamentos para formato compatível com SQL (lista formatada)
         equipamentos_sql = ", ".join(f"'{equip}'" for equip in equipamentos)
 
@@ -488,7 +488,7 @@ class HomeServiceVeiculo:
             data_inicio_str = '1900-01-01'  # Ou algum valor padrão válido
         if data_fim_str is None:
             data_fim_str = '1901-01-01'  # Ou algum valor padrão válido
-            
+        
         # Query para buscar peças trocadas por mês para os veículos selecionados
         query_veiculos = f"""
         SELECT 
@@ -506,7 +506,33 @@ class HomeServiceVeiculo:
         ORDER BY 
             year_month;
         """
+        subquery_equipamentos_str = subquery_equipamentos(equipamentos, "pg.")
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas, "od.")
+        subquery_secoes_str = subquery_secoes(lista_secaos, "od.")
+        subquery_os_str = subquery_os(lista_os, "od.")
 
+
+        query_teste = f"""
+            SELECT
+                to_char(pg."DATA"::DATE, 'YYYY-MM') AS year_month,
+                ROUND(SUM(pg."VALOR"), 2) AS total_pecas,
+                pg."EQUIPAMENTO"
+            FROM pecas_gerais pg
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias as od 
+                ON pg."OS" = od."NUMERO DA OS"
+            WHERE
+                    od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+                {subquery_equipamentos_str}
+                {subquery_oficinas_str}
+                {subquery_secoes_str}
+                {subquery_os_str}
+            GROUP BY 
+                year_month, pg."EQUIPAMENTO"
+            ORDER BY 
+                year_month ASC, pg."EQUIPAMENTO" ASC;
+            """
+        
         # Query para calcular a média geral de peças trocadas por mês
         query_media_geral = f"""
         SELECT 
@@ -522,12 +548,30 @@ class HomeServiceVeiculo:
         ORDER BY 
             year_month;
         """
-
+        query_media_geral_2 = f"""
+            SELECT
+                to_char(pg."DATA"::DATE, 'YYYY-MM') AS year_month,
+                ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_geral
+            FROM pecas_gerais pg
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias as od 
+                ON pg."OS" = od."NUMERO DA OS"
+            WHERE
+                --od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                pg."DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+                {subquery_oficinas_str}
+                {subquery_secoes_str}
+                {subquery_os_str}
+            GROUP BY 
+                year_month
+            ORDER BY 
+                year_month;
+        """
         try:
             # Executa a query dos veículos
-            df_veiculos = pd.read_sql(query_veiculos, self.dbEngine)
+            df_veiculos = pd.read_sql(query_teste, self.dbEngine)
             # Executa a query da média geral
-            df_media_geral = pd.read_sql(query_media_geral, self.dbEngine)
+            df_media_geral = pd.read_sql(query_media_geral_2, self.dbEngine)
 
             # Verifica se há dados
             if df_veiculos.empty and df_media_geral.empty:
@@ -541,7 +585,7 @@ class HomeServiceVeiculo:
             print(f"Erro ao executar as consultas: {e}")
             return [], []
         
-    def tabela_pecas_fun(self, datas, min_dias, lista_veiculos):
+    def tabela_pecas_fun(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
             # Datas
         data_inicio_str = datas[0]
         
@@ -552,7 +596,7 @@ class HomeServiceVeiculo:
         data_inicio_dt = pd.to_datetime(data_inicio_str)
         data_inicio_str = data_inicio_dt.strftime("%d/%m/%Y")
         data_fim_str = data_fim.strftime("%d/%m/%Y")
-
+        
         subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
 
         query_detalhes = f"""
@@ -571,8 +615,37 @@ class HomeServiceVeiculo:
                 AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 {subquery_veiculos_str}
         """
-        #print("QUERY DETAKHES")
-        #print(query_detalhes)
+        subquery_equipamentos_str = subquery_equipamentos(lista_veiculos, "pg.")
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas, "od.")
+        subquery_secoes_str = subquery_secoes(lista_secaos, "od.")
+        subquery_os_str = subquery_os(lista_os, "od.")
+        
+        query_teste = f"""
+            SELECT
+                pg."EQUIPAMENTO",
+                pg."MODELO",
+                pg."PRODUTO",
+                pg."QUANTIDADE",
+                pg."VALOR",
+                pg."DATA"
+            FROM view_pecas_desconsiderando_combustivel pg
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias as od 
+                ON pg."OS" = od."NUMERO DA OS"
+            WHERE
+                1=1
+                {subquery_equipamentos_str}
+                {subquery_oficinas_str}
+                {subquery_secoes_str}
+                {subquery_os_str}
+                AND od."DATA DE FECHAMENTO DO SERVICO"::DATE 
+                    BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
+                    AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+            ORDER BY 
+                pg."VALOR" ASC;
+                """
+        print(query_teste)
+
         query_ranking_veiculo = f"""
         WITH ranking_veiculos AS (
             SELECT 
@@ -611,7 +684,7 @@ class HomeServiceVeiculo:
 
     """
         try:
-            df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
+            df_detalhes = pd.read_sql(query_teste, self.dbEngine)
             
 
             df_detalhes["DT"] = pd.to_datetime(df_detalhes["DATA"], dayfirst=True)

@@ -1157,13 +1157,17 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
-def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, equipamentos):
+def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
     # Valida input
-    if not datas or not equipamentos:
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
         return go.Figure()
+    
     data_inicio_str = datas[0]
     data_fim_str = datas[1]
 
@@ -1175,7 +1179,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, equipamentos):
     # Garante que equipamentos seja uma lista
     if isinstance(equipamentos, str):
         equipamentos = [equipamentos]
-    df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, min_dias, equipamentos)
+    df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos)
     fig = grafico_tabela_pecas(df_veiculos, df_media_geral)
     return fig
 
@@ -1190,15 +1194,18 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, equipamentos):
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
         Input("input-select-veiculos", "value"),
     ],
     
 )
-def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
+def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     # Valida input
     if not input_valido3(datas, min_dias, lista_veiculos):
         return [], 0, 0, 0
-    df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_veiculos)
+    df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk
 
 # TABELA DE DESCRIÇÃO DE SERVIÇOS
