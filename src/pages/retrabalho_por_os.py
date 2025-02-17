@@ -171,6 +171,217 @@ layout = dbc.Container(
             ],
             align="center",
         ),
+
+
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        # Cabeçalho e Inputs
+                        dbc.Row(
+                            [
+                                html.Hr(),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(DashIconify(icon="fluent-mdl2:timeline", width=45), width="auto"),
+                                        dbc.Col(
+                                            html.H1(
+                                                [
+                                                    "Retrabalho por\u00a0",
+                                                    html.Strong("tipo de serviço (OS)"),
+                                                ],
+                                                className="align-self-center",
+                                            ),
+                                            width=True,
+                                        ),
+                                    ],
+                                    align="center",
+                                ),
+                                dmc.Space(h=15),
+                                html.Hr(),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Data (intervalo) de análise"),
+                                                    dmc.DatePicker(
+                                                        id="input-intervalo-datas-os",
+                                                        allowSingleDateInRange=True,
+                                                        type="range",
+                                                        minDate=date(2024, 8, 1),
+                                                        maxDate=date.today(),
+                                                        value=[date(2024, 8, 1), date.today()],
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Tempo (em dias) entre OS para retrabalho"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-dias-os-retrabalho",
+                                                        options=[
+                                                            {"label": "10 dias", "value": 10},
+                                                            {"label": "15 dias", "value": 15},
+                                                            {"label": "30 dias", "value": 30},
+                                                        ],
+                                                        placeholder="Período em dias",
+                                                        value=10,
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dmc.Space(h=10),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Oficinas"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-oficina-os",
+                                                        options=[
+                                                            {"label": os["LABEL"], "value": os["LABEL"]}
+                                                            for os in lista_todas_oficinas
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione uma ou mais oficinas...",
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Seções (categorias) de manutenção"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-secao-os",
+                                                        options=[
+                                                            # {"label": "TODAS", "value": "TODAS"},
+                                                            # {
+                                                            #     "label": "BORRACHARIA",
+                                                            #     "value": "MANUTENCAO BORRACHARIA",
+                                                            # },
+                                                            {
+                                                                "label": "ELETRICA",
+                                                                "value": "MANUTENCAO ELETRICA",
+                                                            },
+                                                            # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
+                                                            # {
+                                                            #     "label": "LANTERNAGEM",
+                                                            #     "value": "MANUTENCAO LANTERNAGEM",
+                                                            # },
+                                                            # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
+                                                            {
+                                                                "label": "MECANICA",
+                                                                "value": "MANUTENCAO MECANICA",
+                                                            },
+                                                            # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
+                                                            # {
+                                                            #     "label": "SERVIÇOS DE TERCEIROS",
+                                                            #     "value": "SERVIÇOS DE TERCEIROS",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE ALINHAMENTO",
+                                                            #     "value": "SETOR DE ALINHAMENTO",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE POLIMENTO",
+                                                            #     "value": "SETOR DE POLIMENTO",
+                                                            # },
+                                                        ],
+                                                        multi=True,
+                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
+                                                        placeholder="Selecione uma ou mais seções...",
+                                                    ),
+                                                ],
+                                                # className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=6,
+                                ),
+                                dmc.Space(h=10),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Ordens de Serviço"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-ordens-servico-visao-geral",
+                                                        options=[
+                                                            {"label": os["LABEL"], "value": os["LABEL"]}
+                                                            for os in lista_todas_os
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione uma ou mais ordens de serviço...",
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=12,
+                                ),
+                            ]
+                        ),
+                    ],
+                    md=8,
+                ),
+                dbc.Col(
+                    # Resumo
+                    dbc.Row(
+                        [
+                            dbc.Row(
+                                [
+                                    # Cabeçalho
+                                    html.Hr(),
+                                    dbc.Col(
+                                        DashIconify(icon="wpf:statistics", width=45),
+                                        width="auto",
+                                    ),
+                                    dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
+                                    dmc.Space(h=15),
+                                    html.Hr(),
+                                ],
+                                align="center",
+                            ),
+                            dcc.Graph(id="graph-pizza-sintese-retrabalho-geral"),
+                        ]
+                    ),
+                    md=4,
+                ),
+            ]
+        ),
+
+
+
         html.Hr(),
         # Filtros
         dbc.Row(
