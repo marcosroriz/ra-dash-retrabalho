@@ -8,11 +8,7 @@
 ##############################################################################
 # Bibliotecas básicas
 from datetime import date
-import math
-import numpy as np
 import pandas as pd
-import os
-import re
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
@@ -35,9 +31,48 @@ import locale_utils
 # Banco de Dados
 from db import PostgresSingleton
 
+# Imports gerais
+from modules.entities_utils import (
+    get_mecanicos,
+    get_lista_os,
+    get_oficinas,
+    get_secoes,
+    get_modelos,
+)
+
+# Imports específicos
+
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
 ##############################################################################
+# Conexão com os bancos
+pgDB = PostgresSingleton.get_instance()
+pgEngine = pgDB.get_engine()
+
+# Obtem a lista de Oficinas
+df_oficinas = get_oficinas(pgEngine)
+lista_todas_oficinas = df_oficinas.to_dict(orient="records")
+lista_todas_oficinas.insert(0, {"LABEL": "TODAS"})
+
+# Obtem a lista de Seções
+df_secoes = get_secoes(pgEngine)
+lista_todas_secoes = df_secoes.to_dict(orient="records")
+lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
+
+# Colaboradores / Mecânicos
+df_mecanicos = get_mecanicos(pgEngine)
+
+# Modelos de veículos
+df_modelos_veiculos = get_modelos(pgEngine)
+lista_todos_modelos_veiculos = df_modelos_veiculos.to_dict(orient="records")
+lista_todos_modelos_veiculos.insert(0, {"MODELO": "TODAS"})
+
+# Obtem a lista de OS
+df_lista_os = get_lista_os(pgEngine)
+lista_todas_os = df_lista_os.to_dict(orient="records")
+lista_todas_os.insert(0, {"LABEL": "TODAS"})
+
+
 # Conexão com os bancos
 pgDB = PostgresSingleton.get_instance()
 pgEngine = pgDB.get_engine()
@@ -64,12 +99,21 @@ df_mecanicos = pd.read_sql("SELECT * FROM colaboradores_frotas_os", pgEngine)
 
 # Tabela Mecânicos
 tbl_top_mecanicos = [
-    {"field": "LABEL_COLABORADOR", "headerName": "COLABORADOR", "pinned": "left", "minWidth": 200},
+    {
+        "field": "LABEL_COLABORADOR",
+        "headerName": "COLABORADOR",
+        "pinned": "left",
+        "minWidth": 200,
+    },
     {"field": "NUM_PROBLEMAS", "headerName": "# PROBLEMAS"},
     {"field": "TOTAL_DE_OS", "headerName": "# OS"},
     {"field": "RETRABALHOS", "headerName": "# RETRABALHOS"},
     {"field": "CORRECOES", "headerName": "# CORREÇÕES"},
-    {"field": "CORRECOES_DE_PRIMEIRA", "headerName": "# CORREÇÕES DE PRIMEIRA", "maxWidth": 150},
+    {
+        "field": "CORRECOES_DE_PRIMEIRA",
+        "headerName": "# CORREÇÕES DE PRIMEIRA",
+        "maxWidth": 150,
+    },
     {
         "field": "PERC_RETRABALHO",
         "headerName": "% RETRABALHOS",
@@ -96,7 +140,10 @@ tbl_top_veiculos_problematicos = [
     {"field": "CODIGO DO VEICULO", "headerName": "VEÍCULO", "maxWidth": 150},
     {"field": "TOTAL_DE_PROBLEMAS", "headerName": "# PROBLEMAS"},
     {"field": "TOTAL_DE_OS", "headerName": "# OS"},
-    {"field": "TOTAL_DIAS_ATE_CORRIGIR", "headerName": "TOTAL DE DIAS GASTOS ATÉ CORRIGIR"},
+    {
+        "field": "TOTAL_DIAS_ATE_CORRIGIR",
+        "headerName": "TOTAL DE DIAS GASTOS ATÉ CORRIGIR",
+    },
     {"field": "REL_PROBLEMA_OS", "headerName": "REL. PROB/OS"},
 ]
 
@@ -113,7 +160,10 @@ tbl_top_os = [
 # Tabel Veículos
 tbl_top_vec = [
     {"field": "CODIGO DO VEICULO", "headerName": "VEÍCULO", "maxWidth": 150},
-    {"field": "TOTAL_DIAS_ATE_CORRIGIR", "headerName": "TOTAL DE DIAS GASTOS ATÉ CORRIGIR"},
+    {
+        "field": "TOTAL_DIAS_ATE_CORRIGIR",
+        "headerName": "TOTAL DE DIAS GASTOS ATÉ CORRIGIR",
+    },
 ]
 
 # Detalhes das OSs
@@ -140,7 +190,12 @@ tbl_detalhes_vec_os = [
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Retrabalho por OS", path="/retrabalho-por-os", icon="fluent-mdl2:timeline")
+dash.register_page(
+    __name__,
+    name="Retrabalho por OS",
+    path="/retrabalho-por-os",
+    icon="fluent-mdl2:timeline",
+)
 
 ##############################################################################
 layout = dbc.Container(
@@ -163,16 +218,6 @@ layout = dbc.Container(
             zIndex=10,
         ),
         # Cabeçalho
-        html.Hr(),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent-mdl2:timeline", width=45), width="auto"),
-                dbc.Col(html.H1("Retrabalho por OS", className="align-self-center"), width=True),
-            ],
-            align="center",
-        ),
-
-
         dbc.Row(
             [
                 dbc.Col(
@@ -183,7 +228,12 @@ layout = dbc.Container(
                                 html.Hr(),
                                 dbc.Row(
                                     [
-                                        dbc.Col(DashIconify(icon="fluent-mdl2:timeline", width=45), width="auto"),
+                                        dbc.Col(
+                                            DashIconify(
+                                                icon="vaadin:lines-list", width=45
+                                            ),
+                                            width="auto",
+                                        ),
                                         dbc.Col(
                                             html.H1(
                                                 [
@@ -204,14 +254,19 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
-                                                    dbc.Label("Data (intervalo) de análise"),
+                                                    dbc.Label(
+                                                        "Data (intervalo) de análise"
+                                                    ),
                                                     dmc.DatePicker(
                                                         id="input-intervalo-datas-os",
                                                         allowSingleDateInRange=True,
                                                         type="range",
                                                         minDate=date(2024, 8, 1),
                                                         maxDate=date.today(),
-                                                        value=[date(2024, 8, 1), date.today()],
+                                                        value=[
+                                                            date(2024, 8, 1),
+                                                            date.today(),
+                                                        ],
                                                     ),
                                                 ],
                                                 className="dash-bootstrap",
@@ -226,13 +281,24 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
-                                                    dbc.Label("Tempo (em dias) entre OS para retrabalho"),
+                                                    dbc.Label(
+                                                        "Tempo (em dias) entre OS para retrabalho"
+                                                    ),
                                                     dcc.Dropdown(
                                                         id="input-select-dias-os-retrabalho",
                                                         options=[
-                                                            {"label": "10 dias", "value": 10},
-                                                            {"label": "15 dias", "value": 15},
-                                                            {"label": "30 dias", "value": 30},
+                                                            {
+                                                                "label": "10 dias",
+                                                                "value": 10,
+                                                            },
+                                                            {
+                                                                "label": "15 dias",
+                                                                "value": 15,
+                                                            },
+                                                            {
+                                                                "label": "30 dias",
+                                                                "value": 30,
+                                                            },
                                                         ],
                                                         placeholder="Período em dias",
                                                         value=10,
@@ -255,8 +321,8 @@ layout = dbc.Container(
                                                     dcc.Dropdown(
                                                         id="input-select-oficina-os",
                                                         options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_oficinas
+                                                            # {"label": os["LABEL"], "value": os["LABEL"]}
+                                                            # for os in lista_todas_oficinas
                                                         ],
                                                         multi=True,
                                                         value=["TODAS"],
@@ -275,7 +341,9 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
-                                                    dbc.Label("Seções (categorias) de manutenção"),
+                                                    dbc.Label(
+                                                        "Seções (categorias) de manutenção"
+                                                    ),
                                                     dcc.Dropdown(
                                                         id="input-select-secao-os",
                                                         options=[
@@ -313,11 +381,14 @@ layout = dbc.Container(
                                                             # },
                                                         ],
                                                         multi=True,
-                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
+                                                        value=[
+                                                            "MANUTENCAO ELETRICA",
+                                                            "MANUTENCAO MECANICA",
+                                                        ],
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],
-                                                # className="dash-bootstrap",
+                                                className="dash-bootstrap",
                                             ),
                                         ],
                                         body=True,
@@ -330,11 +401,42 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
+                                                    dbc.Label("Modelos de Veículos"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-modelo-veiculos-visao-os",
+                                                        options=[
+                                                            {
+                                                                "label": os["MODELO"],
+                                                                "value": os["MODELO"],
+                                                            }
+                                                            for os in lista_todos_modelos_veiculos
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione uma ou mais ordens de serviço...",
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=12,
+                                ),
+                                dmc.Space(h=10),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
                                                     dbc.Label("Ordens de Serviço"),
                                                     dcc.Dropdown(
-                                                        id="input-select-ordens-servico-visao-geral",
+                                                        id="input-select-ordens-servico-visao-os",
                                                         options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
+                                                            {
+                                                                "label": os["LABEL"],
+                                                                "value": os["LABEL"],
+                                                            }
                                                             for os in lista_todas_os
                                                         ],
                                                         multi=True,
@@ -366,7 +468,12 @@ layout = dbc.Container(
                                         DashIconify(icon="wpf:statistics", width=45),
                                         width="auto",
                                     ),
-                                    dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
+                                    dbc.Col(
+                                        html.H1(
+                                            "Resumo", className="align-self-center"
+                                        ),
+                                        width=True,
+                                    ),
                                     dmc.Space(h=15),
                                     html.Hr(),
                                 ],
@@ -379,9 +486,6 @@ layout = dbc.Container(
                 ),
             ]
         ),
-
-
-
         html.Hr(),
         # Filtros
         dbc.Row(
@@ -445,7 +549,9 @@ layout = dbc.Container(
                             html.Div(
                                 [
                                     dbc.Label("Min. dias para Retrabalho"),
-                                    dmc.NumberInput(id="input-dias", value=30, min=1, step=1),
+                                    dmc.NumberInput(
+                                        id="input-dias", value=30, min=1, step=1
+                                    ),
                                 ],
                                 className="dash-bootstrap",
                             ),
@@ -474,7 +580,10 @@ layout = dbc.Container(
                                     dbc.CardBody(
                                         dmc.Group(
                                             [
-                                                dmc.Title(id="indicador-total-problemas", order=2),
+                                                dmc.Title(
+                                                    id="indicador-total-problemas",
+                                                    order=2,
+                                                ),
                                                 DashIconify(
                                                     icon="mdi:bomb",
                                                     width=48,
@@ -525,7 +634,10 @@ layout = dbc.Container(
                                     dbc.CardBody(
                                         dmc.Group(
                                             [
-                                                dmc.Title(id="indicador-relacao-problema-os", order=2),
+                                                dmc.Title(
+                                                    id="indicador-relacao-problema-os",
+                                                    order=2,
+                                                ),
                                                 DashIconify(
                                                     icon="icon-park-solid:division",
                                                     width=48,
@@ -569,7 +681,9 @@ layout = dbc.Container(
                                             mb="xs",
                                         ),
                                     ),
-                                    dbc.CardFooter("% de problemas com retrabalho (> 1 OS)"),
+                                    dbc.CardFooter(
+                                        "% de problemas com retrabalho (> 1 OS)"
+                                    ),
                                 ],
                                 class_name="card-box",
                             ),
@@ -608,7 +722,10 @@ layout = dbc.Container(
                                     dbc.CardBody(
                                         dmc.Group(
                                             [
-                                                dmc.Title(id="indicador-num-medio-dias-correcao", order=2),
+                                                dmc.Title(
+                                                    id="indicador-num-medio-dias-correcao",
+                                                    order=2,
+                                                ),
                                                 DashIconify(
                                                     icon="lucide:calendar-days",
                                                     width=48,
@@ -632,17 +749,38 @@ layout = dbc.Container(
         ),
         dbc.Row(dmc.Space(h=40)),
         # Gráfico de Pizza com a relação entre Retrabalho e Correções
-        dbc.Row([html.H4("Total de OS: Correções x Retrabalho"), dcc.Graph(id="graph-retrabalho-correcoes")]),
+        dbc.Row(
+            [
+                html.H4("Total de OS: Correções x Retrabalho"),
+                dcc.Graph(id="graph-retrabalho-correcoes"),
+            ]
+        ),
         # dbc.Row(dmc.Space(h=20)),
-        dbc.Row([html.H4("Grafículo Cumulativo Dias para Correção"), dcc.Graph(id="graph-retrabalho-cumulativo")]),
+        dbc.Row(
+            [
+                html.H4("Grafículo Cumulativo Dias para Correção"),
+                dcc.Graph(id="graph-retrabalho-cumulativo"),
+            ]
+        ),
         # dbc.Row(dmc.Space(h=20)),
-        dbc.Row([html.H4("Retrabalho por Modelo (%)"), dcc.Graph(id="graph-retrabalho-por-modelo-perc")]),
+        dbc.Row(
+            [
+                html.H4("Retrabalho por Modelo (%)"),
+                dcc.Graph(id="graph-retrabalho-por-modelo-perc"),
+            ]
+        ),
         # Top Colaboradores Retrabalho
         html.Hr(),
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:mechanic", width=45), width="auto"),
-                dbc.Col(html.H3("Ranking de Colaboradores por Retrabalho", className="align-self-center"), width=True),
+                dbc.Col(
+                    html.H3(
+                        "Ranking de Colaboradores por Retrabalho",
+                        className="align-self-center",
+                    ),
+                    width=True,
+                ),
             ],
             align="center",
         ),
@@ -655,7 +793,9 @@ layout = dbc.Container(
                             dbc.CardBody(
                                 dmc.Group(
                                     [
-                                        dmc.Title(id="indicador-media-os-colaborador", order=2),
+                                        dmc.Title(
+                                            id="indicador-media-os-colaborador", order=2
+                                        ),
                                         DashIconify(
                                             icon="bxs:car-mechanic",
                                             width=48,
@@ -694,7 +834,9 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Média da % de retrabalho dos colaboradores"),
+                            dbc.CardFooter(
+                                "Média da % de retrabalho dos colaboradores"
+                            ),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -711,7 +853,10 @@ layout = dbc.Container(
                             dbc.CardBody(
                                 dmc.Group(
                                     [
-                                        dmc.Title(id="indicador-media-correcoes-primeira-colaborador", order=2),
+                                        dmc.Title(
+                                            id="indicador-media-correcoes-primeira-colaborador",
+                                            order=2,
+                                        ),
                                         DashIconify(
                                             icon="gravity-ui:target-dart",
                                             width=48,
@@ -723,7 +868,9 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Média da % de correções de primeira dos colaboradores"),
+                            dbc.CardFooter(
+                                "Média da % de correções de primeira dos colaboradores"
+                            ),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -750,7 +897,9 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Média da % de correções tardias dos colaboradores"),
+                            dbc.CardFooter(
+                                "Média da % de correções tardias dos colaboradores"
+                            ),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -793,9 +942,16 @@ layout = dbc.Container(
         # TOP OS e Veículos
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="icon-park-outline:ranking-list", width=45), width="auto"),
                 dbc.Col(
-                    html.H3("Ranking de OS e Veículos por Dias até Correção", className="align-self-center"), width=True
+                    DashIconify(icon="icon-park-outline:ranking-list", width=45),
+                    width="auto",
+                ),
+                dbc.Col(
+                    html.H3(
+                        "Ranking de OS e Veículos por Dias até Correção",
+                        className="align-self-center",
+                    ),
+                    width=True,
                 ),
             ],
             align="center",
@@ -865,8 +1021,16 @@ layout = dbc.Container(
         html.Hr(),
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="hugeicons:search-list-02", width=45), width="auto"),
-                dbc.Col(html.H3("Detalhar Ordens de Serviço de um Veículo", className="align-self-center"), width=True),
+                dbc.Col(
+                    DashIconify(icon="hugeicons:search-list-02", width=45), width="auto"
+                ),
+                dbc.Col(
+                    html.H3(
+                        "Detalhar Ordens de Serviço de um Veículo",
+                        className="align-self-center",
+                    ),
+                    width=True,
+                ),
             ],
             align="center",
         ),
@@ -1069,8 +1233,12 @@ def obtem_dados_os_sql(lista_os, data_inicio, data_fim, min_dias):
     df_os_query = pd.read_sql_query(query, pgEngine)
 
     # Tratamento de datas
-    df_os_query["DATA INICIO SERVICO"] = pd.to_datetime(df_os_query["DATA INICIO SERVIÇO"])
-    df_os_query["DATA DE FECHAMENTO DO SERVICO"] = pd.to_datetime(df_os_query["DATA DE FECHAMENTO DO SERVICO"])
+    df_os_query["DATA INICIO SERVICO"] = pd.to_datetime(
+        df_os_query["DATA INICIO SERVIÇO"]
+    )
+    df_os_query["DATA DE FECHAMENTO DO SERVICO"] = pd.to_datetime(
+        df_os_query["DATA DE FECHAMENTO DO SERVICO"]
+    )
 
     return df_os_query
 
@@ -1109,12 +1277,22 @@ def obtem_estatistica_retrabalho_sql(df_os, min_dias):
         }
     )
     # Correções Tardias
-    df_modelo["CORRECOES_TARDIA"] = df_modelo["CORRECOES"] - df_modelo["CORRECOES_DE_PRIMEIRA"]
+    df_modelo["CORRECOES_TARDIA"] = (
+        df_modelo["CORRECOES"] - df_modelo["CORRECOES_DE_PRIMEIRA"]
+    )
     # Calcula as porcentagens
-    df_modelo["PERC_RETRABALHO"] = 100 * (df_modelo["RETRABALHOS"] / df_modelo["TOTAL_DE_OS"])
-    df_modelo["PERC_CORRECOES"] = 100 * (df_modelo["CORRECOES"] / df_modelo["TOTAL_DE_OS"])
-    df_modelo["PERC_CORRECOES_DE_PRIMEIRA"] = 100 * (df_modelo["CORRECOES_DE_PRIMEIRA"] / df_modelo["TOTAL_DE_OS"])
-    df_modelo["PERC_CORRECOES_TARDIA"] = 100 * (df_modelo["CORRECOES_TARDIA"] / df_modelo["TOTAL_DE_OS"])
+    df_modelo["PERC_RETRABALHO"] = 100 * (
+        df_modelo["RETRABALHOS"] / df_modelo["TOTAL_DE_OS"]
+    )
+    df_modelo["PERC_CORRECOES"] = 100 * (
+        df_modelo["CORRECOES"] / df_modelo["TOTAL_DE_OS"]
+    )
+    df_modelo["PERC_CORRECOES_DE_PRIMEIRA"] = 100 * (
+        df_modelo["CORRECOES_DE_PRIMEIRA"] / df_modelo["TOTAL_DE_OS"]
+    )
+    df_modelo["PERC_CORRECOES_TARDIA"] = 100 * (
+        df_modelo["CORRECOES_TARDIA"] / df_modelo["TOTAL_DE_OS"]
+    )
     df_modelo["REL_PROBLEMA_OS"] = df_modelo["NUM_PROBLEMAS"] / df_modelo["TOTAL_DE_OS"]
 
     # Estatísticas por colaborador
@@ -1142,50 +1320,72 @@ def obtem_estatistica_retrabalho_sql(df_os, min_dias):
         }
     )
     # Correções Tardias
-    df_colaborador["CORRECOES_TARDIA"] = df_colaborador["CORRECOES"] - df_colaborador["CORRECOES_DE_PRIMEIRA"]
+    df_colaborador["CORRECOES_TARDIA"] = (
+        df_colaborador["CORRECOES"] - df_colaborador["CORRECOES_DE_PRIMEIRA"]
+    )
     # Calcula as porcentagens
-    df_colaborador["PERC_RETRABALHO"] = 100 * (df_colaborador["RETRABALHOS"] / df_colaborador["TOTAL_DE_OS"])
-    df_colaborador["PERC_CORRECOES"] = 100 * (df_colaborador["CORRECOES"] / df_colaborador["TOTAL_DE_OS"])
+    df_colaborador["PERC_RETRABALHO"] = 100 * (
+        df_colaborador["RETRABALHOS"] / df_colaborador["TOTAL_DE_OS"]
+    )
+    df_colaborador["PERC_CORRECOES"] = 100 * (
+        df_colaborador["CORRECOES"] / df_colaborador["TOTAL_DE_OS"]
+    )
     df_colaborador["PERC_CORRECOES_DE_PRIMEIRA"] = 100 * (
         df_colaborador["CORRECOES_DE_PRIMEIRA"] / df_colaborador["TOTAL_DE_OS"]
     )
-    df_colaborador["PERC_CORRECOES_TARDIA"] = 100 * (df_colaborador["CORRECOES_TARDIA"] / df_colaborador["TOTAL_DE_OS"])
-    df_colaborador["REL_PROBLEMA_OS"] = df_colaborador["NUM_PROBLEMAS"] / df_colaborador["TOTAL_DE_OS"]
+    df_colaborador["PERC_CORRECOES_TARDIA"] = 100 * (
+        df_colaborador["CORRECOES_TARDIA"] / df_colaborador["TOTAL_DE_OS"]
+    )
+    df_colaborador["REL_PROBLEMA_OS"] = (
+        df_colaborador["NUM_PROBLEMAS"] / df_colaborador["TOTAL_DE_OS"]
+    )
 
     # Adiciona label de nomes
-    df_colaborador["COLABORADOR QUE EXECUTOU O SERVICO"] = df_colaborador["COLABORADOR QUE EXECUTOU O SERVICO"].astype(
-        int
-    )
+    df_colaborador["COLABORADOR QUE EXECUTOU O SERVICO"] = df_colaborador[
+        "COLABORADOR QUE EXECUTOU O SERVICO"
+    ].astype(int)
 
     # Encontra o nome do colaborador
     for ix, linha in df_colaborador.iterrows():
         colaborador = linha["COLABORADOR QUE EXECUTOU O SERVICO"]
         nome_colaborador = "Não encontrado"
         if colaborador in df_mecanicos["cod_colaborador"].values:
-            nome_colaborador = df_mecanicos[df_mecanicos["cod_colaborador"] == colaborador]["nome_colaborador"].values[
-                0
-            ]
+            nome_colaborador = df_mecanicos[
+                df_mecanicos["cod_colaborador"] == colaborador
+            ]["nome_colaborador"].values[0]
             nome_colaborador = re.sub(r"(?<!^)([A-Z])", r" \1", nome_colaborador)
 
-        df_colaborador.at[ix, "LABEL_COLABORADOR"] = f"{nome_colaborador} - {int(colaborador)}"
+        df_colaborador.at[ix, "LABEL_COLABORADOR"] = (
+            f"{nome_colaborador} - {int(colaborador)}"
+        )
         df_colaborador.at[ix, "NOME_COLABORADOR"] = f"{nome_colaborador}"
         df_colaborador.at[ix, "ID_COLABORADOR"] = int(colaborador)
 
     # Dias para correção
     df_dias_para_correcao = (
         df_os.groupby(["problem_no", "CODIGO DO VEICULO", "DESCRICAO DO MODELO"])
-        .agg(data_inicio=("DATA INICIO SERVIÇO", "min"), data_fim=("DATA INICIO SERVIÇO", "max"))
+        .agg(
+            data_inicio=("DATA INICIO SERVIÇO", "min"),
+            data_fim=("DATA INICIO SERVIÇO", "max"),
+        )
         .reset_index()
     )
-    df_dias_para_correcao["data_inicio"] = pd.to_datetime(df_dias_para_correcao["data_inicio"])
-    df_dias_para_correcao["data_fim"] = pd.to_datetime(df_dias_para_correcao["data_fim"])
+    df_dias_para_correcao["data_inicio"] = pd.to_datetime(
+        df_dias_para_correcao["data_inicio"]
+    )
+    df_dias_para_correcao["data_fim"] = pd.to_datetime(
+        df_dias_para_correcao["data_fim"]
+    )
     df_dias_para_correcao["dias_correcao"] = (
         df_dias_para_correcao["data_fim"] - df_dias_para_correcao["data_inicio"]
     ).dt.days
 
-
     # Num de OS para correção
-    df_num_os_por_problema = df_os.groupby(["problem_no", "CODIGO DO VEICULO"]).size().reset_index(name="TOTAL_DE_OS")
+    df_num_os_por_problema = (
+        df_os.groupby(["problem_no", "CODIGO DO VEICULO"])
+        .size()
+        .reset_index(name="TOTAL_DE_OS")
+    )
 
     # DF estatística
     df_estatistica = pd.DataFrame(
@@ -1195,22 +1395,33 @@ def obtem_estatistica_retrabalho_sql(df_os, min_dias):
             "TOTAL_DE_RETRABALHOS": len(df_os[df_os["retrabalho"]]),
             "TOTAL_DE_CORRECOES": len(df_os[df_os["correcao"]]),
             "TOTAL_DE_CORRECOES_DE_PRIMEIRA": len(df_os[df_os["correcao_primeira"]]),
-            "MEDIA_DE_DIAS_PARA_CORRECAO": df_dias_para_correcao["dias_correcao"].mean(),
-            "MEDIANA_DE_DIAS_PARA_CORRECAO": df_dias_para_correcao["dias_correcao"].median(),
+            "MEDIA_DE_DIAS_PARA_CORRECAO": df_dias_para_correcao[
+                "dias_correcao"
+            ].mean(),
+            "MEDIANA_DE_DIAS_PARA_CORRECAO": df_dias_para_correcao[
+                "dias_correcao"
+            ].median(),
             "MEDIA_DE_OS_PARA_CORRECAO": df_num_os_por_problema["TOTAL_DE_OS"].mean(),
         },
         index=[0],
     )
     # Correções tardias
     df_estatistica["TOTAL_DE_CORRECOES_TARDIAS"] = (
-        df_estatistica["TOTAL_DE_CORRECOES"] - df_estatistica["TOTAL_DE_CORRECOES_DE_PRIMEIRA"]
+        df_estatistica["TOTAL_DE_CORRECOES"]
+        - df_estatistica["TOTAL_DE_CORRECOES_DE_PRIMEIRA"]
     )
     # Rel probl/os
-    df_estatistica["RELACAO_OS_PROBLEMA"] = df_estatistica["TOTAL_DE_OS"] / df_estatistica["TOTAL_DE_PROBLEMAS"]
+    df_estatistica["RELACAO_OS_PROBLEMA"] = (
+        df_estatistica["TOTAL_DE_OS"] / df_estatistica["TOTAL_DE_PROBLEMAS"]
+    )
 
     # Porcentagens
-    df_estatistica["PERC_RETRABALHO"] = 100 * (df_estatistica["TOTAL_DE_RETRABALHOS"] / df_estatistica["TOTAL_DE_OS"])
-    df_estatistica["PERC_CORRECOES"] = 100 * (df_estatistica["TOTAL_DE_CORRECOES"] / df_estatistica["TOTAL_DE_OS"])
+    df_estatistica["PERC_RETRABALHO"] = 100 * (
+        df_estatistica["TOTAL_DE_RETRABALHOS"] / df_estatistica["TOTAL_DE_OS"]
+    )
+    df_estatistica["PERC_CORRECOES"] = 100 * (
+        df_estatistica["TOTAL_DE_CORRECOES"] / df_estatistica["TOTAL_DE_OS"]
+    )
     df_estatistica["PERC_CORRECOES_DE_PRIMEIRA"] = 100 * (
         df_estatistica["TOTAL_DE_CORRECOES_DE_PRIMEIRA"] / df_estatistica["TOTAL_DE_OS"]
     )
@@ -1289,7 +1500,9 @@ def computa_retrabalho(lista_os, datas, min_dias):
     }
 
 
-@callback(Output("graph-retrabalho-correcoes", "figure"), Input("store-dados-os", "data"))
+@callback(
+    Output("graph-retrabalho-correcoes", "figure"), Input("store-dados-os", "data")
+)
 def plota_grafico_pizza_retrabalho(data):
     if data["vazio"]:
         return go.Figure()
@@ -1326,7 +1539,9 @@ def plota_grafico_pizza_retrabalho(data):
     return fig
 
 
-@callback(Output("graph-retrabalho-cumulativo", "figure"), Input("store-dados-os", "data"))
+@callback(
+    Output("graph-retrabalho-cumulativo", "figure"), Input("store-dados-os", "data")
+)
 def plota_grafico_cumulativo_retrabalho(data):
     if data["vazio"]:
         return go.Figure()
@@ -1335,9 +1550,13 @@ def plota_grafico_cumulativo_retrabalho(data):
     df_dias_para_correcao = pd.DataFrame(data["df_dias_para_correcao"])
 
     # Ordenando os dados e criando a coluna cumulativa em termos percentuais
-    df_dias_para_correcao_ordenado = df_dias_para_correcao.sort_values(by="dias_correcao").copy()
+    df_dias_para_correcao_ordenado = df_dias_para_correcao.sort_values(
+        by="dias_correcao"
+    ).copy()
     df_dias_para_correcao_ordenado["cumulative_percentage"] = (
-        df_dias_para_correcao_ordenado["dias_correcao"].expanding().count() / len(df_dias_para_correcao_ordenado) * 100
+        df_dias_para_correcao_ordenado["dias_correcao"].expanding().count()
+        / len(df_dias_para_correcao_ordenado)
+        * 100
     )
 
     # Verifica se df não está vazio
@@ -1349,7 +1568,10 @@ def plota_grafico_cumulativo_retrabalho(data):
         df_dias_para_correcao_ordenado,
         x="dias_correcao",
         y="cumulative_percentage",
-        labels={"dias_correcao": "Dias", "cumulative_percentage": "Correções Cumulativas (%)"},
+        labels={
+            "dias_correcao": "Dias",
+            "cumulative_percentage": "Correções Cumulativas (%)",
+        },
     )
 
     # Mostrando os pontos e linhas
@@ -1358,8 +1580,11 @@ def plota_grafico_cumulativo_retrabalho(data):
     )
 
     # Adiciona o Topo
-    df_top = df_dias_para_correcao_ordenado.groupby("dias_correcao", as_index=False).agg(
-        cumulative_percentage=("cumulative_percentage", "max"), count=("dias_correcao", "count")
+    df_top = df_dias_para_correcao_ordenado.groupby(
+        "dias_correcao", as_index=False
+    ).agg(
+        cumulative_percentage=("cumulative_percentage", "max"),
+        count=("dias_correcao", "count"),
     )
     # Reseta o index para garantir a sequencialidade
     df_top = df_top.reset_index(drop=True)
@@ -1379,7 +1604,9 @@ def plota_grafico_cumulativo_retrabalho(data):
     # Adiciona o rótulo a cada freq de registros
     for i in range(len(df_top)):
         if i % label_frequency == 0:
-            df_top.at[i, "label"] = f"{df_top.at[i, 'cumulative_percentage']:.0f}% <br>({df_top.at[i, 'count']})"
+            df_top.at[i, "label"] = (
+                f"{df_top.at[i, 'cumulative_percentage']:.0f}% <br>({df_top.at[i, 'count']})"
+            )
 
     fig.add_scatter(
         x=df_top["dias_correcao"],
@@ -1392,14 +1619,19 @@ def plota_grafico_cumulativo_retrabalho(data):
     )
 
     fig.update_layout(
-        xaxis=dict(range=[-1, df_dias_para_correcao_ordenado["dias_correcao"].max() + 3]),
+        xaxis=dict(
+            range=[-1, df_dias_para_correcao_ordenado["dias_correcao"].max() + 3]
+        ),
     )
 
     # Retorna o gráfico
     return fig
 
 
-@callback(Output("graph-retrabalho-por-modelo-perc", "figure"), Input("store-dados-os", "data"))
+@callback(
+    Output("graph-retrabalho-por-modelo-perc", "figure"),
+    Input("store-dados-os", "data"),
+)
 def plota_grafico_barras_retrabalho_por_modelo_perc(data):
     if data["vazio"]:
         return go.Figure()
@@ -1426,7 +1658,8 @@ def plota_grafico_barras_retrabalho_por_modelo_perc(data):
         text=[
             f"{retrabalho} ({perc_retrab:.2f}%)"
             for retrabalho, perc_retrab in zip(
-                df_modelo["CORRECOES_DE_PRIMEIRA"], df_modelo["PERC_CORRECOES_DE_PRIMEIRA"]
+                df_modelo["CORRECOES_DE_PRIMEIRA"],
+                df_modelo["PERC_CORRECOES_DE_PRIMEIRA"],
             )
         ],
         selector=dict(name="PERC_CORRECOES_DE_PRIMEIRA"),
@@ -1436,7 +1669,9 @@ def plota_grafico_barras_retrabalho_por_modelo_perc(data):
     bar_chart.update_traces(
         text=[
             f"{correcoes} ({perc_correcoes:.2f}%)"
-            for correcoes, perc_correcoes in zip(df_modelo["CORRECOES_TARDIA"], df_modelo["PERC_CORRECOES_TARDIA"])
+            for correcoes, perc_correcoes in zip(
+                df_modelo["CORRECOES_TARDIA"], df_modelo["PERC_CORRECOES_TARDIA"]
+            )
         ],
         selector=dict(name="PERC_CORRECOES_TARDIA"),
     )
@@ -1445,7 +1680,9 @@ def plota_grafico_barras_retrabalho_por_modelo_perc(data):
     bar_chart.update_traces(
         text=[
             f"{correcoes} ({perc_correcoes:.2f}%)"
-            for correcoes, perc_correcoes in zip(df_modelo["RETRABALHOS"], df_modelo["PERC_RETRABALHO"])
+            for correcoes, perc_correcoes in zip(
+                df_modelo["RETRABALHOS"], df_modelo["PERC_RETRABALHO"]
+            )
         ],
         selector=dict(name="PERC_RETRABALHO"),
     )
@@ -1485,8 +1722,12 @@ def atualiza_indicadores(data):
     total_de_os = int(df_estatistica["TOTAL_DE_OS"].values[0])
     rel_os_problemas = round(float(df_estatistica["RELACAO_OS_PROBLEMA"].values[0]), 2)
 
-    num_problema_sem_retrabalho = int(len(df_num_os_por_problema[df_num_os_por_problema["TOTAL_DE_OS"] == 1]))
-    perc_problema_com_retrabalho = round(100 * (1 - (num_problema_sem_retrabalho / total_de_problemas)), 2)
+    num_problema_sem_retrabalho = int(
+        len(df_num_os_por_problema[df_num_os_por_problema["TOTAL_DE_OS"] == 1])
+    )
+    perc_problema_com_retrabalho = round(
+        100 * (1 - (num_problema_sem_retrabalho / total_de_problemas)), 2
+    )
 
     num_retrabalho = int(df_estatistica["TOTAL_DE_RETRABALHOS"].values[0])
     perc_retrabalho = round(float(df_estatistica["PERC_RETRABALHO"].values[0]), 2)
@@ -1523,13 +1764,19 @@ def atualiza_indicadores_mecanico(data):
     media_os_por_mecanico = round(float(df_colaborador["TOTAL_DE_OS"].mean()), 2)
 
     # Retrabalhos médios
-    media_retrabalhos_por_mecanico = round(float(df_colaborador["PERC_RETRABALHO"].mean()), 2)
+    media_retrabalhos_por_mecanico = round(
+        float(df_colaborador["PERC_RETRABALHO"].mean()), 2
+    )
 
     # Correções de Primeira
-    media_correcoes_primeira = round(float(df_colaborador["PERC_CORRECOES_DE_PRIMEIRA"].mean()), 2)
+    media_correcoes_primeira = round(
+        float(df_colaborador["PERC_CORRECOES_DE_PRIMEIRA"].mean()), 2
+    )
 
     # Correções Tardias
-    media_correcoes_tardias = round(float(df_colaborador["PERC_CORRECOES_TARDIA"].mean()), 2)
+    media_correcoes_tardias = round(
+        float(df_colaborador["PERC_CORRECOES_TARDIA"].mean()), 2
+    )
 
     return [
         f"{media_os_por_mecanico} OS / colaborador",
@@ -1551,10 +1798,14 @@ def update_tabela_mecanicos_retrabalho(data):
     df_colaborador = pd.DataFrame(data["df_colaborador"])
 
     # Prepara o dataframe para a tabela
-    df_colaborador["REL_OS_PROB"] = round(df_colaborador["TOTAL_DE_OS"] / df_colaborador["NUM_PROBLEMAS"], 2)
+    df_colaborador["REL_OS_PROB"] = round(
+        df_colaborador["TOTAL_DE_OS"] / df_colaborador["NUM_PROBLEMAS"], 2
+    )
     df_colaborador["PERC_RETRABALHO"] = df_colaborador["PERC_RETRABALHO"].round(2)
     df_colaborador["PERC_CORRECOES"] = df_colaborador["PERC_CORRECOES"].round(2)
-    df_colaborador["PERC_CORRECOES_DE_PRIMEIRA"] = df_colaborador["PERC_CORRECOES_DE_PRIMEIRA"].round(2)
+    df_colaborador["PERC_CORRECOES_DE_PRIMEIRA"] = df_colaborador[
+        "PERC_CORRECOES_DE_PRIMEIRA"
+    ].round(2)
 
     # Ordena por PERC_RETRABALHO
     df_colaborador = df_colaborador.sort_values(by="PERC_RETRABALHO", ascending=False)
@@ -1589,11 +1840,16 @@ def update_tabela_veiculos_mais_problematicos(data):
     df_os_problematicas["TOTAL_DE_PROBLEMAS"] = df_os_problematicas["problem_no"]
     df_os_problematicas["TOTAL_DE_OS"] = df_os_problematicas["TOTAL_DE_OS"]
     df_os_problematicas["REL_PROBLEMA_OS"] = round(
-        df_os_problematicas["TOTAL_DE_OS"] / df_os_problematicas["TOTAL_DE_PROBLEMAS"], 2
+        df_os_problematicas["TOTAL_DE_OS"] / df_os_problematicas["TOTAL_DE_PROBLEMAS"],
+        2,
     )
-    df_os_problematicas["TOTAL_DIAS_ATE_CORRIGIR"] = df_os_problematicas["dias_correcao"]
+    df_os_problematicas["TOTAL_DIAS_ATE_CORRIGIR"] = df_os_problematicas[
+        "dias_correcao"
+    ]
 
-    df_os_problematicas.sort_values(by="TOTAL_DIAS_ATE_CORRIGIR", ascending=False, inplace=True)
+    df_os_problematicas.sort_values(
+        by="TOTAL_DIAS_ATE_CORRIGIR", ascending=False, inplace=True
+    )
 
     return df_os_problematicas.to_dict("records")
 
@@ -1655,11 +1911,16 @@ def update_lista_veiculos_detalhar(data):
     df_num_os_por_problema = pd.DataFrame(data["df_num_os_por_problema"])
 
     # Faz o total
-    df_total_os_por_veiculo = df_num_os_por_problema.groupby("CODIGO DO VEICULO")["TOTAL_DE_OS"].sum().reset_index()
-
+    df_total_os_por_veiculo = (
+        df_num_os_por_problema.groupby("CODIGO DO VEICULO")["TOTAL_DE_OS"]
+        .sum()
+        .reset_index()
+    )
 
     # Ordena veículos por num de os
-    df_top_veiculos = df_total_os_por_veiculo.sort_values(by="TOTAL_DE_OS", ascending=False)
+    df_top_veiculos = df_total_os_por_veiculo.sort_values(
+        by="TOTAL_DE_OS", ascending=False
+    )
 
     # Gera a lista de opções
     vec_list = [
@@ -1675,7 +1936,11 @@ def update_lista_veiculos_detalhar(data):
 
 @callback(
     Output("tabela-detalhes-vec-os", "rowData"),
-    [Input("store-dados-os", "data"), Input("input-lista-vec-detalhar", "value"), Input("input-dias", "value")],
+    [
+        Input("store-dados-os", "data"),
+        Input("input-lista-vec-detalhar", "value"),
+        Input("input-dias", "value"),
+    ],
 )
 def update_tabela_veiculos_detalhar(data, vec_detalhar, min_dias):
     if data["vazio"] or vec_detalhar is None or vec_detalhar == "":
@@ -1700,36 +1965,52 @@ def update_tabela_veiculos_detalhar(data, vec_detalhar, min_dias):
 
     df_correcao_vec = pd.DataFrame()
     if not df_correcao.empty:
-        df_correcao_vec = df_correcao[df_correcao["CODIGO DO VEICULO"] == vec_detalhar].copy()
+        df_correcao_vec = df_correcao[
+            df_correcao["CODIGO DO VEICULO"] == vec_detalhar
+        ].copy()
         df_correcao_vec["CLASSIFICACAO"] = "Correção"
         df_correcao_vec["CLASSIFICACAO_EMOJI"] = "✅"
 
     # Junta total com detalhar
-    df_correcao_vec = pd.merge(df_correcao_vec, df_num_os_por_problema, on=["problem_no", "CODIGO DO VEICULO"])
+    df_correcao_vec = pd.merge(
+        df_correcao_vec, df_num_os_por_problema, on=["problem_no", "CODIGO DO VEICULO"]
+    )
 
     # Junta os dados
     df_detalhar = pd.concat([df_retrabalho_vec, df_correcao_vec])
-    df_detalhar = df_detalhar.sort_values(by=["CODIGO DO VEICULO", "DATA INICIO SERVICO"])
+    df_detalhar = df_detalhar.sort_values(
+        by=["CODIGO DO VEICULO", "DATA INICIO SERVICO"]
+    )
 
     # Dias entre OS
-    df_detalhar["DATA_DT"] = pd.to_datetime(df_detalhar["DATA INICIO SERVICO"], errors='coerce')
-    df_detalhar["DIAS_ENTRE_OS_PROBLEMA"] = df_detalhar.groupby("problem_no")["DATA_DT"].diff().dt.days
-    df_detalhar["DIAS_ENTRE_OS_PROBLEMA"] = df_detalhar["DIAS_ENTRE_OS_PROBLEMA"].fillna(0)
+    df_detalhar["DATA_DT"] = pd.to_datetime(
+        df_detalhar["DATA INICIO SERVICO"], errors="coerce"
+    )
+    df_detalhar["DIAS_ENTRE_OS_PROBLEMA"] = (
+        df_detalhar.groupby("problem_no")["DATA_DT"].diff().dt.days
+    )
+    df_detalhar["DIAS_ENTRE_OS_PROBLEMA"] = df_detalhar[
+        "DIAS_ENTRE_OS_PROBLEMA"
+    ].fillna(0)
 
     df_detalhar["DIAS_ENTRE_OS"] = df_detalhar["DATA_DT"].diff().dt.days
     df_detalhar["DIAS_ENTRE_OS"] = df_detalhar["DIAS_ENTRE_OS"].fillna(0)
 
-    df_detalhar["SOMA_DIAS_MSM_PROB"] = df_detalhar.groupby("problem_no")["DIAS_ENTRE_OS"].transform("sum")
+    df_detalhar["SOMA_DIAS_MSM_PROB"] = df_detalhar.groupby("problem_no")[
+        "DIAS_ENTRE_OS"
+    ].transform("sum")
 
     # Gera NaNs
     df_detalhar["TOTAL_DE_OS"] = df_detalhar["TOTAL_DE_OS"]
-    df_detalhar = df_detalhar.fillna('-')
+    df_detalhar = df_detalhar.fillna("-")
 
     # Formata datas
-    df_detalhar["DIA_INICIO"] = pd.to_datetime(df_detalhar["DATA INICIO SERVICO"]).dt.strftime("%d/%m/%Y %H:%M")
-    df_detalhar["DIA_TERMINO"] = pd.to_datetime(df_detalhar["DATA DE FECHAMENTO DO SERVICO"]).dt.strftime(
-        "%d/%m/%Y %H:%M"
-    )
+    df_detalhar["DIA_INICIO"] = pd.to_datetime(
+        df_detalhar["DATA INICIO SERVICO"]
+    ).dt.strftime("%d/%m/%Y %H:%M")
+    df_detalhar["DIA_TERMINO"] = pd.to_datetime(
+        df_detalhar["DATA DE FECHAMENTO DO SERVICO"]
+    ).dt.strftime("%d/%m/%Y %H:%M")
 
     # Encontra o colaborador
     # TODO: Join com colaborador e remover esse codigo
@@ -1737,9 +2018,9 @@ def update_tabela_veiculos_detalhar(data, vec_detalhar, min_dias):
         colaborador = linha["COLABORADOR QUE EXECUTOU O SERVICO"]
         nome_colaborador = "Não encontrado"
         if colaborador in df_mecanicos["cod_colaborador"].values:
-            nome_colaborador = df_mecanicos[df_mecanicos["cod_colaborador"] == colaborador]["nome_colaborador"].values[
-                0
-            ]
+            nome_colaborador = df_mecanicos[
+                df_mecanicos["cod_colaborador"] == colaborador
+            ]["nome_colaborador"].values[0]
             nome_colaborador = re.sub(r"(?<!^)([A-Z])", r" \1", nome_colaborador)
 
         df_detalhar.at[ix, "LABEL_COLABORADOR"] = f"{colaborador} - {nome_colaborador}"

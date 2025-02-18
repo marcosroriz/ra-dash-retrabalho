@@ -141,23 +141,23 @@ class OSService:
         WHERE
             problem_grouping."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_corrigida_str}'
             AND problem_grouping."DESCRICAO DO SERVICO" IN ({', '.join([f"'{x}'" for x in lista_os])})
-            AND problem_grouping."DESCRICAO DO MODELO" IN ('M.BENZ O 500/INDUSCAR MILLEN A')
-                -- AND (
-                    --"DESCRICAO DO SERVICO" = 'Motor cortando alimentação'
-                    --OR
-                    --"DESCRICAO DO SERVICO" = 'Motor sem força'
-                --)
-                --AND 
-                --(
-                -- AND od."CODIGO DO VEICULO" ='50803'
-                --OR
-                --od."CODIGO DO VEICULO" ='50530'
-                --)
+            --  AND problem_grouping."DESCRICAO DO MODELO" IN ('M.BENZ O 500/INDUSCAR MILLEN A')
+            -- AND (
+            --"DESCRICAO DO SERVICO" = 'Motor cortando alimentação'
+            --OR
+            --"DESCRICAO DO SERVICO" = 'Motor sem força'
+            --)
+            --AND 
+            --(
+            -- AND od."CODIGO DO VEICULO" ='50803'
+            --OR
+            --od."CODIGO DO VEICULO" ='50530'
+            --)
         ORDER BY 
             problem_grouping."DATA INICIO SERVIÇO";
         """
 
-        df_os_query = pd.read_sql_query(query, pgEngine)
+        df_os_query = pd.read_sql_query(query, self.dbEngine)
 
         # Tratamento de datas
         df_os_query["DATA INICIO SERVICO"] = pd.to_datetime(
