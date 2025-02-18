@@ -942,7 +942,7 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela de retrabalho por descrição de serviço", className="align-self-center"), width=True),
+                dbc.Col(html.H4("Tabela de peças por OS", className="align-self-center"), width=True),
             ],
             align="center",
         ),
@@ -968,6 +968,13 @@ layout = dbc.Container(
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
+         dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+                dbc.Col(html.H4("Tabela de peças por descrição de serviço", className="align-self-center"), width=True),
+            ],
+            align="center",
+        ),
         dag.AgGrid(
             enableEnterpriseModules=True,
             id="tabela-pecas-substituidas-por-descricao",
