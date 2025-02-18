@@ -69,5 +69,29 @@ tbl_top_os_geral_retrabalho = [
         "type": ["numericColumn"],
         "minWidth": 200
     },
+    {
+        "field": "TOTAL_GASTO",
+        "headerName": "TOTAL GASTO (PEÇAS)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "valueFormatter": {
+            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+        },
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "TOTAL_GASTO_RETRABALHO",
+        "headerName": "TOTAL GASTO RETRABALHO (PEÇAS)",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 200,
+        "valueFormatter": {
+            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+        },
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
 
 ]

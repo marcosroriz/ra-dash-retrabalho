@@ -7,9 +7,8 @@ from db import PostgresSingleton
 from ..sql_utils import *
 
 class ColaboradorService:
-    def __init__(self):
-        pgDB = PostgresSingleton.get_instance()
-        self.pgEngine = pgDB.get_engine()
+    def __init__(self, dbEngine):
+        self.pgEngine = dbEngine
 
     def get_mecanicos(self)->pd.DataFrame:
         '''Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados'''
@@ -296,10 +295,12 @@ class ColaboradorService:
             100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
             100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA",
+            100 * ROUND(COUNT(*)::NUMERIC / SUM(COUNT(*)) OVER (), 4) AS "PERC_TOTAL_OS",
             ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media_colaborador,
+            COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA",
             osn.nota_media_os AS "nota_media_os",
-            100 * ROUND(COUNT(*)::NUMERIC / SUM(COUNT(*)) OVER (), 4) AS "PERC_TOTAL_OS"
+            SUM(pg."VALOR") AS "TOTAL_GASTO",
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
         FROM
             mat_view_retrabalho_{min_dias}_dias main
         LEFT JOIN
@@ -317,6 +318,10 @@ class ColaboradorService:
             ON main."DESCRICAO DA OFICINA" = osn."DESCRICAO DA OFICINA"
             AND main."DESCRICAO DA SECAO" = osn."DESCRICAO DA SECAO"
             AND main."DESCRICAO DO SERVICO" = osn."DESCRICAO DO SERVICO"
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
         WHERE
             main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
             {inner_subquery_secoes_str2}
@@ -332,7 +337,7 @@ class ColaboradorService:
         ORDER BY
             "PERC_RETRABALHO" DESC;
         """
-        
+        print(query)
         # Executa a query
         df = pd.read_sql(query, self.pgEngine)
 

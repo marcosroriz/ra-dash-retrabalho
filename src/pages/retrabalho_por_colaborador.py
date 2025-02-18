@@ -45,7 +45,7 @@ pgEngine = pgDB.get_engine()
 from modules.colaborador.colaborador_service import ColaboradorService
 from modules.colaborador.graficos import *
 
-colab = ColaboradorService()
+colab = ColaboradorService(pgEngine)
 
 
 ##############################################################################
