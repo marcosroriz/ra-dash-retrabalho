@@ -806,10 +806,8 @@ class HomeServiceVeiculo:
                 servico
         )
         SELECT
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO",
-            COUNT(*) AS "TOTAL_OS",
+            SUM(CASE WHEN main."NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS",
             SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
@@ -840,8 +838,6 @@ class HomeServiceVeiculo:
             {inner_subquery_os_str}
             {inner_subquery_veiculos_str}
         GROUP BY
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO",
             op.num_problema
         ORDER BY

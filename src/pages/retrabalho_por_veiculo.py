@@ -941,8 +941,8 @@ layout = dbc.Container(
         dcc.Graph(id="graph-pecas-trocadas-por-mes"),
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="mdi:tools", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela de peças por OS", className="align-self-center"), width=True),
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+                dbc.Col(html.H4("Tabela de retrabalho por descrição de serviço", className="align-self-center"), width=True),
             ],
             align="center",
         ),
@@ -969,12 +969,24 @@ layout = dbc.Container(
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="mdi:cog-outline", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela de peças por descrição de serviço", className="align-self-center"), width=True),
+        dag.AgGrid(
+            enableEnterpriseModules=True,
+            id="tabela-pecas-substituidas-por-descricao",
+            columnDefs=[
+                {"field": "DESCRIÇÃO DE SERVIÇO", "minWidth": 370},
+                {"field": "QUANTIDADE DE OS'S", "minWidth": 100},
+                {"field": "QUANTIDADE DE PEÇAS", "minWidth": 120},
+                {"field": "MODELO", "minWidth": 350},
+                {"field": "VALOR", "minWidth": 100,
+                     "type": ["numericColumn"],
+                     "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
+                     "sort": "desc"
+                },
             ],
-            align="center",
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=20),
         dbc.Label("SELEÇÃO DA DESCRIÇÃO DE SERVIÇO"),
