@@ -567,11 +567,31 @@ class HomeServiceVeiculo:
             ORDER BY 
                 year_month;
         """
+        query_media_modelo = f"""
+        SELECT 
+            to_char("DATA"::DATE, 'YYYY-MM') AS year_month,
+            "MODELO",
+            ROUND(SUM("VALOR") / COUNT(DISTINCT "EQUIPAMENTO"), 2) AS media_modelo
+        FROM 
+            pecas_gerais
+        WHERE 
+            "DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+            AND "MODELO" IN (SELECT DISTINCT "MODELO" FROM pecas_gerais WHERE "EQUIPAMENTO" IN ({equipamentos_sql}))
+        GROUP BY 
+            year_month, "MODELO"
+        ORDER BY 
+            year_month, "MODELO";
+
+        """
+
         try:
             # Executa a query dos veículos
             df_veiculos = pd.read_sql(query_teste, self.dbEngine)
             # Executa a query da média geral
             df_media_geral = pd.read_sql(query_media_geral_2, self.dbEngine)
+            #Executa a query para da a média do modelo
+            df_media_modelo = pd.read_sql(query_media_modelo, self.dbEngine)
 
             # Verifica se há dados
             if df_veiculos.empty and df_media_geral.empty:
@@ -579,11 +599,12 @@ class HomeServiceVeiculo:
             # Converte a coluna de datas para datetime
             df_veiculos["year_month_dt"] = pd.to_datetime(df_veiculos["year_month"], format="%Y-%m", errors="coerce")
             df_media_geral["year_month_dt"] = pd.to_datetime(df_media_geral["year_month"], format="%Y-%m", errors="coerce")
+            df_media_modelo["year_month_dt"] = pd.to_datetime(df_media_modelo["year_month"], format="%Y-%m", errors="coerce")
 
-            return df_veiculos, df_media_geral
+            return df_veiculos, df_media_geral, df_media_modelo
         except Exception as e:
             print(f"Erro ao executar as consultas: {e}")
-            return [], []
+            return [], [], []
         
     def tabela_pecas_fun(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
             # Datas
@@ -1069,58 +1090,58 @@ class HomeServiceVeiculo:
             print(f"Erro ao executar a consulta da tabela: {e}")
             return [], "R$ 0,00", "R$ 0,00",[]
         
-    def atualizar_pecas_fun(self, datas, min_dias, lista_veiculos, descricao_servico):
-        data_inicio_str = datas[0]
+    # def atualizar_pecas_fun(self, datas, min_dias, lista_veiculos, descricao_servico):
+    #     data_inicio_str = datas[0]
     
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+    #     data_fim = pd.to_datetime(datas[1])
+    #     data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
     
-        data_inicio_dt = pd.to_datetime(data_inicio_str)
-        data_inicio_str = data_inicio_dt.strftime("%d/%m/%Y")
-        data_fim_str = data_fim.strftime("%d/%m/%Y")
+    #     data_inicio_dt = pd.to_datetime(data_inicio_str)
+    #     data_inicio_str = data_inicio_dt.strftime("%d/%m/%Y")
+    #     data_fim_str = data_fim.strftime("%d/%m/%Y")
     
-        subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
+    #     subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
 
         
-        if data_inicio_str is None:
-            return go.Figure()  # Ou algum valor padrão válido
-        if data_fim_str is None:
-            return go.Figure()  # Ou algum valor padrão válido
+    #     if data_inicio_str is None:
+    #         return go.Figure()  # Ou algum valor padrão válido
+    #     if data_fim_str is None:
+    #         return go.Figure()  # Ou algum valor padrão válido
         
-        # Ajustar para múltiplos serviços selecionados
-        if isinstance(descricao_servico, list):
-            descricao_servico_str = "', '".join(descricao_servico)  # Transforma lista em string separada por vírgula
-            filtro_servico = f"od.\"DESCRICAO DO SERVICO\" IN ('{descricao_servico_str}')"
-        else:
-            filtro_servico = f"od.\"DESCRICAO DO SERVICO\" = '{descricao_servico}'"
+    #     # Ajustar para múltiplos serviços selecionados
+    #     if isinstance(descricao_servico, list):
+    #         descricao_servico_str = "', '".join(descricao_servico)  # Transforma lista em string separada por vírgula
+    #         filtro_servico = f"od.\"DESCRICAO DO SERVICO\" IN ('{descricao_servico_str}')"
+    #     else:
+    #         filtro_servico = f"od.\"DESCRICAO DO SERVICO\" = '{descricao_servico}'"
     
-        query_detalhes = f"""
-            SELECT
-                pg."OS" AS "NÚMERO DA OS",
-                pg."PRODUTO" AS "PEÇA TROCADA",
-                pg."QUANTIDADE" AS "QUANTIDADE DE PEÇAS",
-                od."DESCRICAO DO SERVICO",
-                pg."MODELO" AS "MODELO",
-                pg."VALOR" AS "VALOR"
-            FROM pecas_gerais pg
-            JOIN mat_view_retrabalho_{min_dias}_dias as od ON pg."OS" = od."NUMERO DA OS"
-            WHERE
-                {filtro_servico}
-                AND TO_DATE(pg."DATA", 'DD/MM/YY')
-                    BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
-                        AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-                AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-            {subquery_veiculos_str}
-            ORDER BY
-                pg."OS" ASC, pg."PRODUTO" ASC;
-        """
-        #print(query_detalhes)
+    #     query_detalhes = f"""
+    #         SELECT
+    #             pg."OS" AS "NÚMERO DA OS",
+    #             pg."PRODUTO" AS "PEÇA TROCADA",
+    #             pg."QUANTIDADE" AS "QUANTIDADE DE PEÇAS",
+    #             od."DESCRICAO DO SERVICO",
+    #             pg."MODELO" AS "MODELO",
+    #             pg."VALOR" AS "VALOR"
+    #         FROM pecas_gerais pg
+    #         JOIN mat_view_retrabalho_{min_dias}_dias as od ON pg."OS" = od."NUMERO DA OS"
+    #         WHERE
+    #             {filtro_servico}
+    #             AND TO_DATE(pg."DATA", 'DD/MM/YY')
+    #                 BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
+    #                     AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+    #             AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+    #         {subquery_veiculos_str}
+    #         ORDER BY
+    #             pg."OS" ASC, pg."PRODUTO" ASC;
+    #     """
+    #     #print(query_detalhes)
     
-        try:
-            df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
-            df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).round(2)#.apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-            return df_detalhes
+    #     try:
+    #         df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
+    #         df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).round(2)#.apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    #         return df_detalhes
     
-        except Exception as e:
-            print(f"Erro ao executar a consulta da tabela: {e}")
-            return pd.DataFrame()
+    #     except Exception as e:
+    #         print(f"Erro ao executar a consulta da tabela: {e}")
+    #         return pd.DataFrame()

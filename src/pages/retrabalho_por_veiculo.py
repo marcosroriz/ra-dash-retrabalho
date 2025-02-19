@@ -941,11 +941,12 @@ layout = dbc.Container(
         dcc.Graph(id="graph-pecas-trocadas-por-mes"),
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela de retrabalho por descrição de serviço", className="align-self-center"), width=True),
+                dbc.Col(DashIconify(icon="mdi:tools", width=45), width="auto"),
+                dbc.Col(html.H4("Tabela de peças por OS", className="align-self-center"), width=True),
             ],
             align="center",
         ),
+        dmc.Space(h=20),
         dag.AgGrid(
             enableEnterpriseModules=True,
             id="tabela-pecas-substituidas",
@@ -968,6 +969,21 @@ layout = dbc.Container(
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:cog-outline", width=45), width="auto"),
+                dbc.Col(html.H4("Tabela de peças por descrição de serviço", className="align-self-center"), width=True),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
+        dbc.Label("SELEÇÃO DA DESCRIÇÃO DE SERVIÇO"),
+        dcc.Dropdown(
+            id="descricao_servico_unicas_lista",
+            multi=True,
+            placeholder="Selecione uma ou mais descrições...",
+        ),
+        dmc.Space(h=20),
         dag.AgGrid(
             enableEnterpriseModules=True,
             id="tabela-pecas-substituidas-por-descricao",
@@ -987,34 +1003,29 @@ layout = dbc.Container(
             columnSize="autoSize",
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
-        dmc.Space(h=40),
-        dbc.Label("SELEÇÃO DA DESCRIÇÃO DE SERVIÇO"),
-        dcc.Dropdown(
-            id="descricao_servico_unicas_lista",
-            multi=True,
-            placeholder="Selecione uma ou mais descrições...",
-        ),
-        dmc.Space(h=20),
-        dag.AgGrid(
-            enableEnterpriseModules=True,
-            id="tabela-pecas-substituidas-por-descricao-especifica",
-            columnDefs=[
-                {"field": "NÚMERO DA OS", "minWidth": 100},
-                {"field": "PEÇA TROCADA", "minWidth": 350},
-                {"field": "QUANTIDADE DE PEÇAS", "minWidth": 100},
-                {"field": "DESCRICAO DO SERVICO", "minWidth": 280},
-                {"field": "MODELO", "minWidth": 300},
-                {"field": "VALOR", "minWidth": 100,
-                     "type": ["numericColumn"],
-                     "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
-                     "sort": "desc"
-                },
-            ],
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
-        ),
+
+        # dmc.Space(h=40),
+        # dag.AgGrid(
+        #     enableEnterpriseModules=True,
+        #     id="tabela-pecas-substituidas-por-descricao-especifica",
+        #     columnDefs=[
+        #         {"field": "NÚMERO DA OS", "minWidth": 100},
+        #         {"field": "PEÇA TROCADA", "minWidth": 350},
+        #         {"field": "QUANTIDADE DE PEÇAS", "minWidth": 100},
+        #         {"field": "DESCRICAO DO SERVICO", "minWidth": 280},
+        #         {"field": "MODELO", "minWidth": 300},
+        #         {"field": "VALOR", "minWidth": 100,
+        #              "type": ["numericColumn"],
+        #              "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
+        #              "sort": "desc"
+        #         },
+        #     ],
+        #     rowData=[],
+        #     defaultColDef={"filter": True, "floatingFilter": True},
+        #     columnSize="autoSize",
+        #     style={"height": 400, "resize": "vertical", "overflow": "hidden"},
+        # ),
+
         dmc.Space(h=40),
         dbc.Row(
             [
@@ -1190,8 +1201,8 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_
     # Garante que equipamentos seja uma lista
     if isinstance(equipamentos, str):
         equipamentos = [equipamentos]
-    df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos)
-    fig = grafico_tabela_pecas(df_veiculos, df_media_geral)
+    df_veiculos, df_media_geral, df_media_modelo = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos)
+    fig = grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo)
     return fig
 
 # TABELA DE PEÇAS, INDICADORES DE: VALORES DE PECAS, VALOR DE PECAS/MES, RANKING DO VALOR DE PECAS
@@ -1271,45 +1282,49 @@ def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, l
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-veiculos", "value"),
+        Input("descricao_servico_unicas_lista", "value"),
     ],
 )
-def atualiza_tabela_pecas_por_descricao(datas, min_dias, lista_veiculos):
+def atualiza_tabela_pecas_por_descricao(datas, min_dias, lista_veiculos, descricao_selecionada):
     # Valida input
     if not input_valido3(datas, min_dias, lista_veiculos):
         return [], []
-    
+
     # Obtém os dados necessários
     df_detalhes_dict, _, _, descricao_servico_unicas_lista = home_service_veiculos.tabela_pecas_por_descricao_fun(
         datas, min_dias, lista_veiculos
     )
-    
-    # Configura a lista de opções para o dropdown
+
+    # Constrói a lista de opções para o dropdown
     options = [{"label": desc, "value": desc} for desc in descricao_servico_unicas_lista]
-    
+
+    # Se houver seleção no dropdown, filtra os dados da tabela
+    if descricao_selecionada:
+        df_detalhes_dict = [row for row in df_detalhes_dict if row["DESCRIÇÃO DE SERVIÇO"] in descricao_selecionada]
+
     return df_detalhes_dict, options
 
 # PECAS DETALHADAS DA DESCRIÇÃO
-@callback(
-    Output("tabela-pecas-substituidas-por-descricao-especifica", "rowData"),
-    [
-        Input("input-intervalo-datas-por-veiculo", "value"),
-        Input("input-select-dias-geral-retrabalho", "value"),
-        Input("input-select-veiculos", "value"),
-        Input("descricao_servico_unicas_lista", "value"),
-    ],
-)
-def atualizar_veiculos(datas, min_dias, lista_veiculos, descricoes_selecionadas):
-    if not descricoes_selecionadas:
-        return []  # Retorna uma lista vazia corretamente
-    # Chama a função para obter os dados da consulta SQL
-    df = home_service_veiculos.atualizar_pecas_fun(datas, min_dias, lista_veiculos, descricoes_selecionadas)
+# @callback(
+#     Output("tabela-pecas-substituidas-por-descricao-especifica", "rowData"),
+#     [
+#         Input("input-intervalo-datas-por-veiculo", "value"),
+#         Input("input-select-dias-geral-retrabalho", "value"),
+#         Input("input-select-veiculos", "value"),
+#         Input("descricao_servico_unicas_lista", "value"),
+#     ],
+# )
+# def atualizar_veiculos(datas, min_dias, lista_veiculos, descricoes_selecionadas):
+#     if not descricoes_selecionadas:
+#         return []  # Retorna uma lista vazia corretamente
+#     # Chama a função para obter os dados da consulta SQL
+#     df = home_service_veiculos.atualizar_pecas_fun(datas, min_dias, lista_veiculos, descricoes_selecionadas)
  
-    # Se não houver dados, retorna uma lista vazia corretamente
-    if df.empty:
-        return []
+#     # Se não houver dados, retorna uma lista vazia corretamente
+#     if df.empty:
+#         return []
  
-    # Converte o DataFrame para uma lista de dicionários
-    row_data = df.to_dict("records")
+#     # Converte o DataFrame para uma lista de dicionários
+#     row_data = df.to_dict("records")
  
-    return row_data 
-
+#     return row_data 
