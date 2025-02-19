@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# Arquivo que centraliza as tabelas utilizadas na página retrabalho colaboraddor
+# Arquivo que centraliza as tabelas utilizadas na página retrabalho colaborador
 
 # Tabela Top OS de Retrabalho
 tbl_top_os_geral_retrabalho = [
@@ -27,7 +27,7 @@ tbl_top_os_geral_retrabalho = [
         "headerName": "% OS",
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value + '%'"},
+        "valueFormatter": {"function": "params.value !== null ? params.value + '%' : '0%'"},
         "type": ["numericColumn"],
     },
     {
@@ -35,7 +35,7 @@ tbl_top_os_geral_retrabalho = [
         "headerName": "% RETRABALHOS",
         "filter": "agNumberColumnFilter",
         "maxWidth": 160,
-        "valueFormatter": {"function": "params.value + '%'"},
+        "valueFormatter": {"function": "params.value !== null ? params.value + '%' : '0%'"},
         "type": ["numericColumn"],
     },
     {
@@ -45,29 +45,29 @@ tbl_top_os_geral_retrabalho = [
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 250,
-        "valueFormatter": {"function": "params.value + '%'"},
+        "valueFormatter": {"function": "params.value !== null ? params.value + '%' : '0%'"},
         "type": ["numericColumn"],
-        "minWidth": 200
+        "minWidth": 200,
     },
     {
         "field": "nota_media_colaborador",
-        "headerName": "NOTA MEDIA DO COLABORADOR",
+        "headerName": "NOTA MÉDIA DO COLABORADOR",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 150,
         "type": ["numericColumn"],
-        "minWidth": 200
+        "minWidth": 200,
     },
     {
         "field": "nota_media_os",
-        "headerName": "NOTA MEDIA DA OS",
+        "headerName": "NOTA MÉDIA DA OS",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 150,
         "type": ["numericColumn"],
-        "minWidth": 200
+        "minWidth": 200,
     },
     {
         "field": "TOTAL_GASTO",
@@ -76,7 +76,7 @@ tbl_top_os_geral_retrabalho = [
         "autoHeaderHeight": True,
         "maxWidth": 160,
         "valueFormatter": {
-            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+            "function": "params.value !== null ? 'R$ ' + params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : 'R$ 0,00'"
         },
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
@@ -88,7 +88,7 @@ tbl_top_os_geral_retrabalho = [
         "autoHeaderHeight": True,
         "maxWidth": 200,
         "valueFormatter": {
-            "function": "'R$ ' + (params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }))"
+            "function": "params.value !== null ? 'R$ ' + params.value.toLocaleString('pt-BR', { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : 'R$ 0,00'"
         },
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
@@ -98,8 +98,7 @@ tbl_top_os_geral_retrabalho = [
         "headerName": "% GASTO RETRABALHO",
         "filter": "agNumberColumnFilter",
         "maxWidth": 200,
-        "valueFormatter": {"function": "params.value + '%'"},
+        "valueFormatter": {"function": "params.value !== null ? params.value + '%' : '0%'"},
         "type": ["numericColumn"],
     },
-
 ]
