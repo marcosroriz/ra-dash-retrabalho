@@ -338,7 +338,6 @@ class ColaboradorService:
         ORDER BY
             "PERC_RETRABALHO" DESC;
         """
-        print(query)
         # Executa a query
         df = pd.read_sql(query, self.pgEngine)
         df['nota_media_colaborador'] = df['nota_media_colaborador'].replace(np.nan, 0)
@@ -760,57 +759,52 @@ class ColaboradorService:
         subquery_ofcina_str = subquery_oficinas(lista_oficina)
 
         query = f'''
-        WITH oficina_colaborador AS (
+            WITH oficina_colaborador AS (
             SELECT DISTINCT "DESCRICAO DA OFICINA"
-            FROM mat_view_retrabalho_10_dias
-            WHERE "COLABORADOR QUE EXECUTOU O SERVICO" = '3295'
-                AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
-        ),
-        gastos AS (
-            -- Gasto do colaborador
-            SELECT 
-                'COLABORADOR' AS escopo,
-                to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-                "DESCRICAO DA OFICINA",
-                Round(SUM(pg."VALOR"), 2) AS total_gasto,
-                COUNT(DISTINCT mt1."NUMERO DA OS") AS qtd_servicos
-            FROM mat_view_retrabalho_10_dias mt1
-            JOIN view_pecas_desconsiderando_combustivel pg
-                ON mt1."NUMERO DA OS" = pg."OS"
-            WHERE "COLABORADOR QUE EXECUTOU O SERVICO" = '3295'
-                AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
-                AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA" FROM oficina_colaborador)
-            GROUP BY year_month, "DESCRICAO DA OFICINA"
-
-            UNION ALL
-
-            -- Gasto total da oficina
-            SELECT 
-                'OFICINA' AS escopo,
-                to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-                "DESCRICAO DA OFICINA",
-                Round(SUM(pg."VALOR"), 2) AS total_gasto,
-                COUNT(DISTINCT mt1."NUMERO DA OS") AS qtd_servicos
-            FROM mat_view_retrabalho_10_dias mt1
-            JOIN view_pecas_desconsiderando_combustivel pg
-                ON mt1."NUMERO DA OS" = pg."OS"
-            WHERE "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
-                AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA" FROM oficina_colaborador)
-            GROUP BY year_month, "DESCRICAO DA OFICINA"
+            FROM mat_view_retrabalho_{min_dias}_dias
+            WHERE 
+                "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+                AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
         )
+        SELECT
+            'COLABORADOR' AS escopo,
+            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            Round(SUM(pg."VALOR"), 2) AS total_gasto
+        FROM
+            mat_view_retrabalho_{min_dias}_dias mt1
+        JOIN view_pecas_desconsiderando_combustivel pg
+            ON mt1."NUMERO DA OS" = pg."OS"
+        WHERE
+            "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA"  FROM oficina_colaborador)
+        GROUP BY
+            year_month
 
-        -- Agora calculamos o percentual do colaborador na oficina e o gasto médio
-        SELECT 
-            g1.year_month,
-            g1."DESCRICAO DA OFICINA",
-            g1.total_gasto AS gasto_colaborador,
-            g2.total_gasto AS gasto_oficina
-        FROM gastos g1
-        JOIN gastos g2
-            ON g1.year_month = g2.year_month
-            AND g1."DESCRICAO DA OFICINA" = g2."DESCRICAO DA OFICINA"
-            AND g1.escopo = 'COLABORADOR'
-            AND g2.escopo = 'OFICINA'
-        ORDER BY g1.year_month, g1."DESCRICAO DA OFICINA";
+        UNION ALL
 
-        '''
+        SELECT
+            "DESCRICAO DA OFICINA" AS escopo,
+            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            Round(SUM(pg."VALOR"), 2) AS total_gasto
+        FROM
+            mat_view_retrabalho_{min_dias}_dias mt2
+        JOIN view_pecas_desconsiderando_combustivel pg
+            ON mt2."NUMERO DA OS" = pg."OS"
+      
+        WHERE 
+            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA" FROM oficina_colaborador)
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_ofcina_str}
+        GROUP BY
+            year_month, "DESCRICAO DA OFICINA"
+
+        ORDER BY
+            year_month,
+            escopo;'''
+        print(query)
+        df_mecanico = pd.read_sql(query, self.pgEngine)
+        return df_mecanico

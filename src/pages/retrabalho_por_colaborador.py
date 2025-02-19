@@ -629,6 +629,38 @@ def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
 
     fig = generate_grafico_evolucao_nota(df_os_analise)
     return fig
+
+@callback(
+    Output("graph-evolucao-gasto-colaborador", "figure"), 
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+    running=[(Output("loading-overlay", "visible"), True, False)],
+)
+def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    '''plota grafico de evolução de retrabalho por ano'''
+    
+    # Validação dos inputs
+    if (id_colaborador is None) or (datas is None) or (min_dias is None):
+        return go.Figure()
+    
+    # Obtém análise estatística
+    df_os_analise = colab.evolucao_gasto_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    if df_os_analise.empty:
+        return go.Figure()
+
+    fig = generate_grafico_evolucao_gasto(df_os_analise)
+    return fig
     
 
 
@@ -1182,6 +1214,28 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-evolucao-nota-por-mes"),
+        dbc.Row(dmc.Space(h=20)),
+        html.Hr(),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução das Métricas: Total gasto por mês",
+                                className="align-self-center"
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("colaborador-grafico-evolucao-gasto"),
+                        ]
+                    ),width=True
+                    
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-gasto-colaborador"),
         dbc.Row(dmc.Space(h=20)),
         html.Hr(),
         dbc.Row(

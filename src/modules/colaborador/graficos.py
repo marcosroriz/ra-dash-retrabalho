@@ -190,3 +190,87 @@ def input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         return False
 
     return True
+
+def generate_grafico_evolucao_gasto(dados):
+    '''Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês'''
+
+    # Gera o gráfico
+    fig = px.line(
+        dados,
+        x="year_month",
+        y="total_gasto",
+        color="escopo",
+        facet_col_spacing=0.05,  # Espaçamento entre os gráficos
+        labels={"escopo": "Oficina", "year_month_dt": "Ano-Mês"},
+        markers=True,
+    )
+
+    # Gera ticks todo mês
+    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
+
+    # Aumenta o espaçamento do titulo
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
+
+
+
+    return fig
+
+def grafico_pizza_colaborador(data):
+    '''Retorna o grafico de pizza geral'''
+    if data.empty:
+        return go.Figure()
+    # Prepara os dados para o gráfico
+    labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
+    values = [
+        data["TOTAL_CORRECAO_PRIMEIRA"].values[0],
+        data["TOTAL_CORRECAO_TARDIA"].values[0],
+        data["TOTAL_RETRABALHO"].values[0],
+    ]
+    
+    # Gera o gráfico
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=labels,
+                values=values,
+                direction="clockwise",
+                marker_colors=[tema.COR_SUCESSO, tema.COR_ALERTA, tema.COR_ERRO],
+                sort=True,
+            )
+        ]
+    )
+
+    # Arruma legenda e texto
+    fig.update_traces(textinfo="value+percent", sort=False)
+
+    # Remove o espaçamento em torno do gráfico
+    fig.update_layout(
+        margin=dict(t=20, b=0),  # Remove as margens
+        height=325,  # Ajuste conforme necessário
+        legend=dict(
+            orientation="h",  # Legenda horizontal
+            yanchor="top",  # Ancora no topo
+            xanchor="center",  # Centraliza
+            y=-0.1,  # Coloca abaixo
+            x=0.5,  # Alinha com o centro
+        ),
+    )
+
+    # Retorna o gráfico
+    return fig
+
+# Função para validar o input
+def input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if datas is None or not datas or None in datas or min_dias is None:
+        return False
+
+    if lista_oficinas is None or not lista_oficinas or None in lista_oficinas:
+        return False
+
+    if lista_secaos is None or not lista_secaos or None in lista_secaos:
+        return False
+
+    if lista_os is None or not lista_os or None in lista_os:
+        return False
+
+    return True
