@@ -300,7 +300,8 @@ class ColaboradorService:
             COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA",
             osn.nota_media_os AS "nota_media_os",
             SUM(pg."VALOR") AS "TOTAL_GASTO",
-            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO",
+            100 * ROUND(SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / SUM(pg."VALOR")::NUMERIC, 4) AS "PERC_GASTO_RETRABALHO"
         FROM
             mat_view_retrabalho_{min_dias}_dias main
         LEFT JOIN
@@ -340,7 +341,6 @@ class ColaboradorService:
         print(query)
         # Executa a query
         df = pd.read_sql(query, self.pgEngine)
-
         df['nota_media_colaborador'] = df['nota_media_colaborador'].replace(np.nan, 0)
         df['nota_media_os'] = df['nota_media_os'].replace(np.nan, 0)
         
@@ -695,7 +695,6 @@ class ColaboradorService:
             year_month,
             escopo;
             """
-            
         df_mecanico = pd.read_sql(query, self.pgEngine)
         return df_mecanico
     

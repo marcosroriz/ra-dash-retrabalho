@@ -93,5 +93,13 @@ tbl_top_os_geral_retrabalho = [
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
+    {
+        "field": "PERC_GASTO_RETRABALHO",
+        "headerName": "% GASTO RETRABALHO",
+        "filter": "agNumberColumnFilter",
+        "maxWidth": 200,
+        "valueFormatter": {"function": "params.value + '%'"},
+        "type": ["numericColumn"],
+    },
 
 ]

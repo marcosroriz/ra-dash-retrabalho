@@ -1223,6 +1223,7 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"}, #-> permite resize
         ),
         dmc.Space(h=40),
         
