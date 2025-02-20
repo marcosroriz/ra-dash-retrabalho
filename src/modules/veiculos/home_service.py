@@ -570,7 +570,7 @@ class HomeServiceVeiculo:
                 pg."EQUIPAMENTO"
             FROM pecas_gerais pg
             LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
                 ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
@@ -607,7 +607,7 @@ class HomeServiceVeiculo:
                 ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_geral
             FROM pecas_gerais pg
             LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
                 ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
@@ -628,8 +628,8 @@ class HomeServiceVeiculo:
             ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_modelo
         FROM 
             pecas_gerais AS pg
-        LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+            LEFT JOIN (
+                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
                 ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
         WHERE 
@@ -715,7 +715,7 @@ class HomeServiceVeiculo:
                 od."DESCRICAO DO SERVICO"
             FROM view_pecas_desconsiderando_combustivel pg
             LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
                 ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
@@ -741,7 +741,7 @@ class HomeServiceVeiculo:
                     SUM(pg."VALOR") as total_pecas
                 FROM view_pecas_desconsiderando_combustivel pg
                 LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
                 ) AS od 
                     ON pg."OS" = od."NUMERO DA OS"
                 WHERE
@@ -789,7 +789,7 @@ class HomeServiceVeiculo:
                     SUM(pg."VALOR") as total_pecas
                 FROM view_pecas_desconsiderando_combustivel pg
                 LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
                 ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
                 WHERE
@@ -1155,8 +1155,10 @@ class HomeServiceVeiculo:
             SUM(pg."QUANTIDADE") AS "QUANTIDADE DE PEÇAS",
             pg."MODELO",
             SUM(pg."VALOR") AS "VALOR"
-        FROM pecas_gerais pg
-        LEFT JOIN mat_view_retrabalho_{min_dias}_dias
+            FROM pecas_gerais pg
+                            LEFT JOIN (
+                        SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
+                    ) AS od 
         ON pg."OS" = od."NUMERO DA OS"
         WHERE
             TO_DATE(pg."DATA", 'DD/MM/YY')
