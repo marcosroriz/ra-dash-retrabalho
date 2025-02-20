@@ -139,6 +139,66 @@ def corrige_input_oficinas_tela_os(lista_oficinas):
 # def corrige_input_ordem_servico_tela_os(lista_os):
 #     return corrrige_input(lista_os, "TODAS")
 
+##############################################################################
+# Callback para gerar labels dinâmicos
+##############################################################################
+
+
+def gera_labels_inputs(campo):
+    # Cria o callback
+    @callback(
+        [
+            Output(component_id=f"{campo}-labels", component_property="children"),
+        ],
+        [
+            Input("input-intervalo-datas-os", "value"),
+            Input("input-select-dias-os-retrabalho", "value"),
+            Input("input-select-modelo-veiculos-visao-os", "value"),
+            Input("input-select-oficina-visao-os", "value"),
+            Input("input-select-ordens-servico-visao-os", "value"),
+        ],
+    )
+    def atualiza_labels_inputs(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
+        labels_antes = [
+            # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
+            dmc.Badge("Filtro", color="gray", variant="outline"),
+        ]
+
+        datas_label = []
+        if not (datas is None or not datas) and datas[0] is not None and datas[1] is not None:
+            # Formata as datas
+            data_inicio_str = pd.to_datetime(datas[0]).strftime("%d/%m/%Y")
+            data_fim_str = pd.to_datetime(datas[1]).strftime("%d/%m/%Y")
+
+            datas_label = [dmc.Badge(f"{data_inicio_str} a {data_fim_str}", variant="outline")]
+
+        min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
+
+        lista_modelos_labels = []
+        lista_oficinas_labels = []
+        lista_os_labels = []
+
+        if lista_modelos is None or not lista_modelos or "TODOS" in lista_modelos:
+            lista_modelos_labels.append(dmc.Badge("Todos os modelos", variant="outline"))
+        else:
+            for modelo in lista_modelos:
+                lista_modelos_labels.append(dmc.Badge(modelo, variant="dot"))
+
+        if lista_oficinas is None or not lista_oficinas or "TODAS" in lista_oficinas:
+            lista_oficinas_labels.append(dmc.Badge("Todas as oficinas", variant="outline"))
+        else:
+            for oficina in lista_oficinas:
+                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+
+        if not (lista_os is None or not lista_os):
+            for os in lista_os:
+                lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
+
+        return [dmc.Group(labels_antes + datas_label + min_dias_label + lista_oficinas_labels + lista_modelos_labels + lista_os_labels)]
+
+    # Cria o componente
+    return dmc.Group(id=f"{campo}-labels", children=[])
+
 
 ##############################################################################
 # Callback para cálculo do estado ############################################
@@ -461,7 +521,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            # gera_labels_inputs("visao-geral-quanti-frota"),
+                            gera_labels_inputs("labels-grafico-cumulativo-pag-os"),
                         ]
                     ),
                     width=True,
