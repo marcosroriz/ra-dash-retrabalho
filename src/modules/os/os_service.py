@@ -54,14 +54,17 @@ class OSService:
                 od."DATA INICIO SERVIÇO",
                 od."DATA DE FECHAMENTO DO SERVICO",
                 od."COLABORADOR QUE EXECUTOU O SERVICO",
-                lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") AS "PREV_DATA_FECHAMENTO",
-                lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DE FECHAMENTO DO SERVICO") AS "NEXT_DATA_ABERTURA",
+                lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO") AS "PREV_DATA_FECHAMENTO",
+                lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO") AS "NEXT_DATA_ABERTURA",
                     CASE
-                        WHEN lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") IS NOT NULL AND od."DATA DA ABERTURA DA OS" IS NOT NULL THEN date_part('day'::text, od."DATA DA ABERTURA DA OS"::timestamp without time zone - lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS")::timestamp without time zone)
+                        WHEN lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO") IS NOT NULL 
+                        AND od."DATA DA ABERTURA DA OS" IS NOT NULL 
+                        THEN date_part('day'::text, od."DATA DA ABERTURA DA OS"::timestamp without time zone - lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO")::timestamp without time zone)
                         ELSE NULL::double precision
                     END AS prev_days,
                     CASE
-                        WHEN od."DATA DE FECHAMENTO DO SERVICO" IS NOT NULL AND lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DE FECHAMENTO DO SERVICO") IS NOT NULL THEN date_part('day'::text, lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DE FECHAMENTO DO SERVICO")::timestamp without time zone - od."DATA DE FECHAMENTO DO SERVICO"::timestamp without time zone)
+                        WHEN od."DATA DE FECHAMENTO DO SERVICO" IS NOT NULL AND lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO") IS NOT NULL 
+                        THEN date_part('day'::text, lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO")::timestamp without time zone - od."DATA DE FECHAMENTO DO SERVICO"::timestamp without time zone)
                         ELSE NULL::double precision
                     END AS next_days
             FROM 
@@ -73,6 +76,8 @@ class OSService:
                 AND od."DATA DE FECHAMENTO DO SERVICO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
                 AND od."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
                 {withquery_os_str}
+            ORDER BY
+                od."DATA INICIO SERVIÇO"
             ), 
         os_with_flags AS (
             SELECT 
@@ -83,6 +88,8 @@ class OSService:
                 os_diff_days."DESCRICAO DO MODELO",
                 os_diff_days."DATA INICIO SERVIÇO",
                 os_diff_days."DATA DE FECHAMENTO DO SERVICO",
+                os_diff_days."DATA DA ABERTURA DA OS",
+                os_diff_days."DATA DO FECHAMENTO DA OS",
                 os_diff_days."COLABORADOR QUE EXECUTOU O SERVICO",
                 os_diff_days."COMPLEMENTO DO SERVICO",
                 os_diff_days.prev_days,
@@ -118,6 +125,8 @@ class OSService:
                 os_with_flags."DESCRICAO DO SERVICO",
                 os_with_flags."DESCRICAO DO MODELO",
                 os_with_flags."DESCRICAO DA OFICINA",
+                os_with_flags."DATA DA ABERTURA DA OS",
+                os_with_flags."DATA DO FECHAMENTO DA OS",
                 os_with_flags."DATA INICIO SERVIÇO",
                 os_with_flags."DATA DE FECHAMENTO DO SERVICO",
                 os_with_flags."COLABORADOR QUE EXECUTOU O SERVICO",
@@ -132,7 +141,8 @@ class OSService:
             )
         SELECT
             CASE
-                WHEN problem_grouping.retrabalho THEN problem_grouping.problem_no + 1
+                WHEN problem_grouping.retrabalho
+	    		THEN problem_grouping.problem_no + 1
                 ELSE problem_grouping.problem_no
             END AS problem_no,
             problem_grouping."NUMERO DA OS",
@@ -142,6 +152,8 @@ class OSService:
             problem_grouping."DESCRICAO DO SERVICO",
             problem_grouping."DATA INICIO SERVIÇO",
             problem_grouping."DATA DE FECHAMENTO DO SERVICO",
+            problem_grouping."DATA DA ABERTURA DA OS",
+            problem_grouping."DATA DO FECHAMENTO DA OS",
             problem_grouping."COLABORADOR QUE EXECUTOU O SERVICO",
             problem_grouping."COMPLEMENTO DO SERVICO",
             problem_grouping.prev_days,
@@ -190,3 +202,43 @@ class OSService:
             "perc_correcao": perc_correcao,
             "perc_correcao_primeira": perc_correcao_primeira,
         }
+
+    def get_tempo_cumulativo_para_retrabalho(self, df):
+        # Processa cada problema de um veiculo
+        # Cálculo entre DATA DA ABERTURA DA OS do início do problem até a DATA DE FECHAMENTO DO SERVICO da solução
+
+        # Lista de tempos cumulativos
+        tempos_cumulativos = []
+
+        for (problem_no, vehicle_id), group in df.groupby(["problem_no", "CODIGO DO VEICULO"]):
+            try:
+                # Vamos verificar se houve solução
+                if group["correcao"].sum() > 0:
+                    data_abertura_os = pd.to_datetime(group["DATA DA ABERTURA DA OS"].min())
+                    data_fechamento_servico = pd.to_datetime(group["DATA DE FECHAMENTO DO SERVICO"].max())
+
+                    # Calcula a diferença em dias
+                    diff_in_days = (data_fechamento_servico - data_abertura_os).days
+
+                    # Diff tem que ser no minimo 0
+                    if diff_in_days < 0:
+                        diff_in_days = 0
+
+                    tempos_cumulativos.append({"problem_no": problem_no, "vehicle_id": vehicle_id, "tempo_cumulativo": diff_in_days})
+            except Exception as e:
+                print(e)
+                # Adiciona como -1 para indicar que não foi possível calcular e sinalizar o problema
+                tempos_cumulativos.append({"problem_no": problem_no, "vehicle_id": vehicle_id, "tempo_cumulativo": -1})
+
+        # Recria o dataframe
+        df_tempos_cumulativos = pd.DataFrame(tempos_cumulativos)
+
+        # Ordena
+        df_tempos_cumulativos_sorted = df_tempos_cumulativos.sort_values(by="tempo_cumulativo")
+
+        # Criando a coluna cumulativa em termos percentuais
+        df_tempos_cumulativos_sorted["cumulative_percentage"] = (
+            df_tempos_cumulativos_sorted["tempo_cumulativo"].expanding().count() / len(df_tempos_cumulativos_sorted) * 100
+        )
+
+        return df_tempos_cumulativos_sorted

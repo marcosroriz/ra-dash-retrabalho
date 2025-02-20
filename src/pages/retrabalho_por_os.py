@@ -183,7 +183,6 @@ def computa_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
 # Callback para o grafico de síntese do retrabalho
 @callback(Output("graph-pizza-sintese-retrabalho-os", "figure"), Input("store-dados-os", "data"))
 def plota_grafico_pizza_sintese_os(store_payload):
-    print("CHEGOU AQUI")
     if store_payload["vazio"]:
         return go.Figure()
 
@@ -203,6 +202,24 @@ def plota_grafico_pizza_sintese_os(store_payload):
 
     # Gera o gráfico
     fig = os_graficos.gerar_grafico_pizza_sinteze_os(df_os_raw, labels, values)
+
+    return fig
+
+
+# Callback para o grafico cumulativo de retrabalho
+@callback(Output("graph-retrabalho-cumulativo-os", "figure"), Input("store-dados-os", "data"))
+def plota_grafico_cumulativo_retrabalho_os(store_payload):
+    if store_payload["vazio"]:
+        return go.Figure()
+
+    # Obtem os dados
+    df_os_raw = pd.DataFrame(store_payload["df_os"])
+
+    # Computa os dados
+    df_os_cumulativo = os_service.get_tempo_cumulativo_para_retrabalho(df_os_raw)
+
+    # Gera o gráfico
+    fig = os_graficos.gerar_grafico_cumulativo_os(df_os_cumulativo)
 
     return fig
 
@@ -431,6 +448,28 @@ layout = dbc.Container(
         # Estado
         dcc.Store(id="store-dados-os"),
         # Gráficos
+        # Gráfico cumulativo
+        dmc.Space(h=30),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:chart-bell-curve-cumulative", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Gráfico cumulativo de dias para solução do problema",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            # gera_labels_inputs("visao-geral-quanti-frota"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-retrabalho-cumulativo-os"),
     ]
 )
 

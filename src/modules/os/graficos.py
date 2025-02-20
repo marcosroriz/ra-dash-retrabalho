@@ -4,6 +4,7 @@
 # Funções utilitárias para gerar os gráficos da visão OS
 
 # Imports básicos
+import math
 import pandas as pd
 import numpy as np
 
@@ -60,6 +61,70 @@ def gerar_grafico_pizza_sinteze_os(df, labels, values):
             y=-0.1,  # Coloca abaixo
             x=0.5,  # Alinha com o centro
         ),
+    )
+
+    # Retorna o gráfico
+    return fig
+
+
+def gerar_grafico_cumulativo_os(df):
+    # Verifica se df não está vazio
+    if df.empty:
+        return go.Figure()
+
+    # Criando o gráfico cumulativo com o eixo y em termos percentuais
+    fig = px.line(
+        df,
+        x="tempo_cumulativo",
+        y="cumulative_percentage",
+        labels={
+            "tempo_cumulativo": "Dias",
+            "cumulative_percentage": "Correções Cumulativas (%)",
+        },
+    )
+
+    # Mostrando os pontos e linhas
+    fig.update_traces(
+        mode="markers+lines",
+    )
+
+    # Adiciona o Topo
+    df_top = df.groupby("tempo_cumulativo", as_index=False).agg(
+        cumulative_percentage=("cumulative_percentage", "max"),
+        count=("tempo_cumulativo", "count"),
+    )
+    # Reseta o index para garantir a sequencialidade
+    df_top = df_top.reset_index(drop=True)
+    # Adiciona o rótulo vazio
+    df_top["label"] = ""
+
+    # Vamos decidir qual a frequência dos labels
+    label_frequency = 1
+    num_records = len(df_top)
+    if num_records >= 30:
+        label_frequency = math.ceil(num_records / 20) + 1
+    elif num_records >= 10:
+        label_frequency = 4
+    elif num_records >= 5:
+        label_frequency = 2
+
+    # Adiciona o rótulo a cada freq de registros
+    for i in range(len(df_top)):
+        if i % label_frequency == 0:
+            df_top.at[i, "label"] = f"{df_top.at[i, 'cumulative_percentage']:.0f}% <br>({df_top.at[i, 'count']})"
+
+    fig.add_scatter(
+        x=df_top["tempo_cumulativo"],
+        y=df_top["cumulative_percentage"] + 3,
+        mode="text",
+        text=df_top["label"],
+        textposition="middle right",
+        showlegend=False,
+        marker=dict(color=tema.COR_PADRAO),
+    )
+
+    fig.update_layout(
+        xaxis=dict(range=[-1, df["tempo_cumulativo"].max() + 3]),
     )
 
     # Retorna o gráfico
