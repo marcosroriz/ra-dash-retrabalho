@@ -571,13 +571,11 @@ class HomeServiceVeiculo:
                 to_char(pg."DATA"::DATE, 'YYYY-MM') AS year_month,
                 ROUND(SUM(pg."VALOR"), 2) AS total_pecas,
                 pg."EQUIPAMENTO"
-            FROM pecas_gerais pg
-            LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+            FROM view_pecas_desconsiderando_combustivel pg
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
-                    od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 {subquery_equipamentos_str}
                 {subquery_oficinas_str}
@@ -595,7 +593,7 @@ class HomeServiceVeiculo:
             to_char("DATA"::DATE, 'YYYY-MM') AS year_month,
             ROUND(SUM("VALOR") / COUNT(DISTINCT "EQUIPAMENTO"), 2) AS media_geral
         FROM 
-            pecas_gerais
+            view_pecas_desconsiderando_combustivel
         WHERE 
             "DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
@@ -608,10 +606,8 @@ class HomeServiceVeiculo:
             SELECT
                 to_char(pg."DATA"::DATE, 'YYYY-MM') AS year_month,
                 ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_geral
-            FROM pecas_gerais pg
-            LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+            FROM view_pecas_desconsiderando_combustivel pg
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
                 od."DATA DE FECHAMENTO DO SERVICO"::DATE 
@@ -632,10 +628,8 @@ class HomeServiceVeiculo:
             pg."MODELO",
             ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_modelo
         FROM 
-            pecas_gerais AS pg
-            LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+            view_pecas_desconsiderando_combustivel pg
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
         WHERE 
             od."DATA DE FECHAMENTO DO SERVICO"::DATE 
@@ -721,9 +715,7 @@ class HomeServiceVeiculo:
                 pg."DATA",
                 od."DESCRICAO DO SERVICO"
             FROM view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
                 1=1
@@ -747,9 +739,7 @@ class HomeServiceVeiculo:
                     ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
                     SUM(pg."VALOR") as total_pecas
                 FROM view_pecas_desconsiderando_combustivel pg
-                LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+                LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                     ON pg."OS" = od."NUMERO DA OS"
                 WHERE
                     1=1
@@ -796,9 +786,7 @@ class HomeServiceVeiculo:
                     ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
                     SUM(pg."VALOR") as total_pecas
                 FROM view_pecas_desconsiderando_combustivel pg
-                LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+                LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
                 WHERE
                     1=1
@@ -993,9 +981,7 @@ class HomeServiceVeiculo:
                 SUM(CASE WHEN od.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
                 SUM(CASE WHEN od.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA"
             FROM view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
                 1=1
@@ -1204,9 +1190,7 @@ class HomeServiceVeiculo:
             pg."MODELO",
             SUM(pg."VALOR") AS "VALOR"
             FROM pecas_gerais pg
-                            LEFT JOIN (
-                        SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
-                    ) AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
         ON pg."OS" = od."NUMERO DA OS"
         WHERE
             TO_DATE(pg."DATA", 'DD/MM/YY')
@@ -1341,9 +1325,7 @@ class HomeServiceVeiculo:
                 pg."MODELO" AS "MODELO",
                 SUM(pg."VALOR") AS "VALOR"
             FROM view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN (
-                SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO" FROM mat_view_retrabalho_{min_dias}_dias
-            ) AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
             ON pg."OS" = od."NUMERO DA OS"
             WHERE 1=1
                 AND TO_DATE(pg."DATA", 'DD/MM/YY')
