@@ -1312,3 +1312,63 @@ class HomeServiceVeiculo:
     #     except Exception as e:
     #         print(f"Erro ao executar a consulta da tabela: {e}")
     #         return pd.DataFrame()
+
+    def tabela_ranking_pecas_fun(self, datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas, "od.")
+        subquery_secoes_str = subquery_secoes(lista_secoes, "od.")
+        subquery_os_str = subquery_os(lista_os, "od.")
+        subquery_veiculos_str = subquery_equipamentos(lista_veiculos, "pg.")
+        
+        data_inicio_str = datas[0]
+        data_fim = pd.to_datetime(datas[1]) - pd.DateOffset(days=min_dias + 1)
+        data_inicio_str = pd.to_datetime(data_inicio_str).strftime("%d/%m/%Y")
+        data_fim_str = data_fim.strftime("%d/%m/%Y")
+        
+        filtros = []
+        if subquery_oficinas_str:
+            filtros.append(subquery_oficinas_str)
+        if subquery_secoes_str:
+            filtros.append(subquery_secoes_str)
+        if subquery_os_str:
+            filtros.append(subquery_os_str)
+        if subquery_veiculos_str:
+            filtros.append(subquery_veiculos_str)
+        
+        query_ranking_modelo = f"""
+        WITH ranking_veiculos AS (
+            SELECT 
+                pg."EQUIPAMENTO" AS "VEICULO",
+                pg."MODELO" AS "MODELO",
+                SUM(pg."VALOR") AS "VALOR"
+            FROM view_pecas_desconsiderando_combustivel pg
+            LEFT JOIN (
+                SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO" FROM mat_view_retrabalho_{min_dias}_dias
+            ) AS od 
+            ON pg."OS" = od."NUMERO DA OS"
+            WHERE 1=1
+                AND TO_DATE(pg."DATA", 'DD/MM/YY')
+                    BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
+                    AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                    {subquery_oficinas_str}
+                    {subquery_secoes_str}
+                    {subquery_os_str}
+            GROUP BY pg."EQUIPAMENTO", pg."MODELO"
+        ),
+        ranking_filtrado AS (
+            SELECT *, 
+                   ROW_NUMBER() OVER (PARTITION BY "MODELO" ORDER BY "VALOR" DESC) AS "POSICAO"
+            FROM ranking_veiculos
+        )
+            SELECT "POSICAO", "VEICULO", "VALOR", "MODELO" FROM ranking_filtrado
+            WHERE "MODELO" = (SELECT DISTINCT "MODELO" FROM view_pecas_desconsiderando_combustivel WHERE "EQUIPAMENTO" IN ('{','.join(map(str, lista_veiculos))}'))
+            ORDER BY "POSICAO";
+        """
+        print(query_ranking_modelo)
+        
+        try:
+            df_ranking = pd.read_sql(query_ranking_modelo, self.dbEngine)
+            df_ranking_dict = df_ranking.to_dict("records")
+            return df_ranking_dict
+        except Exception as e:
+            print(f"Erro ao executar a consulta do ranking de peças por modelo: {e}")
+            return []
