@@ -835,7 +835,8 @@ class HomeServiceVeiculo:
             #df_detalhes["VALOR_T"] = df_detalhes["VALOR"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
             df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).round(2)
 
-            num_meses = df_detalhes['DT'].dt.to_period('M').nunique()
+            #num_meses = df_detalhes['DT'].dt.to_period('M').nunique() ## MESES DAS PEÇAS
+            num_meses = len(pd.date_range(start=data_inicio_dt, end=data_fim, freq='MS'))
 
             numero_pecas_veiculos_total = int(df_detalhes['QUANTIDADE'].sum())
             valor_total_veiculos = df_detalhes['VALOR'].replace('[R$,]', '', regex=True).astype(float).sum().round(2)
@@ -857,7 +858,6 @@ class HomeServiceVeiculo:
                 rk = f'{rk_n}°/{qtd_veiculos}'
             else:
                 rk = f'0°'
-
             pecas_mes = round((numero_pecas_veiculos_total / num_meses), 2)
             valor_mes = round((valor_total_veiculos / num_meses), 2)
             valor_mes_str = f"R$ {valor_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
