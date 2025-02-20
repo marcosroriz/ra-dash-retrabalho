@@ -805,6 +805,47 @@ class ColaboradorService:
         ORDER BY
             year_month,
             escopo;'''
-        print(query)
         df_mecanico = pd.read_sql(query, self.pgEngine)
+        return df_mecanico
+    
+    def gasto_colaborador(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
+        '''retorna dados de gasto do colaborador'''
+
+        data_inicio_str = datas[0]
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+        
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
+
+        query = f'''SELECT
+            main."DESCRICAO DA OFICINA",
+            main."DESCRICAO DA SECAO",
+            main."DESCRICAO DO SERVICO",
+            SUM(pg."VALOR") AS "TOTAL_GASTO",
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
+        WHERE
+            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_ofcina_str}
+        GROUP BY
+            main."DESCRICAO DA OFICINA",
+            main."DESCRICAO DA SECAO",
+            main."DESCRICAO DO SERVICO"
+        '''
+        df_mecanico = pd.read_sql(query, self.pgEngine)
+        # Formatar "VALOR" para R$ no formato brasileiro e substituindo por 0 os valores nulos
+        df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].fillna(0).astype(float).round(2)
+        df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
         return df_mecanico

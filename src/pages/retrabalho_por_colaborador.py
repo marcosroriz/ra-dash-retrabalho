@@ -259,6 +259,7 @@ def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, 
         Output("indicador-rank-os", "children"),
         Output("indicador-nota-colaborador", "children"),
         Output("indicador-rank-posicao-nota", "children"),
+        Output("indicador-gasto-total-colaborador", "children"),
         
     ],
     [
@@ -392,8 +393,15 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         )
 
     rank_nota_posicao = f"{df_nota_posicao['rank_colaborador'].iloc[0]}"
+
+    df_gasto = colab.gasto_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina  
+    )
+    gasto_colaborador = f"{df_gasto['TOTAL_GASTO'].iloc[0]}"
     
-    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao
+    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao, gasto_colaborador
 
 
 
@@ -1159,6 +1167,31 @@ layout = dbc.Container(
                                 ),
                             ),
                             dbc.CardFooter("Posição da nota media"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=4,
+                    style={"margin-bottom": "20px"},
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-gasto-total-colaborador", order=2),
+                                        DashIconify(
+                                            icon="mdi:wrench",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",  # Centralize conteúdo no card
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Gasto total do colaborador"),
                         ],
                         class_name="card-box-shadow",
                     ),
