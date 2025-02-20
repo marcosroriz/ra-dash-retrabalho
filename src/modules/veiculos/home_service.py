@@ -1312,28 +1312,25 @@ class HomeServiceVeiculo:
             # 2. Query principal utilizando os modelos filtrados
             query_ranking_modelo = f"""
             WITH ranking_veiculos AS (
-                SELECT 
+                SELECT
                     pg."EQUIPAMENTO" AS "VEICULO",
                     SUM(pg."VALOR") AS "VALOR"
                 FROM view_pecas_desconsiderando_combustivel pg
-                LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO"
-                    FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+                LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
                 WHERE 1=1
-                    AND TO_DATE(pg."DATA", 'DD/MM/YY')
+                    AND TO_DATE(od."DATA DE FECHAMENTO DO SERVICO", 'YYYY/MM/DD')
                         BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
                         AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
                         {subquery_oficinas_str}
                         {subquery_secoes_str}
                         {subquery_os_str}
-                    AND pg."MODELO" IN ('{','.join(lista_modelos)}') -- Aplicando filtro de modelo sem GROUP BY
+                    AND pg."MODELO" IN ('{','.join(lista_modelos)}')
                 GROUP BY pg."EQUIPAMENTO"
             ),
             ranking_filtrado AS (
                 SELECT *, 
-                    ROW_NUMBER() OVER (ORDER BY "VALOR" DESC) AS "POSICAO"
+                    ROW_NUMBER() OVER (ORDER BY "VALOR" ASC) AS "POSICAO"
                 FROM ranking_veiculos
             )
             SELECT "POSICAO", "VEICULO", "VALOR"
