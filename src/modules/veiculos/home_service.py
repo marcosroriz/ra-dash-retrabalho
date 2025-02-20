@@ -320,7 +320,6 @@ class HomeServiceVeiculo:
                 "CODIGO DO VEICULO",
                 "MÊS";
         """
-        print(query)
 
         query_colaboradores_diferentes = f"""
                 SELECT 
@@ -348,6 +347,7 @@ class HomeServiceVeiculo:
                 {subquery_os_str}
                 {subquery_veiculos_str};
         """
+
         query_ranking_os_problemas = f"""
             SELECT
                 "CODIGO DO VEICULO",
@@ -1353,6 +1353,7 @@ class HomeServiceVeiculo:
         
         try:
             df_ranking = pd.read_sql(query_ranking_modelo, self.dbEngine)
+            df_ranking["VALOR"] = df_ranking["VALOR"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
             df_ranking_dict = df_ranking.to_dict("records")
             return df_ranking_dict
         except Exception as e:
