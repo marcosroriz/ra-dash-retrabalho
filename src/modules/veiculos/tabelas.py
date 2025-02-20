@@ -70,6 +70,31 @@ tbl_top_os_geral_retrabalho = [
     },
 ]
 
+#Tabela ranking de peças por modelo
+tbl_ranking_por_modelo = [
+    {"field": "DESCRICAO DO SERVICO", "headerName": "POSIÇÃO", "minWidth": 150},
+    {"field": "VALOR", "headerName": "VALOR GASTO", "minWidth": 200},
+    {"field": "TOTAL_OS", "headerName": "QTD DE OS'S", "minWidth": 200},
+    {
+        "field": "QUANTIDADE DE PECAS",
+        "headerName": "QUANTIDADE DE PECAS",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "filter": "agNumberColumnFilter",
+        "maxWidth": 230,
+        "type": ["numericColumn"],
+    },
+    {
+        "field": "QUANTIDADE DE COLABORADORES",
+        "headerName": "COLABORADORES",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 160,
+        "filter": "agNumberColumnFilter",
+        "type": ["numericColumn"],
+    },
+]
+
 
 # Tabela Top OS Colaborador
 tbl_top_colaborador_geral_retrabalho = [
