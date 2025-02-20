@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 # Imports auxiliares
-from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os
+from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, subquery_modelos
 from modules.entities_utils import get_mecanicos
 
 
@@ -18,12 +18,22 @@ class OSService:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
 
-    def obtem_dados_os_sql(lista_os, data_inicio_str, data_fim_str, min_dias):
+    # Função que retorna as OS para os filtros selecionados
+    def obtem_dados_os_sql(self, datas, min_dias, lista_modelos, lista_oficinas, lista_os):
+        # Extraí a data inicial (já em string)
+        data_inicio_str = datas[0]
+
         # Extraí a data final
         # Remove min_dias antes para evitar que a última OS não seja retrabalho
-        data_fim_dt = pd.to_datetime(data_fim_str)
-        data_fim_corrigida_dt = data_fim_dt - pd.DateOffset(days=min_dias + 1)
-        data_fim_corrigida_str = data_fim_corrigida_dt.strftime("%Y-%m-%d")
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        withquery_os_str = subquery_os(lista_os, prefix="od.")
+        subquery_modelos_str = subquery_modelos(lista_modelos, prefix="problem_grouping.", termo_all="TODOS")
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas, prefix="problem_grouping.")
+        subquery_os_str = subquery_os(lista_os, prefix="problem_grouping.")
 
         # Query
         query = f"""
@@ -62,11 +72,13 @@ class OSService:
                 AND od."DATA INICIO SERVIÇO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
                 AND od."DATA DE FECHAMENTO DO SERVICO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
                 AND od."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
+                {withquery_os_str}
             ), 
         os_with_flags AS (
             SELECT 
                 os_diff_days."NUMERO DA OS",
                 os_diff_days."CODIGO DO VEICULO",
+                os_diff_days."DESCRICAO DA OFICINA",
                 os_diff_days."DESCRICAO DO SERVICO",
                 os_diff_days."DESCRICAO DO MODELO",
                 os_diff_days."DATA INICIO SERVIÇO",
@@ -105,6 +117,7 @@ class OSService:
                 os_with_flags."CODIGO DO VEICULO",
                 os_with_flags."DESCRICAO DO SERVICO",
                 os_with_flags."DESCRICAO DO MODELO",
+                os_with_flags."DESCRICAO DA OFICINA",
                 os_with_flags."DATA INICIO SERVIÇO",
                 os_with_flags."DATA DE FECHAMENTO DO SERVICO",
                 os_with_flags."COLABORADOR QUE EXECUTOU O SERVICO",
@@ -117,7 +130,6 @@ class OSService:
             FROM 
                 os_with_flags
             )
-        
         SELECT
             CASE
                 WHEN problem_grouping.retrabalho THEN problem_grouping.problem_no + 1
@@ -125,6 +137,7 @@ class OSService:
             END AS problem_no,
             problem_grouping."NUMERO DA OS",
             problem_grouping."CODIGO DO VEICULO",
+            problem_grouping."DESCRICAO DA OFICINA",
             problem_grouping."DESCRICAO DO MODELO",
             problem_grouping."DESCRICAO DO SERVICO",
             problem_grouping."DATA INICIO SERVIÇO",
@@ -139,20 +152,10 @@ class OSService:
         FROM 
             problem_grouping
         WHERE
-            problem_grouping."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_corrigida_str}'
-            AND problem_grouping."DESCRICAO DO SERVICO" IN ({', '.join([f"'{x}'" for x in lista_os])})
-            --  AND problem_grouping."DESCRICAO DO MODELO" IN ('M.BENZ O 500/INDUSCAR MILLEN A')
-            -- AND (
-            --"DESCRICAO DO SERVICO" = 'Motor cortando alimentação'
-            --OR
-            --"DESCRICAO DO SERVICO" = 'Motor sem força'
-            --)
-            --AND 
-            --(
-            -- AND od."CODIGO DO VEICULO" ='50803'
-            --OR
-            --od."CODIGO DO VEICULO" ='50530'
-            --)
+            problem_grouping."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
+            {subquery_oficinas_str}
+            {subquery_os_str}
         ORDER BY 
             problem_grouping."DATA INICIO SERVIÇO";
         """
@@ -160,11 +163,30 @@ class OSService:
         df_os_query = pd.read_sql_query(query, self.dbEngine)
 
         # Tratamento de datas
-        df_os_query["DATA INICIO SERVICO"] = pd.to_datetime(
-            df_os_query["DATA INICIO SERVIÇO"]
-        )
-        df_os_query["DATA DE FECHAMENTO DO SERVICO"] = pd.to_datetime(
-            df_os_query["DATA DE FECHAMENTO DO SERVICO"]
-        )
+        df_os_query["DATA INICIO SERVICO"] = pd.to_datetime(df_os_query["DATA INICIO SERVIÇO"])
+        df_os_query["DATA DE FECHAMENTO DO SERVICO"] = pd.to_datetime(df_os_query["DATA DE FECHAMENTO DO SERVICO"])
 
         return df_os_query
+
+    # Função que retorna a sintese geral das OS
+    def get_sintese_os(self, df):
+        total_num_os = len(df)
+        total_retrabalho = len(df[df["retrabalho"]])
+        total_correcao = len(df[df["correcao"]])
+        total_correcao_primeira = len(df[df["correcao_primeira"]])
+        total_correcao_tardia = total_correcao - total_correcao_primeira
+
+        perc_retrabalho = (total_retrabalho / total_num_os) * 100
+        perc_correcao = (total_correcao / total_num_os) * 100
+        perc_correcao_primeira = (total_correcao_primeira / total_num_os) * 100
+
+        return {
+            "total_num_os": total_num_os,
+            "total_retrabalho": total_retrabalho,
+            "total_correcao": total_correcao,
+            "total_correcao_primeira": total_correcao_primeira,
+            "total_correcao_tardia": total_correcao_tardia,
+            "perc_retrabalho": perc_retrabalho,
+            "perc_correcao": perc_correcao,
+            "perc_correcao_primeira": perc_correcao_primeira,
+        }
