@@ -376,7 +376,10 @@ class HomeServiceVeiculo:
         ### INDICADORES DE PROBLEMAS
         df_problemas = pd.read_sql(query_descobrir_problemas, self.dbEngine)
         total_problemas = df_problemas["TOTAL_CORRECAO"].iloc[0]
+
+        print(f"PROBLEMAS :: {total_problemas}")
         os_veiculo_filtradas = df_problemas["TOTAL_OS"].iloc[0]
+        print(f"OSSS :: {os_veiculo_filtradas}")
 
 
         ##QUERY OK !!
@@ -611,7 +614,9 @@ class HomeServiceVeiculo:
                 ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
-                pg."DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                od."DATA DE FECHAMENTO DO SERVICO"::DATE 
+                        BETWEEN TO_DATE('{data_inicio_str}', 'YYYY/MM/DD') 
+                        AND TO_DATE('{data_fim_str}', 'YYYY/MM/DD')
                 AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
@@ -633,7 +638,9 @@ class HomeServiceVeiculo:
                 ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
         WHERE 
-            "DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            od."DATA DE FECHAMENTO DO SERVICO"::DATE 
+                        BETWEEN TO_DATE('{data_inicio_str}', 'YYYY/MM/DD') 
+                        AND TO_DATE('{data_fim_str}', 'YYYY/MM/DD')
             AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
             AND pg."MODELO" IN (SELECT DISTINCT "MODELO" FROM pecas_gerais WHERE "EQUIPAMENTO" IN ({equipamentos_sql}))
             {subquery_oficinas_str}
@@ -760,6 +767,7 @@ class HomeServiceVeiculo:
                     WHERE "EQUIPAMENTO" = '{lista_veiculos[0]}'
             ORDER BY ranking;
                 """
+        print(query_teste_ranking)
         #print(query_teste_ranking)
 
     #     query_ranking_veiculo = f"""
@@ -963,7 +971,47 @@ class HomeServiceVeiculo:
         ORDER BY
             "PERC_RETRABALHO" DESC;
         """
+        subquery_oficinas_str_mod = subquery_oficinas(lista_oficinas, "od")
+        subquery_secoes_str_mod = subquery_secoes(lista_secaos, "od")
+        subquery_os_str_mod = subquery_os(lista_os, "od")
+        subquery_veiculos_str_mod = subquery_veiculos(lista_veiculo, "od")
 
+
+
+        query2 = f"""
+                SELECT
+                pg."EQUIPAMENTO",
+                pg."OS",
+                pg."MODELO",
+                pg."PRODUTO",
+                pg."QUANTIDADE",
+                pg."VALOR",
+                pg."DATA",
+                od."DESCRICAO DO SERVICO",
+                SUM(CASE WHEN od."NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS"
+                SUM(CASE WHEN od.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+                SUM(CASE WHEN od.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                SUM(CASE WHEN od.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA"
+            FROM view_pecas_desconsiderando_combustivel pg
+            LEFT JOIN (
+                    SELECT DISTINCT ON ("NUMERO DA OS") "NUMERO DA OS", "DESCRICAO DA SECAO", "DESCRICAO DO SERVICO", "DATA DE FECHAMENTO DO SERVICO" FROM mat_view_retrabalho_{min_dias}_dias
+                ) AS od 
+                ON pg."OS" = od."NUMERO DA OS"
+            WHERE
+                1=1
+                {subquery_oficinas_str_mod}
+                {subquery_secoes_str_mod}
+                {subquery_os_str_mod}
+                {subquery_veiculos_str_mod}
+                AND od."DATA DE FECHAMENTO DO SERVICO"::DATE 
+                    BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
+                    AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+            ORDER BY 
+                pg."VALOR" ASC;
+
+                """
+        print(query2)
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
