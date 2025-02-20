@@ -71,7 +71,7 @@ lista_todos_modelos.insert(0, {"LABEL": "TODOS", "MODELO": "TODOS"})
         # Input("input-select-dias-geral-retrabalho", "value"),
         # Input("input-select-oficina-visao-geral", "value"),
         # Input("input-select-secao-visao-geral", "value"),
-        # Input("input-select-ordens-servico-visao-geral", "value"),
+        # Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         # Input("input-select-veiculos", "value"),
 
 
@@ -87,7 +87,7 @@ def gera_labels_inputs_veiculos(campo):
             Input("input-select-dias-geral-retrabalho", "value"),
             Input(component_id="input-select-oficina-visao-geral", component_property="value"),
             Input(component_id="input-select-secao-visao-geral", component_property="value"),
-            Input(component_id="input-select-ordens-servico-visao-geral", component_property="value"),
+            Input(component_id="input-select-ordens-servico-visao-geral-veiculos", component_property="value"),
             Input(component_id="input-select-veiculos", component_property="value"),
         ],
     )
@@ -376,11 +376,7 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Ordens de Serviço"),
                                                     dcc.Dropdown(
-                                                        id="input-select-ordens-servico-visao-geral",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_os
-                                                        ],
+                                                        id="input-select-ordens-servico-visao-geral-veiculos",
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione uma ou mais ordens de serviço...",
@@ -949,11 +945,12 @@ layout = dbc.Container(
         ),
         dmc.Space(h=20),
         dag.AgGrid(
-            enableEnterpriseModules=True,
+            enableEnterpriseModules=True, 
             id="tabela-pecas-substituidas",
             columnDefs=[
                 {"field": "OS", "minWidth": 100},
                 {"field": "EQUIPAMENTO", "minWidth": 100},
+                {"field": "DESCRICAO DO SERVICO", "minWidth": 100},
                 {"field": "MODELO", "minWidth": 300},
                 {"field": "PRODUTO", "minWidth": 350},
                 {"field": "QUANTIDADE", "minWidth": 100},
@@ -1059,6 +1056,34 @@ def atualizar_veiculos(modelos_selecionados):
     value = [options[1]["value"]] if len(options) > 1 else []
     return options, value
 
+@callback(
+    Output("input-select-ordens-servico-visao-geral-veiculos", "options"),
+    [
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-veiculos", "value"),
+    ]
+)
+def atualizar_servicos(datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
+    if not input_valido4(datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
+        return []  # Retorna uma lista vazia de opções se lista_veiculos for None
+    
+    # Chama a função atualizar_servicos_func para obter a lista de serviços
+    lista_servicos = home_service_veiculos.atualizar_servicos_func(
+        datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos
+    )
+    
+    # Formatar para o formato de opções do dropdown
+    options_servicos = [{"label": servico, "value": servico} for servico in lista_servicos]
+    
+    # Adicionar opção "TODAS" no início
+    options_servicos.insert(0, {"label": "TODAS", "value": "TODAS"})  
+    print(options_servicos)
+    return options_servicos
+
+
 # GRÁFICO DE PIZZA GERAL
 @callback(
     [Output("graph-pizza-sintese-retrabalho-geral_veiculo", "figure"),
@@ -1070,7 +1095,7 @@ def atualizar_veiculos(modelos_selecionados):
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
@@ -1090,7 +1115,7 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
@@ -1110,7 +1135,7 @@ def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(datas, min_dias, lista
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
@@ -1137,7 +1162,7 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
@@ -1160,7 +1185,7 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
@@ -1197,7 +1222,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
     
@@ -1217,7 +1242,7 @@ def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_o
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
     running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
@@ -1226,6 +1251,7 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
         return []
+    print(lista_os)
     df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
     return df_dict
 
@@ -1240,7 +1266,7 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )

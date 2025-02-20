@@ -39,6 +39,54 @@ class HomeServiceVeiculo:
         lista_todos_veiculos = [{"VEICULO": "TODAS", "MODELO": "TODOS OS VEÍCULOS"}] + df_lista_veiculos.to_dict(orient="records")
 
         return lista_todos_veiculos
+    
+    def atualizar_servicos_func(self, datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
+        # Datas
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries para oficinas, seções e veículos
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_veiculos_str = subquery_veiculos(lista_veiculos)
+        
+        query = f"""
+            SELECT 
+                "CODIGO DO VEICULO",
+                DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp) AS "MÊS",
+                COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
+                "DESCRICAO DO SERVICO",
+                "DESCRICAO DO MODELO",
+                COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO") AS "QTD_COLABORADORES"
+            FROM
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_oficinas_str}
+                {subquery_secoes_str}
+                {subquery_veiculos_str}
+            GROUP BY
+                "CODIGO DO VEICULO",
+                DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp),
+                "DESCRICAO DO SERVICO",
+                "DESCRICAO DO MODELO"
+            ORDER BY
+                "CODIGO DO VEICULO",
+                "MÊS";
+            """
+        #print(query)
+        # Consulta SQL para pegar os serviços
+        df_lista_servicos = pd.read_sql(query,self.dbEngine,)
+
+        # Extrair e retornar a lista de serviços
+        lista_servicos = df_lista_servicos["DESCRICAO DO SERVICO"].dropna().unique().tolist()
+        
+        return lista_servicos
+
 
     def sintese_geral_fun(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
             # Datas
@@ -301,7 +349,7 @@ class HomeServiceVeiculo:
                 {subquery_os_str}
                 {subquery_veiculos_str};
         """
-        print(query_descobrir_problemas)
+        #print(query_descobrir_problemas)
         query_ranking_os_problemas = f"""
             SELECT
                 "CODIGO DO VEICULO",
@@ -363,6 +411,7 @@ class HomeServiceVeiculo:
         df = pd.read_sql(query, self.dbEngine)
 
         lista_modelos = df["DESCRICAO DO MODELO"].dropna().unique().tolist()
+        
 
         if len(lista_modelos) >= 1:
             pass
@@ -489,23 +538,23 @@ class HomeServiceVeiculo:
         if data_fim_str is None:
             data_fim_str = '1901-01-01'  # Ou algum valor padrão válido
         
-        # Query para buscar peças trocadas por mês para os veículos selecionados
-        query_veiculos = f"""
-        SELECT 
-            to_char("DATA"::DATE, 'YYYY-MM') AS year_month,
-            "EQUIPAMENTO",
-            ROUND(SUM("VALOR"), 2) AS total_pecas
-        FROM 
-            pecas_gerais
-        WHERE 
-            "EQUIPAMENTO" IN ({equipamentos_sql})
-            AND "DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-        GROUP BY 
-            year_month, "EQUIPAMENTO"
-        ORDER BY 
-            year_month;
-        """
+        # # Query para buscar peças trocadas por mês para os veículos selecionados
+        # query_veiculos = f"""
+        # SELECT 
+        #     to_char("DATA"::DATE, 'YYYY-MM') AS year_month,
+        #     "EQUIPAMENTO",
+        #     ROUND(SUM("VALOR"), 2) AS total_pecas
+        # FROM 
+        #     pecas_gerais
+        # WHERE 
+        #     "EQUIPAMENTO" IN ({equipamentos_sql})
+        #     AND "DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+        #     AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+        # GROUP BY 
+        #     year_month, "EQUIPAMENTO"
+        # ORDER BY 
+        #     year_month;
+        # """
         subquery_equipamentos_str = subquery_equipamentos(equipamentos, "pg.")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas, "od.")
         subquery_secoes_str = subquery_secoes(lista_secaos, "od.")
@@ -518,7 +567,9 @@ class HomeServiceVeiculo:
                 ROUND(SUM(pg."VALOR"), 2) AS total_pecas,
                 pg."EQUIPAMENTO"
             FROM pecas_gerais pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias as od 
+            LEFT JOIN (
+                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
                     od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
@@ -553,10 +604,11 @@ class HomeServiceVeiculo:
                 to_char(pg."DATA"::DATE, 'YYYY-MM') AS year_month,
                 ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_geral
             FROM pecas_gerais pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias as od 
+            LEFT JOIN (
+                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
-                --od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 pg."DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 {subquery_oficinas_str}
@@ -569,15 +621,22 @@ class HomeServiceVeiculo:
         """
         query_media_modelo = f"""
         SELECT 
-            to_char("DATA"::DATE, 'YYYY-MM') AS year_month,
-            "MODELO",
-            ROUND(SUM("VALOR") / COUNT(DISTINCT "EQUIPAMENTO"), 2) AS media_modelo
+            to_char(pg."DATA"::DATE, 'YYYY-MM') AS year_month,
+            pg."MODELO",
+            ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_modelo
         FROM 
-            pecas_gerais
+            pecas_gerais AS pg
+        LEFT JOIN (
+                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                ) AS od 
+                ON pg."OS" = od."NUMERO DA OS"
         WHERE 
             "DATA"::DATE BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-            AND "MODELO" IN (SELECT DISTINCT "MODELO" FROM pecas_gerais WHERE "EQUIPAMENTO" IN ({equipamentos_sql}))
+            AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+            AND pg."MODELO" IN (SELECT DISTINCT "MODELO" FROM pecas_gerais WHERE "EQUIPAMENTO" IN ({equipamentos_sql}))
+            {subquery_oficinas_str}
+            {subquery_secoes_str}
+            {subquery_os_str}
         GROUP BY 
             year_month, "MODELO"
         ORDER BY 
@@ -621,7 +680,8 @@ class HomeServiceVeiculo:
         subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
 
         query_detalhes = f"""
-        SELECT "OS", 
+        SELECT 
+            "OS", 
             "EQUIPAMENTO", 
             "MODELO", 
             "PRODUTO", 
@@ -644,13 +704,17 @@ class HomeServiceVeiculo:
         query_teste = f"""
             SELECT
                 pg."EQUIPAMENTO",
+                pg."OS",
                 pg."MODELO",
                 pg."PRODUTO",
                 pg."QUANTIDADE",
                 pg."VALOR",
-                pg."DATA"
+                pg."DATA",
+                od."DESCRICAO DO SERVICO"
             FROM view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias as od 
+            LEFT JOIN (
+                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                ) AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
                 1=1
@@ -667,43 +731,97 @@ class HomeServiceVeiculo:
                 """
         print(query_teste)
 
-        query_ranking_veiculo = f"""
-        WITH ranking_veiculos AS (
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
-                "EQUIPAMENTO",  -- Veículo
-                SUM("VALOR") AS total_pecas
-            FROM pecas_gerais 
-            WHERE 
-                TO_DATE("DATA", 'DD/MM/YY') 
-                BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
+        query_teste_ranking = f"""
+         WITH ranking_veiculos AS (
+                SELECT
+                    pg."EQUIPAMENTO",
+                    ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
+                    SUM(pg."VALOR") as total_pecas
+                FROM view_pecas_desconsiderando_combustivel pg
+                LEFT JOIN (
+                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                ) AS od 
+                    ON pg."OS" = od."NUMERO DA OS"
+                WHERE
+                    1=1
+                    {subquery_oficinas_str}
+                    {subquery_secoes_str}
+                    {subquery_os_str}
+                    AND od."DATA DE FECHAMENTO DO SERVICO"::DATE 
+                        BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
                         AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-                AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-            GROUP BY "EQUIPAMENTO"
-            )
+                    AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+                GROUP BY "EQUIPAMENTO"
+                )
             SELECT * 
             FROM ranking_veiculos
-                WHERE "EQUIPAMENTO" = '{lista_veiculos[0]}'
+                    WHERE "EQUIPAMENTO" = '{lista_veiculos[0]}'
             ORDER BY ranking;
-    """
-        query_quantidade_ranking_veiculos = f"""
-        WITH ranking_veiculos AS (
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
-                "EQUIPAMENTO",  -- Veículo
-                SUM("VALOR") AS total_pecas
-            FROM pecas_gerais 
-            WHERE 
-                TO_DATE("DATA", 'DD/MM/YY') 
-                BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
-                        AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-                AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-            GROUP BY "EQUIPAMENTO"
-        )
-        SELECT COUNT(DISTINCT "EQUIPAMENTO") AS "QTD_VEICULOS"
-        FROM ranking_veiculos;
+                """
+        #print(query_teste_ranking)
 
+    #     query_ranking_veiculo = f"""
+    #     WITH ranking_veiculos AS (
+    #         SELECT 
+    #             ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
+    #             "EQUIPAMENTO",  -- Veículo
+    #             SUM("VALOR") AS total_pecas
+    #         FROM pecas_gerais 
+    #         WHERE 
+    #             TO_DATE("DATA", 'DD/MM/YY') 
+    #             BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
+    #                     AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+    #             AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+    #         GROUP BY "EQUIPAMENTO"
+    #         )
+    #         SELECT * 
+    #         FROM ranking_veiculos
+    #             WHERE "EQUIPAMENTO" = '{lista_veiculos[0]}'
+    #         ORDER BY ranking;
+    # """
+        query_contar_veiculos_testes= f"""
+         WITH ranking_veiculos AS (
+                SELECT
+                    pg."EQUIPAMENTO",
+                    ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
+                    SUM(pg."VALOR") as total_pecas
+                FROM view_pecas_desconsiderando_combustivel pg
+                LEFT JOIN (
+                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
+                ) AS od 
+                ON pg."OS" = od."NUMERO DA OS"
+                WHERE
+                    1=1
+                    {subquery_oficinas_str}
+                    {subquery_secoes_str}
+                    {subquery_os_str}
+                    AND od."DATA DE FECHAMENTO DO SERVICO"::DATE 
+                        BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
+                        AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                    AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+                GROUP BY "EQUIPAMENTO"
+            )
+            SELECT COUNT(DISTINCT "EQUIPAMENTO") AS "QTD_VEICULOS"
+            FROM ranking_veiculos;
     """
+    #     query_quantidade_ranking_veiculos = f"""
+    #     WITH ranking_veiculos AS (
+    #         SELECT 
+    #             ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
+    #             "EQUIPAMENTO",  -- Veículo
+    #             SUM("VALOR") AS total_pecas
+    #         FROM pecas_gerais 
+    #         WHERE 
+    #             TO_DATE("DATA", 'DD/MM/YY') 
+    #             BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
+    #                     AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+    #             AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+    #         GROUP BY "EQUIPAMENTO"
+    #     )
+    #     SELECT COUNT(DISTINCT "EQUIPAMENTO") AS "QTD_VEICULOS"
+    #     FROM ranking_veiculos;
+
+    # """
         try:
             df_detalhes = pd.read_sql(query_teste, self.dbEngine)
             
@@ -722,17 +840,17 @@ class HomeServiceVeiculo:
 
             valor_total_veiculos_str = f"R${valor_total_veiculos:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-            df_quantidade_veiculos = pd.read_sql(query_quantidade_ranking_veiculos, self.dbEngine)
+            df_quantidade_veiculos = pd.read_sql(query_contar_veiculos_testes, self.dbEngine)
 
             if not df_quantidade_veiculos.empty:
                 qtd_veiculos = df_quantidade_veiculos.iloc[0]["QTD_VEICULOS"]
             else:
                 qtd_veiculos = 0  # Ou outro valor padrão
 
-            print(df_quantidade_veiculos.head())
+            #print(df_quantidade_veiculos.head())
             
             if len(lista_veiculos) <= 1:
-                df_rk = pd.read_sql(query_ranking_veiculo, self.dbEngine)
+                df_rk = pd.read_sql(query_teste_ranking, self.dbEngine)
                 rk_n = df_rk.iloc[0]["ranking"]
                 rk = f'{rk_n}°/{qtd_veiculos}'
             else:

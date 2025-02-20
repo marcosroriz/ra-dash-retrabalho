@@ -48,6 +48,21 @@ def input_valido3(datas, min_dias, lista_veiculos):
             return False
     return True
 
+def input_valido4(datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
+    if datas is None or not datas or None in datas or min_dias is None:
+        return False
+
+    if lista_oficinas is None or not lista_oficinas or None in lista_oficinas:
+        return False
+
+    if lista_secaos is None or not lista_secaos or None in lista_secaos:
+        return False
+    
+    if lista_veiculos is None or not lista_veiculos or None in lista_veiculos:
+        return False
+    return True
+
+
 def corrige_input(lista):
     # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
     if not lista:
