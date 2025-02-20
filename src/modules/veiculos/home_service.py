@@ -1296,23 +1296,21 @@ class HomeServiceVeiculo:
         data_fim_str = data_fim.strftime("%d/%m/%Y")
 
         try:
-            # 1. Query para obter os modelos dos veículos selecionados
+            # 1. Buscar APENAS um modelo associado aos veículos selecionados
             query_modelo = f"""
             SELECT DISTINCT "MODELO"
             FROM view_pecas_desconsiderando_combustivel
             WHERE "EQUIPAMENTO" IN ('{','.join(map(str, lista_veiculos))}')
+            LIMIT 1;
             """
 
             df_modelo = pd.read_sql(query_modelo, self.dbEngine)
-            lista_modelos = df_modelo["MODELO"].tolist()
+            modelo_unico = df_modelo["MODELO"].iloc[0] if not df_modelo.empty else "N/A"
 
-            if not lista_modelos:
-                return []
-
-            # 2. Query principal utilizando os modelos filtrados
+            # 2. Query principal utilizando o modelo único como filtro
             query_ranking_modelo = f"""
             WITH ranking_veiculos AS (
-                SELECT
+                SELECT 
                     pg."EQUIPAMENTO" AS "VEICULO",
                     SUM(pg."VALOR") AS "VALOR"
                 FROM view_pecas_desconsiderando_combustivel pg
@@ -1325,7 +1323,7 @@ class HomeServiceVeiculo:
                         {subquery_oficinas_str}
                         {subquery_secoes_str}
                         {subquery_os_str}
-                    AND pg."MODELO" IN ('{','.join(lista_modelos)}')
+                    AND pg."MODELO" = '{modelo_unico}'  -- Filtrando apenas pelo modelo único
                 GROUP BY pg."EQUIPAMENTO"
             ),
             ranking_filtrado AS (
@@ -1340,7 +1338,10 @@ class HomeServiceVeiculo:
 
             df_ranking = pd.read_sql(query_ranking_modelo, self.dbEngine)
             
-            # 3. Formatar VALOR como moeda brasileira (R$ 1.234,56)
+            # 3. Adicionar a coluna "MODELO" para todos os veículos
+            df_ranking["MODELO"] = modelo_unico
+
+            # 4. Formatar VALOR como moeda brasileira (R$ 1.234,56)
             df_ranking["VALOR"] = df_ranking["VALOR"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
             df_ranking_dict = df_ranking.to_dict("records")
@@ -1349,3 +1350,5 @@ class HomeServiceVeiculo:
         except Exception as e:
             print(f"Erro ao executar a consulta do ranking de peças por modelo: {e}")
             return []
+
+
