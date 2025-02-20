@@ -25,7 +25,6 @@ import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
-import tema
 import locale_utils
 
 # Banco de Dados
@@ -66,6 +65,12 @@ df_mecanicos = get_mecanicos(pgEngine)
 df_lista_os = get_lista_os(pgEngine)
 lista_todas_os = df_lista_os.to_dict(orient="records")
 lista_todas_os.insert(0, {"LABEL": "TODAS"})
+
+
+##############################################################################
+# Registro da página #########################################################
+##############################################################################
+dash.register_page(__name__, name="Visão Geral", path="/", icon="mdi:bus-alert")
 
 
 ##############################################################################
@@ -238,9 +243,7 @@ def plota_grafico_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista
         return go.Figure()
 
     # Obtem os dados
-    df = home_service.get_evolucao_retrabalho_por_oficina_por_mes(
-        datas, min_dias, lista_oficinas, lista_secaos, lista_os
-    )
+    df = home_service.get_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
 
     # Gera o gráfico
     fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_oficina_por_mes(df)
@@ -438,18 +441,10 @@ def gera_labels_inputs(campo):
             for os in lista_os:
                 lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
 
-        return [
-            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels)
-        ]
+        return [dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels)]
 
     # Cria o componente
     return dmc.Group(id=f"{campo}-labels", children=[])
-
-
-##############################################################################
-# Registro da página #########################################################
-##############################################################################
-dash.register_page(__name__, name="Visão Geral", path="/", icon="mdi:bus-alert")
 
 
 ##############################################################################
@@ -555,10 +550,7 @@ layout = dbc.Container(
                                                     dbc.Label("Oficinas"),
                                                     dcc.Dropdown(
                                                         id="input-select-oficina-visao-geral",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_oficinas
-                                                        ],
+                                                        options=[{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_oficinas],
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione uma ou mais oficinas...",
@@ -634,10 +626,7 @@ layout = dbc.Container(
                                                     dbc.Label("Ordens de Serviço"),
                                                     dcc.Dropdown(
                                                         id="input-select-ordens-servico-visao-geral",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_os
-                                                        ],
+                                                        options=[{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_os],
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione uma ou mais ordens de serviço...",
