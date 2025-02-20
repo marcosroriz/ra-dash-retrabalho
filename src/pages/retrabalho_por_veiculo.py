@@ -1279,7 +1279,7 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
     return df_dict
 
-#
+#Tabela de ranking de modelo
 @callback(
     [Output("tabela-ranking-de-pecas", "rowData")],
     [
