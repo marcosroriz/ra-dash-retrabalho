@@ -939,7 +939,20 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:cog-outline", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela de peças por OS", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Tabela de peças por OS",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("pecas-substituidas-por-os-filtros"),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
             ],
             align="center",
         ),
@@ -966,47 +979,24 @@ layout = dbc.Container(
             columnSize="autoSize",
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
-        dmc.Space(h=20),
+        dmc.Space(h=40),   
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:tools", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela de peças por descrição de seviço", className="align-self-center"), width=True),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=20),
-        dbc.Label("SELEÇÃO DA DESCRIÇÃO DE SERVIÇO"),
-        dcc.Dropdown(
-            id="descricao_servico_unicas_lista",
-            multi=True,
-            placeholder="Selecione uma ou mais descrições...",
-        ),
-        dmc.Space(h=20),
-        dag.AgGrid(
-            enableEnterpriseModules=True,
-            id="tabela-pecas-substituidas-por-descricao",
-            columnDefs=[
-                {"field": "DESCRIÇÃO DE SERVIÇO", "minWidth": 370},
-                {"field": "QUANTIDADE DE OS'S", "minWidth": 100},
-                {"field": "QUANTIDADE DE PEÇAS", "minWidth": 120},
-                {"field": "MODELO", "minWidth": 350},
-                {"field": "VALOR", "minWidth": 100,
-                     "type": ["numericColumn"],
-                     "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
-                     "sort": "desc"
-                },
-            ],
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
-        ),
-
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela de retrabalho por descrição de serviço", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Tabela de peças por descrição de seviço",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("tabela-de-pecas-por-descricao-filtros"),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
             ],
             align="center",
         ),
@@ -1015,6 +1005,40 @@ layout = dbc.Container(
             enableEnterpriseModules=True,
             id="tabela-descricao-de-servico",
             columnDefs=tbl_top_os_geral_retrabalho,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+            },
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
+        ),
+        dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Tabela ranking de paças por modelo",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("ranking-de-pecas-substituidas-filtros"),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
+        dag.AgGrid(
+            enableEnterpriseModules=True,
+            id="tabela-ranking-de-pecas",
+            columnDefs=tbl_ranking_por_modelo,
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
@@ -1255,6 +1279,27 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
     return df_dict
 
+
+@callback(
+    Output("tabela-ranking-de-pecas", "rowData"),
+    [
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
+        Input("input-select-veiculos", "value"),
+    ],
+    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
+)
+def atualiza_tabela_ranking_de_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
+    # Valida input
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
+        return []
+    print(lista_os)
+    df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
+    return df_dict
+
 # RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA 
 @callback(
     [Output("indicador-posicao-relaçao-retrabalho", "children"),
@@ -1276,60 +1321,3 @@ def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, l
         return "", "", "", ""
     rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo = home_service_veiculos.ranking_retrabalho_veiculos_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     return rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo
-
-# TABELA DE DESCRIÇÃO SUBSTITUIÇÃO DE PECAS POR DESCRIÇÃO E INPUT DE DESCRIÇÃO
-@callback(
-    [
-        Output("tabela-pecas-substituidas-por-descricao", "rowData"),
-        Output("descricao_servico_unicas_lista", "options"),
-    ],
-    [
-        Input("input-intervalo-datas-por-veiculo", "value"),
-        Input("input-select-dias-geral-retrabalho", "value"),
-        Input("input-select-veiculos", "value"),
-        Input("descricao_servico_unicas_lista", "value"),
-    ],
-)
-def atualiza_tabela_pecas_por_descricao(datas, min_dias, lista_veiculos, descricao_selecionada):
-    # Valida input
-    if not input_valido3(datas, min_dias, lista_veiculos):
-        return [], []
-
-    # Obtém os dados necessários
-    df_detalhes_dict, _, _, descricao_servico_unicas_lista = home_service_veiculos.tabela_pecas_por_descricao_fun(
-        datas, min_dias, lista_veiculos
-    )
-
-    # Constrói a lista de opções para o dropdown
-    options = [{"label": desc, "value": desc} for desc in descricao_servico_unicas_lista]
-
-    # Se houver seleção no dropdown, filtra os dados da tabela
-    if descricao_selecionada:
-        df_detalhes_dict = [row for row in df_detalhes_dict if row["DESCRIÇÃO DE SERVIÇO"] in descricao_selecionada]
-
-    return df_detalhes_dict, options
-
-# PECAS DETALHADAS DA DESCRIÇÃO
-# @callback(
-#     Output("tabela-pecas-substituidas-por-descricao-especifica", "rowData"),
-#     [
-#         Input("input-intervalo-datas-por-veiculo", "value"),
-#         Input("input-select-dias-geral-retrabalho", "value"),
-#         Input("input-select-veiculos", "value"),
-#         Input("descricao_servico_unicas_lista", "value"),
-#     ],
-# )
-# def atualizar_veiculos(datas, min_dias, lista_veiculos, descricoes_selecionadas):
-#     if not descricoes_selecionadas:
-#         return []  # Retorna uma lista vazia corretamente
-#     # Chama a função para obter os dados da consulta SQL
-#     df = home_service_veiculos.atualizar_pecas_fun(datas, min_dias, lista_veiculos, descricoes_selecionadas)
- 
-#     # Se não houver dados, retorna uma lista vazia corretamente
-#     if df.empty:
-#         return []
- 
-#     # Converte o DataFrame para uma lista de dicionários
-#     row_data = df.to_dict("records")
- 
-#     return row_data 
