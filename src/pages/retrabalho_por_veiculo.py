@@ -1080,7 +1080,7 @@ def atualizar_servicos(datas, min_dias, lista_oficinas, lista_secaos, lista_veic
     
     # Adicionar opção "TODAS" no início
     options_servicos.insert(0, {"label": "TODAS", "value": "TODAS"})  
-    print(options_servicos)
+
     return options_servicos
 
 
@@ -1251,7 +1251,7 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
         return []
-    print(lista_os)
+
     df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
     return df_dict
 

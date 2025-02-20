@@ -378,6 +378,8 @@ class HomeServiceVeiculo:
         total_problemas = df_problemas["TOTAL_CORRECAO"].iloc[0]
         os_veiculo_filtradas = df_problemas["TOTAL_OS"].iloc[0]
 
+
+        ##QUERY OK !!
         query_media = f"""
             WITH os_count AS (
                 SELECT 
@@ -426,7 +428,7 @@ class HomeServiceVeiculo:
 
 
         subquery_modelos_str = subquery_modelos_veiculos(lista_modelos)
-
+        ##QUERY OK !!
         query_media_modelos = f"""
             WITH os_count AS (
                 SELECT 
@@ -643,7 +645,7 @@ class HomeServiceVeiculo:
             year_month, "MODELO";
 
         """
-
+        print(query_teste)
         try:
             # Executa a query dos veículos
             df_veiculos = pd.read_sql(query_teste, self.dbEngine)
@@ -729,7 +731,7 @@ class HomeServiceVeiculo:
             ORDER BY 
                 pg."VALOR" ASC;
                 """
-        print(query_teste)
+        #print(query_teste)
 
         query_teste_ranking = f"""
          WITH ranking_veiculos AS (
@@ -1154,9 +1156,7 @@ class HomeServiceVeiculo:
             pg."MODELO",
             SUM(pg."VALOR") AS "VALOR"
         FROM pecas_gerais pg
-        LEFT JOIN (
-                    SELECT DISTINCT ON ("NUMERO DA OS") * FROM mat_view_retrabalho_{min_dias}_dias
-                ) AS od 
+        LEFT JOIN mat_view_retrabalho_{min_dias}_dias
         ON pg."OS" = od."NUMERO DA OS"
         WHERE
             TO_DATE(pg."DATA", 'DD/MM/YY')
