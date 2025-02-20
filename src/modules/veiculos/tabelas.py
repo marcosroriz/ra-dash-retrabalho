@@ -72,18 +72,19 @@ tbl_top_os_geral_retrabalho = [
 
 #Tabela ranking de peças por modelo
 tbl_ranking_por_modelo = [
-    {"field": "DESCRICAO DO SERVICO", "headerName": "POSIÇÃO", "minWidth": 150},
-    {"field": "VALOR", "headerName": "VALOR GASTO", "minWidth": 200},
-    {"field": "TOTAL_OS", "headerName": "QTD DE OS'S", "minWidth": 200},
+    {"field": "POSICAO", "headerName": "POSIÇÃO", "minWidth": 150, "valueFormatter": {"function": "params.value + 'º'"},},
+    {"field": "VEICULO", "headerName": "VEÍCULO", "minWidth": 150},
+    {"field": "MODELO", "headerName": "MODELO", "minWidth": 400},
     {
-        "field": "QUANTIDADE DE PECAS",
-        "headerName": "QUANTIDADE DE PECAS",
+        "field": "VALOR",
+        "headerName": "VALOR GASTO",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
         "maxWidth": 230,
         "type": ["numericColumn"],
     },
+    {"field": "TOTAL_OS", "headerName": "QTD DE OS'S", "minWidth": 200},
     {
         "field": "QUANTIDADE DE COLABORADORES",
         "headerName": "COLABORADORES",

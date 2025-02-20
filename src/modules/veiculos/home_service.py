@@ -78,7 +78,6 @@ class HomeServiceVeiculo:
                 "CODIGO DO VEICULO",
                 "MÊS";
             """
-        #print(query)
         # Consulta SQL para pegar os serviços
         df_lista_servicos = pd.read_sql(query,self.dbEngine,)
 
@@ -137,7 +136,6 @@ class HomeServiceVeiculo:
             df["TOTAL_RETRABALHO"].values[0],
         ]
 
-        #print(df.head())
 
         total_correcao_primeira = f'''{df.iloc[0]['PERC_CORRECAO_PRIMEIRA']}%'''
         total_retrabalho = f'''{df.iloc[0]['PERC_RETRABALHO']}%'''
@@ -322,6 +320,7 @@ class HomeServiceVeiculo:
                 "CODIGO DO VEICULO",
                 "MÊS";
         """
+        print(query)
 
         query_colaboradores_diferentes = f"""
                 SELECT 
@@ -349,7 +348,6 @@ class HomeServiceVeiculo:
                 {subquery_os_str}
                 {subquery_veiculos_str};
         """
-        #print(query_descobrir_problemas)
         query_ranking_os_problemas = f"""
             SELECT
                 "CODIGO DO VEICULO",
@@ -377,9 +375,7 @@ class HomeServiceVeiculo:
         df_problemas = pd.read_sql(query_descobrir_problemas, self.dbEngine)
         total_problemas = df_problemas["TOTAL_CORRECAO"].iloc[0]
 
-        print(f"PROBLEMAS :: {total_problemas}")
         os_veiculo_filtradas = df_problemas["TOTAL_OS"].iloc[0]
-        print(f"OSSS :: {os_veiculo_filtradas}")
 
 
         ##QUERY OK !!
@@ -472,8 +468,6 @@ class HomeServiceVeiculo:
         df_media_geral["CODIGO DO VEICULO"] = 'Geral'
 
         df_media_modelos_os = df_media_modelos_str.rename(columns={"DESCRICAO DO MODELO": "CODIGO DO VEICULO"})
-
-        #print(df_media_modelos_str.head())
 
         # Novo DataFrame com a soma de OS por mês
         df_soma_mes_veiculos = df.groupby(["MÊS", "CODIGO DO VEICULO"], as_index=False)["QUANTIDADE_DE_OS"].sum()
@@ -652,7 +646,6 @@ class HomeServiceVeiculo:
             year_month, "MODELO";
 
         """
-        print(query_teste)
         try:
             # Executa a query dos veículos
             df_veiculos = pd.read_sql(query_teste, self.dbEngine)
@@ -738,7 +731,6 @@ class HomeServiceVeiculo:
             ORDER BY 
                 pg."VALOR" ASC;
                 """
-        #print(query_teste)
 
         query_teste_ranking = f"""
          WITH ranking_veiculos AS (
@@ -767,8 +759,6 @@ class HomeServiceVeiculo:
                     WHERE "EQUIPAMENTO" = '{lista_veiculos[0]}'
             ORDER BY ranking;
                 """
-        print(query_teste_ranking)
-        #print(query_teste_ranking)
 
     #     query_ranking_veiculo = f"""
     #     WITH ranking_veiculos AS (
@@ -858,7 +848,6 @@ class HomeServiceVeiculo:
             else:
                 qtd_veiculos = 0  # Ou outro valor padrão
 
-            #print(df_quantidade_veiculos.head())
             
             if len(lista_veiculos) <= 1:
                 df_rk = pd.read_sql(query_teste_ranking, self.dbEngine)
@@ -1011,7 +1000,6 @@ class HomeServiceVeiculo:
                 pg."VALOR" ASC;
 
                 """
-        print(query2)
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
@@ -1302,7 +1290,6 @@ class HomeServiceVeiculo:
     #         ORDER BY
     #             pg."OS" ASC, pg."PRODUTO" ASC;
     #     """
-    #     #print(query_detalhes)
     
     #     try:
     #         df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
@@ -1363,7 +1350,6 @@ class HomeServiceVeiculo:
             WHERE "MODELO" = (SELECT DISTINCT "MODELO" FROM view_pecas_desconsiderando_combustivel WHERE "EQUIPAMENTO" IN ('{','.join(map(str, lista_veiculos))}'))
             ORDER BY "POSICAO";
         """
-        print(query_ranking_modelo)
         
         try:
             df_ranking = pd.read_sql(query_ranking_modelo, self.dbEngine)
