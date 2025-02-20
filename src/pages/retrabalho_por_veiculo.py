@@ -1279,9 +1279,9 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
     return df_dict
 
-
+#
 @callback(
-    Output("tabela-ranking-de-pecas", "rowData"),
+    [Output("tabela-ranking-de-pecas", "rowData")],
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
@@ -1290,15 +1290,16 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
         Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
-    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
 )
-def atualiza_tabela_ranking_de_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
-    # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
-        return []
-    print(lista_os)
-    df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
-    return df_dict
+def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
+    if not input_valido3(datas, min_dias, lista_veiculos):
+        return [[]]
+    
+    df_ranking_dict = home_service_veiculos.tabela_ranking_pecas_fun(
+        datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos
+    )
+    
+    return [df_ranking_dict]
 
 # RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA 
 @callback(
