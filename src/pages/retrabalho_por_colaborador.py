@@ -280,7 +280,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     if datas is None or not datas or None in datas or min_dias is None:
         return False
     if not id_colaborador or not datas or any(d is None for d in datas) or not isinstance(min_dias, int) or min_dias < 1:
-        return '', '', '', '','', '', '', ''
+        return '', '', '', '','', '', '', '', ''
     
     
     # Obtém análise estatística
@@ -294,6 +294,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
@@ -334,6 +335,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
         )
     
     df_rank_os = colab.indcador_rank_total_os(
@@ -345,6 +347,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
@@ -372,6 +375,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
         )
     nota_media = f"{df_nota_media['nota_media_colaborador'].iloc[0] if not df_nota_media['nota_media_colaborador'].iloc[0]  is None else 0}"
     
@@ -384,6 +388,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
@@ -514,9 +519,9 @@ def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_seca
     fig.update_traces(
         texttemplate="%{y} (%{customdata:.1f}%)",
         customdata=df_agg_servico_top10["PERC_TOTAL_OS"],  # Add percentage data
-        textposition="inside",
+        textposition="auto",
     )
-    fig.update_layout(xaxis_title="")
+    fig.update_layout(xaxis_title="", margin=dict(l=40, r=40, t=40, b=120))
     return fig
 
 @callback(
@@ -1276,7 +1281,7 @@ layout = dbc.Container(
                 # Gráfico de Pizza
                 dbc.Col(dbc.Row([html.H4("Atuação Geral"),dmc.Space(h=5), gera_labels_inputs("colaborador-grafico-atuacao-geral"), dcc.Graph(id="graph-barra-atuacao-geral")]), md=4),
                 # Indicadores
-                dbc.Col(dbc.Row([html.H4("Atuação OS (TOP 10)"), dmc.Space(h=5),gera_labels_inputs("colaborador-graficos-atuacao-os"), dcc.Graph(id="graph-principais-os")]), md=8),
+                dbc.Col(dbc.Row([html.H4("Atuação OS (TOP 10)"), dmc.Space(h=5),gera_labels_inputs("colaborador-graficos-atuacao-os"), dcc.Graph(id="graph-principais-os", style={"overflowX": "auto"})]), md=8),
             ],
             align="center",
         ),
