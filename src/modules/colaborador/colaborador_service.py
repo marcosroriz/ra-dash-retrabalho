@@ -834,7 +834,7 @@ class ColaboradorService:
         ON
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
