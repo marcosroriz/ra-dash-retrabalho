@@ -902,7 +902,7 @@ class HomeServiceVeiculo:
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
                 servico,
-                COUNT(*) AS num_problema
+                COUNT(DISTINCT problem_no) AS num_problema
             FROM
                 normaliza_problema
             GROUP BY
@@ -911,19 +911,22 @@ class HomeServiceVeiculo:
                 servico
         )
         SELECT
+            main."DESCRICAO DA OFICINA",
+            main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO",
-            SUM(CASE WHEN main."NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS",
+            main."CODIGO DO VEICULO",
+            COUNT(*) AS "TOTAL_OS",
             SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-            100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-            100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA",
-            SUM(pg."QUANTIDADE") as "QUANTIDADE DE PECAS" ,
-            SUM(pg."VALOR") as "VALOR",
-            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO",
-            COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") as "QUANTIDADE DE COLABORADORES" 
+            COUNT(DISTINCT main.problem_no) AS "TOTAL_PROBLEMA",
+            100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_RETRABALHO",
+            100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO",
+            100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+            ROUND(SUM(pg."QUANTIDADE") / NULLIF(COUNT(*), 0), 2) AS "QUANTIDADE DE PECAS",
+            SUM(pg."VALOR") AS "VALOR",
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
+            COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") AS "QUANTIDADE DE COLABORADORES"
         FROM
             mat_view_retrabalho_{min_dias}_dias main
         LEFT JOIN
@@ -943,10 +946,15 @@ class HomeServiceVeiculo:
             {inner_subquery_os_str}
             {inner_subquery_veiculos_str}
         GROUP BY
+            main."DESCRICAO DA OFICINA",
+            main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO",
+            main."CODIGO DO VEICULO",
             op.num_problema
         ORDER BY
             "PERC_RETRABALHO" DESC;
+
+
         """
         subquery_oficinas_str_mod = subquery_oficinas(lista_oficinas, "od")
         subquery_secoes_str_mod = subquery_secoes(lista_secaos, "od")

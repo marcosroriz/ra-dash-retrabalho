@@ -59,15 +59,15 @@ tbl_top_os_geral_retrabalho = [
     #     "maxWidth": 160,
     #     "type": ["numericColumn"],
     # },
-    {
-        "field": "QUANTIDADE DE COLABORADORES",
-        "headerName": "COLABORADORES",
-        "wrapHeaderText": True,
-        "autoHeaderHeight": True,
-        "maxWidth": 160,
-        "filter": "agNumberColumnFilter",
-        "type": ["numericColumn"],
-    },
+    # {
+    #     "field": "QUANTIDADE DE COLABORADORES",
+    #     "headerName": "COLABORADORES",
+    #     "wrapHeaderText": True,
+    #     "autoHeaderHeight": True,
+    #     "maxWidth": 160,
+    #     "filter": "agNumberColumnFilter",
+    #     "type": ["numericColumn"],
+    # },
 ]
 
 #Tabela ranking de peças por modelo
