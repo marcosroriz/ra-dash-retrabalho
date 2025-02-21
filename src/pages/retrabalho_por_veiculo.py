@@ -1021,7 +1021,7 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Tabela ranking de paças por modelo",
+                                "Tabela ranking valor de peças por modelo",
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
