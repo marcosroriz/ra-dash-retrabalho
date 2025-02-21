@@ -32,12 +32,31 @@ class ColaboradorService:
             return pd.DataFrame()
         
 
-    def obtem_dados_os_mecanico(self, id_mecanico: str):
+    def obtem_dados_os_mecanico(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
         # Query
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
+
         query = f"""
-            SELECT * 
-            FROM os_dados od
-            WHERE od."COLABORADOR QUE EXECUTOU O SERVICO" = {id_mecanico}
+        SELECT
+            *
+        FROM
+            os_dados
+        WHERE
+            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_ofcina_str}
         """
         df_os_mecanico_query = pd.read_sql_query(query, self.pgEngine)
         # Tratamento de datas
@@ -45,7 +64,6 @@ class ColaboradorService:
         df_os_mecanico_query["DATA DE FECHAMENTO DO SERVICO"] = pd.to_datetime(
             df_os_mecanico_query["DATA DE FECHAMENTO DO SERVICO"]
         )
-
         return df_os_mecanico_query 
 
     
@@ -359,13 +377,17 @@ class ColaboradorService:
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_modelo)
+        subquery_ofcina_str = subquery_oficinas(lista_oficina)
 
-        inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
-        inner_subquery_os_str = subquery_os(lista_os, "main.")
-        inner_subquery_modelo_str = subquery_modelos(lista_modelo, "main.")
-        inner_subquery_oficina_str = subquery_oficinas(lista_oficina, "main.") 
+        inner_subquery_secoes_str1 = subquery_secoes(lista_secaos, "mt.")
+        inner_subquery_os_str1= subquery_os(lista_os, "mt.")
+        inner_subquery_modelo_str1= subquery_modelos(lista_modelo, "mt.")
+        inner_subquery_ofcina_str1= subquery_oficinas(lista_oficina, "mt.")
         
+        inner_subquery_secoes_str2 = subquery_secoes(lista_secaos, "main.")
+        inner_subquery_os_str2 = subquery_os(lista_os, "main.")
+        inner_subquery_modelo_str2 = subquery_modelos(lista_modelo, "main.")
+        inner_subquery_oficina_str2 = subquery_oficinas(lista_oficina, "main.") 
         query = f"""
         WITH normaliza_problema AS (
             SELECT
@@ -401,20 +423,46 @@ class ColaboradorService:
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
                 servico
+        ),
+        os_nota_media AS (
+            -- Calculando a nota média por OS (sem filtro de colaborador)
+            SELECT
+                "DESCRICAO DA OFICINA",
+                "DESCRICAO DA SECAO",
+                "DESCRICAO DO SERVICO",
+                ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS nota_media_os
+            FROM mat_view_retrabalho_{min_dias}_dias mt
+            LEFT JOIN os_dados_classificacao odc
+            ON mt."KEY_HASH" = odc."KEY_HASH"
+            WHERE
+                mt."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {inner_subquery_secoes_str1}
+                {inner_subquery_os_str1}
+                {inner_subquery_modelo_str1}
+                {inner_subquery_ofcina_str1}
+            GROUP BY
+                "DESCRICAO DA OFICINA",
+                "DESCRICAO DA SECAO",
+                "DESCRICAO DO SERVICO"
         )
         SELECT
             main."DESCRICAO DA OFICINA",
             main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO",
-            COUNT(*) AS "TOTAL_OS",
+            COUNT(main."DESCRICAO DO SERVICO") AS "TOTAL_OS",
             SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
             100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
             100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+            100 * ROUND(COUNT(*)::NUMERIC / SUM(COUNT(*)) OVER (), 4) AS "PERC_TOTAL_OS",
+            ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media_colaborador,
             COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA",
-            100 * ROUND(COUNT(*)::NUMERIC / SUM(COUNT(*)) OVER (), 4) AS "PERC_TOTAL_OS"
+            osn.nota_media_os AS "nota_media_os",
+            SUM(pg."VALOR") AS "TOTAL_GASTO",
+            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO",
+            100 * ROUND(SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / SUM(pg."VALOR")::NUMERIC, 4) AS "PERC_GASTO_RETRABALHO"
         FROM
             mat_view_retrabalho_{min_dias}_dias main
         LEFT JOIN
@@ -423,17 +471,31 @@ class ColaboradorService:
             main."DESCRICAO DA OFICINA" = op."DESCRICAO DA OFICINA"
             AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
             AND main."DESCRICAO DO SERVICO" = op.servico
+        LEFT JOIN 
+        	os_dados_classificacao odc  
+        ON
+            main."KEY_HASH" = odc."KEY_HASH"
+            
+        LEFT JOIN os_nota_media osn
+            ON main."DESCRICAO DA OFICINA" = osn."DESCRICAO DA OFICINA"
+            AND main."DESCRICAO DA SECAO" = osn."DESCRICAO DA SECAO"
+            AND main."DESCRICAO DO SERVICO" = osn."DESCRICAO DO SERVICO"
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
         WHERE
             main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
-            {inner_subquery_secoes_str}
-            {inner_subquery_os_str}
-            {inner_subquery_modelo_str}
-            {inner_subquery_oficina_str}
+            {inner_subquery_secoes_str2}
+            {inner_subquery_os_str2}
+            {inner_subquery_modelo_str2}
+            {inner_subquery_oficina_str2}
         GROUP BY
             main."DESCRICAO DA OFICINA",
             main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO",
-            op.num_problema
+            op.num_problema,
+            osn.nota_media_os
         ORDER BY
             "PERC_RETRABALHO" DESC;
         """
@@ -822,9 +884,6 @@ class ColaboradorService:
         subquery_ofcina_str = subquery_oficinas(lista_oficina)
 
         query = f'''SELECT
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
-            main."DESCRICAO DO SERVICO",
             SUM(pg."VALOR") AS "TOTAL_GASTO",
             SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
         FROM
@@ -839,11 +898,8 @@ class ColaboradorService:
             {subquery_os_str}
             {subquery_modelo_str}
             {subquery_ofcina_str}
-        GROUP BY
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
-            main."DESCRICAO DO SERVICO"
         '''
+        print(query)
         df_mecanico = pd.read_sql(query, self.pgEngine)
         # Formatar "VALOR" para R$ no formato brasileiro e substituindo por 0 os valores nulos
         df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].fillna(0).astype(float).round(2)

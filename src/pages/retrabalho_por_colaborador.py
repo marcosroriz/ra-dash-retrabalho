@@ -416,20 +416,21 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
         Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
     ],
 )
-def computa_retrabalho_mecanico(id_colaborador, datas, min_dias):
+def computa_retrabalho_mecanico(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
 
     if (id_colaborador is None) or (datas is None or not datas or None in datas) or (min_dias is None or min_dias < 1):
         return dados_vazios
 
     # Obtem os dados de retrabalho
-    df_os_mecanico = colab.obtem_dados_os_mecanico(id_colaborador)
+    df_os_mecanico = colab.obtem_dados_os_mecanico(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina)
 
-    # Filtrar as datas
-    inicio = pd.to_datetime(datas[0])
-    fim = pd.to_datetime(datas[1])
 
     return {"df_os_mecanico": df_os_mecanico.to_dict("records"), "vazio": False}
 
@@ -519,9 +520,9 @@ def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_seca
     fig.update_traces(
         texttemplate="%{y} (%{customdata:.1f}%)",
         customdata=df_agg_servico_top10["PERC_TOTAL_OS"],  # Add percentage data
-        textposition="auto",
+        textposition="inside",
     )
-    fig.update_layout(xaxis_title="", margin=dict(l=40, r=40, t=40, b=120))
+    fig.update_layout(xaxis_title="")
     return fig
 
 @callback(
@@ -1281,7 +1282,7 @@ layout = dbc.Container(
                 # Gráfico de Pizza
                 dbc.Col(dbc.Row([html.H4("Atuação Geral"),dmc.Space(h=5), gera_labels_inputs("colaborador-grafico-atuacao-geral"), dcc.Graph(id="graph-barra-atuacao-geral")]), md=4),
                 # Indicadores
-                dbc.Col(dbc.Row([html.H4("Atuação OS (TOP 10)"), dmc.Space(h=5),gera_labels_inputs("colaborador-graficos-atuacao-os"), dcc.Graph(id="graph-principais-os", style={"overflowX": "auto"})]), md=8),
+                dbc.Col(dbc.Row([html.H4("Atuação OS (TOP 10)"), dmc.Space(h=5),gera_labels_inputs("colaborador-graficos-atuacao-os"), dcc.Graph(id="graph-principais-os")]), md=8),
             ],
             align="center",
         ),
