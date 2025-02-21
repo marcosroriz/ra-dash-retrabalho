@@ -520,7 +520,7 @@ def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_seca
     fig.update_traces(
         texttemplate="%{y} (%{customdata:.1f}%)",
         customdata=df_agg_servico_top10["PERC_TOTAL_OS"],  # Add percentage data
-        textposition="inside",
+        textposition="auto",
     )
     fig.update_layout(xaxis_title="")
     return fig
