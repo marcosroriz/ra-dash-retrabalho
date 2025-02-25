@@ -249,8 +249,15 @@ def plota_grafico_pizza_sintese_os(store_payload):
     # Obtem os dados
     df_os_raw = pd.DataFrame(store_payload["df_os"])
 
+    # Verifica se há dados
+    if df_os_raw.empty:
+        return go.Figure()
+    
+    # Remove duplicatas
+    df = df_os_raw.drop_duplicates(subset=["NUMERO DA OS"])
+
     # Computa sintese
-    estatistica_retrabalho = os_service.get_sintese_os(df_os_raw)
+    estatistica_retrabalho = os_service.get_sintese_os(df)
 
     # Prepara os dados para o gráfico
     labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
@@ -261,7 +268,7 @@ def plota_grafico_pizza_sintese_os(store_payload):
     ]
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_pizza_sinteze_os(df_os_raw, labels, values)
+    fig = os_graficos.gerar_grafico_pizza_sinteze_os(df, labels, values)
 
     return fig
 
@@ -274,6 +281,10 @@ def plota_grafico_cumulativo_retrabalho_os(store_payload):
 
     # Obtem os dados
     df_os_raw = pd.DataFrame(store_payload["df_os"])
+
+    # Verifica se há dados
+    if df_os_raw.empty:
+        return go.Figure()
 
     # Computa os dados
     df_os_cumulativo = os_service.get_tempo_cumulativo_para_retrabalho(df_os_raw)
@@ -530,6 +541,27 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-retrabalho-cumulativo-os"),
+        dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:fleet", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Retrabalho por Modelo (%)",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("labels-retrabalho-modelo-pag-os"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-retrabalho-por-modelo-perc-os"),
     ]
 )
 
