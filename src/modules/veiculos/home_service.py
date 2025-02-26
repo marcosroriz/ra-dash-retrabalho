@@ -57,7 +57,7 @@ class HomeServiceVeiculo:
         query = f"""
             SELECT 
                 "CODIGO DO VEICULO",
-                DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp) AS "MÊS",
+                DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
                 COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                 "DESCRICAO DO SERVICO",
                 "DESCRICAO DO MODELO",
@@ -65,13 +65,13 @@ class HomeServiceVeiculo:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_veiculos_str}
             GROUP BY
                 "CODIGO DO VEICULO",
-                DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp),
+                DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp),
                 "DESCRICAO DO SERVICO",
                 "DESCRICAO DO MODELO"
             ORDER BY
@@ -115,7 +115,7 @@ class HomeServiceVeiculo:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -159,7 +159,7 @@ class HomeServiceVeiculo:
 
         query = f"""
         SELECT
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
             "CODIGO DO VEICULO",
@@ -167,7 +167,7 @@ class HomeServiceVeiculo:
         FROM
             mat_view_retrabalho_{min_dias}_dias
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str} 
             {subquery_secoes_str}
             {subquery_os_str}
@@ -232,14 +232,14 @@ class HomeServiceVeiculo:
 
         query = f"""
         SELECT
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             "DESCRICAO DA SECAO",
             100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
         FROM
             mat_view_retrabalho_{min_dias}_dias
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -298,7 +298,7 @@ class HomeServiceVeiculo:
         query = f"""
             SELECT 
                 "CODIGO DO VEICULO",
-                DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp) AS "MÊS",
+                DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
                 COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                 "DESCRICAO DO SERVICO",
                 "DESCRICAO DO MODELO",
@@ -306,14 +306,14 @@ class HomeServiceVeiculo:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_veiculos_str}
             GROUP BY
                 "CODIGO DO VEICULO",
-                DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp),
+                DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp),
                 "DESCRICAO DO SERVICO",
                 "DESCRICAO DO MODELO"
             ORDER BY
@@ -327,7 +327,7 @@ class HomeServiceVeiculo:
             FROM 
                 mat_view_retrabalho_{min_dias}_dias
             WHERE 
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -341,7 +341,7 @@ class HomeServiceVeiculo:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -357,7 +357,7 @@ class HomeServiceVeiculo:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -383,19 +383,18 @@ class HomeServiceVeiculo:
             WITH os_count AS (
                 SELECT 
                     "CODIGO DO VEICULO",
-                    DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp) AS "MÊS",
+                    DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
                     COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                     COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QUANTIDADE_DE_DESCRICOES_DISTINTAS"
                 FROM mat_view_retrabalho_{min_dias}_dias
                 WHERE 
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
-
                 GROUP BY
                     "CODIGO DO VEICULO",
-                    DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp)
+                    DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp)
             )
             SELECT 
                 "MÊS",
@@ -432,21 +431,20 @@ class HomeServiceVeiculo:
             WITH os_count AS (
                 SELECT 
                     "CODIGO DO VEICULO",
-                    DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp) AS "MÊS",
+                    DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
                     COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                     COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QUANTIDADE_DE_DESCRICOES_DISTINTAS",
                     "DESCRICAO DO MODELO"
                 FROM mat_view_retrabalho_{min_dias}_dias
                 WHERE 
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelos_str}
-
                 GROUP BY
                     "CODIGO DO VEICULO",
-                    DATE_TRUNC('month', "DATA DE FECHAMENTO DO SERVICO"::timestamp),
+                    DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp),
                     "DESCRICAO DO MODELO"
             )
             SELECT 
@@ -569,7 +567,7 @@ class HomeServiceVeiculo:
             LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
-                od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 {subquery_equipamentos_str}
                 {subquery_oficinas_str}
@@ -604,9 +602,7 @@ class HomeServiceVeiculo:
             LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
-                od."DATA DE FECHAMENTO DO SERVICO"::DATE 
-                        BETWEEN TO_DATE('{data_inicio_str}', 'YYYY/MM/DD') 
-                        AND TO_DATE('{data_fim_str}', 'YYYY/MM/DD')
+                od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
@@ -626,9 +622,7 @@ class HomeServiceVeiculo:
             LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
         WHERE 
-            od."DATA DE FECHAMENTO DO SERVICO"::DATE 
-                        BETWEEN TO_DATE('{data_inicio_str}', 'YYYY/MM/DD') 
-                        AND TO_DATE('{data_fim_str}', 'YYYY/MM/DD')
+            od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
             AND pg."MODELO" IN (SELECT DISTINCT "MODELO" FROM pecas_gerais WHERE "EQUIPAMENTO" IN ({equipamentos_sql}))
             {subquery_oficinas_str}
@@ -670,28 +664,28 @@ class HomeServiceVeiculo:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
 
         data_inicio_dt = pd.to_datetime(data_inicio_str)
-        data_inicio_str = data_inicio_dt.strftime("%d/%m/%Y")
-        data_fim_str = data_fim.strftime("%d/%m/%Y")
+        data_inicio_str = data_inicio_dt.strftime("%Y/%m/%d")
+        data_fim_str = data_fim.strftime("%Y/%m/%d")
         
         subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
 
-        query_detalhes = f"""
-        SELECT 
-            "OS", 
-            "EQUIPAMENTO", 
-            "MODELO", 
-            "PRODUTO", 
-            "QUANTIDADE", 
-            "VALOR", 
-            "DATA"
-        FROM pecas_gerais 
-            WHERE 
-                TO_DATE("DATA", 'DD/MM/YY') 
-                    BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
-                        AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-                AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-                {subquery_veiculos_str}
-        """
+        # query_detalhes = f"""
+        # SELECT 
+        #     "OS", 
+        #     "EQUIPAMENTO", 
+        #     "MODELO", 
+        #     "PRODUTO", 
+        #     "QUANTIDADE", 
+        #     "VALOR", 
+        #     "DATA"
+        # FROM pecas_gerais 
+        #     WHERE 
+        #         TO_DATE("DATA", 'DD/MM/YY') 
+        #             BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
+        #                 AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+        #         AND "GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
+        #         {subquery_veiculos_str}
+        # """
         subquery_equipamentos_str = subquery_equipamentos(lista_veiculos, "pg.")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas, "od.")
         subquery_secoes_str = subquery_secoes(lista_secaos, "od.")
@@ -716,9 +710,7 @@ class HomeServiceVeiculo:
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
-                AND od."DATA DE FECHAMENTO DO SERVICO"::DATE 
-                    BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
-                    AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                AND od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
             ORDER BY 
                 pg."VALOR" ASC;
@@ -738,9 +730,7 @@ class HomeServiceVeiculo:
                     {subquery_oficinas_str}
                     {subquery_secoes_str}
                     {subquery_os_str}
-                    AND od."DATA DE FECHAMENTO DO SERVICO"::DATE 
-                        BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
-                        AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                    AND od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                     AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 GROUP BY "EQUIPAMENTO"
                 )
@@ -783,9 +773,7 @@ class HomeServiceVeiculo:
                     {subquery_oficinas_str}
                     {subquery_secoes_str}
                     {subquery_os_str}
-                    AND od."DATA DE FECHAMENTO DO SERVICO"::DATE 
-                        BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
-                        AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
+                    AND od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                     AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
                 GROUP BY "EQUIPAMENTO"
             )
@@ -885,7 +873,7 @@ class HomeServiceVeiculo:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -940,7 +928,7 @@ class HomeServiceVeiculo:
         ON 
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -986,7 +974,7 @@ class HomeServiceVeiculo:
                 {subquery_secoes_str_mod}
                 {subquery_os_str_mod}
                 {subquery_veiculos_str_mod}
-                AND od."DATA DE FECHAMENTO DO SERVICO"::DATE 
+                AND od."DATA DO FECHAMENTO DA OS"::DATE 
                     BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
                     AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
                 AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
@@ -1059,7 +1047,7 @@ class HomeServiceVeiculo:
                     FROM
                         mat_view_retrabalho_{min_dias}_dias
                     WHERE
-                        "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                        "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                         {subquery_oficinas_str}
                         {subquery_secoes_str}
                         {subquery_os_str}
@@ -1131,7 +1119,7 @@ class HomeServiceVeiculo:
                         FROM
                             mat_view_retrabalho_{min_dias}_dias
                         WHERE
-                            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                             {subquery_oficinas_str}
                             {subquery_secoes_str}
                             {subquery_os_str}
@@ -1325,7 +1313,7 @@ class HomeServiceVeiculo:
                 LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
                 ON pg."OS" = od."NUMERO DA OS"
                 WHERE 1=1
-                    AND TO_DATE(od."DATA DE FECHAMENTO DO SERVICO", 'YYYY/MM/DD')
+                    AND TO_DATE(od."DATA DO FECHAMENTO DA OS", 'YYYY/MM/DD')
                         BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
                         AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
                         {subquery_oficinas_str}
