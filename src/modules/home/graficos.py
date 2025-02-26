@@ -136,6 +136,72 @@ def gerar_grafico_retrabalho_por_modelo(df):
     return bar_chart
 
 
+def gerar_grafico_evolucao_retrabalho_por_modelo_por_mes(df):
+    """Gera o gráfico de linhas referentes a evolução do retrabalho por modelo"""
+
+    # Gera o gráfico
+    fig = px.line(
+        df,
+        x="year_month_dt",
+        y="PERC",
+        color="DESCRICAO DO MODELO",
+        facet_col="CATEGORIA",
+        facet_col_spacing=0.05,  # Espaçamento entre os gráficos
+        labels={"DESCRICAO DO MODELO": "Modelo", "year_month_dt": "Ano-Mês", "PERC": "%"},
+        markers=True,
+    )
+
+    # Coloca % no eixo y
+    fig.update_yaxes(tickformat=".0f%")
+
+    # Renomeia o eixo y
+    fig.update_layout(
+        yaxis=dict(
+            title="% Retrabalho",
+        ),
+        yaxis2=dict(
+            title="% Correção de Primeira",
+            overlaying="y",
+            side="right",
+            anchor="x",
+        ),
+        margin=dict(b=100),
+    )
+
+    # Titulo
+    fig.update_layout(
+        height=500,  # Ajuste conforme necessário
+        annotations=[
+            dict(
+                text="Retrabalho por modelo (% das OS)",
+                x=0.25,  # Posição X para o primeiro plot
+                y=1.05,  # Posição Y (em cima do plot)
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+            dict(
+                text="Correção de primeira por modelo (% das OS)",
+                x=0.75,  # Posição X para o segundo plot
+                y=1.05,  # Posição Y (em cima do plot)
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+        ]
+    )
+
+    # Gera ticks todo mês
+    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
+
+    # Aumenta o espaçamento do titulo
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
+
+    return fig
+
+
 def gerar_grafico_evolucao_retrabalho_por_oficina_por_mes(df):
     """Gera o gráfico de linhas referentes a evolução do retrabalho por mês"""
 

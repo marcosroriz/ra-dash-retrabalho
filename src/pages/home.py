@@ -219,6 +219,30 @@ def plota_grafico_por_modelo(datas, min_dias, lista_oficinas, lista_secaos, list
 
     return fig
 
+# Callback para o grafico de evolução do retrabalho por modelo
+@callback(
+    Output("graph-evolucao-retrabalho-por-modelo-por-mes", "figure"),
+    [
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+)
+def plota_grafico_evolucao_retrabalho_por_modelo_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    # Valida input
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+        return go.Figure()
+
+    # Obtem os dados
+    df = home_service.get_evolucao_retrabalho_por_modelo_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+
+    # Gera o gráfico
+    fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_modelo_por_mes(df)
+
+    return fig
+
 
 # Callbacks para o grafico de evolução do retrabalho por oficina
 @callback(
@@ -696,6 +720,28 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-visao-geral-por-modelo"),
+        dmc.Space(h=40),
+        # Grafico de Evolução do Retrabalho por Modelo
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-settings-20-filled", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução do retrabalho por modelo / mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-evolucao-por-modelo"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-retrabalho-por-modelo-por-mes"),
         dmc.Space(h=40),
         # Graficos de Evolução do Retrabalho por Garagem e Seção
         dbc.Row(
