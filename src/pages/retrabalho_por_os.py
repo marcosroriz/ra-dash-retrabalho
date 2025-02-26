@@ -252,7 +252,7 @@ def plota_grafico_pizza_sintese_os(store_payload):
     # Verifica se há dados
     if df_os_raw.empty:
         return go.Figure()
-    
+
     # Remove duplicatas
     df = df_os_raw.drop_duplicates(subset=["NUMERO DA OS"])
 
@@ -292,6 +292,26 @@ def plota_grafico_cumulativo_retrabalho_os(store_payload):
     # Gera o gráfico
     fig = os_graficos.gerar_grafico_cumulativo_os(df_os_cumulativo)
 
+    return fig
+
+
+@callback(Output("graph-retrabalho-por-modelo-perc-os", "figure"), Input("store-dados-os", "data"))
+def plota_grafico_retrabalho_por_modelo_perc_os(store_payload):
+    if store_payload["vazio"]:
+        return go.Figure()
+
+    # Obtem os dados
+    df_os_raw = pd.DataFrame(store_payload["df_os"])
+
+    # Remove duplicatas
+    df = df_os_raw.drop_duplicates(subset=["NUMERO DA OS"])
+
+    # Estatística por modelo
+    df_modelo = os_service.get_retrabalho_por_modelo(df)
+
+    # Gera o gráfico
+    fig = os_graficos.gerar_grafico_barras_retrabalho_por_modelo_perc(df_modelo)
+    
     return fig
 
 

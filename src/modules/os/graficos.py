@@ -129,3 +129,62 @@ def gerar_grafico_cumulativo_os(df):
 
     # Retorna o gráfico
     return fig
+
+
+def gerar_grafico_barras_retrabalho_por_modelo_perc(df):
+    # Gera o gráfico
+    bar_chart = px.bar(
+        df,
+        x="DESCRICAO DO MODELO",
+        y=["PERC_CORRECOES_DE_PRIMEIRA", "PERC_CORRECOES_TARDIA", "PERC_RETRABALHO"],
+        barmode="stack",
+        color_discrete_sequence=[tema.COR_SUCESSO, tema.COR_ALERTA, tema.COR_ERRO],
+        labels={
+            "value": "Percentagem",
+            "DESCRICAO DO SERVICO": "Ordem de Serviço",
+            "variable": "Itens",
+        },
+    )
+
+    # Atualizando os valores de rótulo para PERC_CORRECOES_DE_PRIMEIRA (percentual e valor absoluto de correções de primeira)
+    bar_chart.update_traces(
+        text=[
+            f"{retrabalho} ({perc_retrab:.2f}%)"
+            for retrabalho, perc_retrab in zip(
+                df["CORRECOES_DE_PRIMEIRA"],
+                df["PERC_CORRECOES_DE_PRIMEIRA"],
+            )
+        ],
+        selector=dict(name="PERC_CORRECOES_DE_PRIMEIRA"),
+    )
+
+    # Atualizando os valores de rótulo para PERC_CORRECOES_TARDIA (percentual e valor absoluto de correções tardias)
+    bar_chart.update_traces(
+        text=[
+            f"{correcoes} ({perc_correcoes:.2f}%)"
+            for correcoes, perc_correcoes in zip(
+                df["CORRECOES_TARDIA"], df["PERC_CORRECOES_TARDIA"]
+            )
+        ],
+        selector=dict(name="PERC_CORRECOES_TARDIA"),
+    )
+
+    # Atualizando os valores de rótulo para PERC_RETRABALHO (percentual e valor absoluto de retrabalhos)
+    bar_chart.update_traces(
+        text=[
+            f"{correcoes} ({perc_correcoes:.2f}%)"
+            for correcoes, perc_correcoes in zip(
+                df["RETRABALHO"], df["PERC_RETRABALHO"]
+            )
+        ],
+        selector=dict(name="PERC_RETRABALHO"),
+    )
+
+    # Exibir os rótulos nas barras
+    bar_chart.update_traces(texttemplate="%{text}")
+
+    # Ajustar a margem inferior para evitar corte de rótulos
+    bar_chart.update_layout(margin=dict(b=200), height=600)
+
+    # Retorna o gráfico
+    return bar_chart

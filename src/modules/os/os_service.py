@@ -31,7 +31,7 @@ class OSService:
 
         # Subqueries
         withquery_modelos_str = subquery_modelos(lista_modelos, prefix="od.", termo_all="TODOS")
-        withquery_oficinas_str = subquery_oficinas(lista_oficinas, prefix="od.") 
+        withquery_oficinas_str = subquery_oficinas(lista_oficinas, prefix="od.")
         withquery_os_str = subquery_os(lista_os, prefix="od.")
 
         subquery_modelos_str = subquery_modelos(lista_modelos, prefix="problem_grouping.", termo_all="TODOS")
@@ -47,10 +47,10 @@ class OSService:
 		    FROM
     			os_dados od
             WHERE 
-                od."DATA INICIO SERVIÇO" IS NOT NULL 
-                AND od."DATA DE FECHAMENTO DO SERVICO" IS NOT NULL 
-                AND od."DATA INICIO SERVIÇO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
-                AND od."DATA DE FECHAMENTO DO SERVICO" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+                od."DATA DA ABERTURA DA OS" IS NOT NULL 
+                AND od."DATA DO FECHAMENTO DA OS" IS NOT NULL 
+                AND od."DATA DA ABERTURA DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+                AND od."DATA DO FECHAMENTO DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
                 AND od."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
                 {withquery_modelos_str}
                 {withquery_oficinas_str}
@@ -62,7 +62,7 @@ class OSService:
 		    FROM 
     			os_clean od
 		    ORDER BY 
-		        od."NUMERO DA OS", od."DESCRICAO DO SERVICO", od."DATA INICIO SERVIÇO" DESC
+		        od."NUMERO DA OS", od."DESCRICAO DO SERVICO", od."DATA DA ABERTURA DA OS" DESC
 	    ),
         os_diff_days AS (
             SELECT 
@@ -81,23 +81,23 @@ class OSService:
                 od."DATA INICIO SERVIÇO",
                 od."DATA DE FECHAMENTO DO SERVICO",
                 od."COLABORADOR QUE EXECUTOU O SERVICO",
-                lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO") AS "PREV_DATA_FECHAMENTO",
-                lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO") AS "NEXT_DATA_ABERTURA",
+                lag(od."DATA DO FECHAMENTO DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") AS "PREV_DATA_FECHAMENTO",
+                lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") AS "NEXT_DATA_ABERTURA",
                     CASE
-                        WHEN lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO") IS NOT NULL 
-                        AND od."DATA DA ABERTURA DA OS" IS NOT NULL 
-                        THEN date_part('day'::text, od."DATA DA ABERTURA DA OS"::timestamp without time zone - lag(od."DATA DE FECHAMENTO DO SERVICO") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO")::timestamp without time zone)
+                        WHEN lag(od."DATA DO FECHAMENTO DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") IS NOT NULL 
+                             AND od."DATA DA ABERTURA DA OS" IS NOT NULL 
+                        THEN date_part('day'::text, od."DATA DA ABERTURA DA OS"::timestamp without time zone - lag(od."DATA DO FECHAMENTO DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS")::timestamp without time zone)
                         ELSE NULL::double precision
                     END AS prev_days,
                     CASE
-                        WHEN od."DATA DE FECHAMENTO DO SERVICO" IS NOT NULL AND lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO") IS NOT NULL 
-                        THEN date_part('day'::text, lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA INICIO SERVIÇO")::timestamp without time zone - od."DATA DE FECHAMENTO DO SERVICO"::timestamp without time zone)
+                        WHEN od."DATA DO FECHAMENTO DA OS" IS NOT NULL AND lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") IS NOT NULL 
+                        THEN date_part('day'::text, lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS")::timestamp without time zone - od."DATA DO FECHAMENTO DA OS"::timestamp without time zone)
                         ELSE NULL::double precision
                     END AS next_days
             FROM 
                 os_remove_duplicadas od
             ORDER BY
-                od."DATA INICIO SERVIÇO"
+                od."DATA DA ABERTURA DA OS"
         ), 
         os_with_flags AS (
             SELECT 
@@ -139,7 +139,7 @@ class OSService:
                     CASE
                         WHEN os_with_flags.correcao THEN 1
                         ELSE 0
-                    END) OVER (PARTITION BY os_with_flags."CODIGO DO VEICULO" ORDER BY os_with_flags."DATA INICIO SERVIÇO") AS problem_no,
+                    END) OVER (PARTITION BY os_with_flags."CODIGO DO VEICULO" ORDER BY os_with_flags."DATA DA ABERTURA DA OS") AS problem_no,
                 os_with_flags."NUMERO DA OS",
                 os_with_flags."CODIGO DO VEICULO",
                 os_with_flags."DESCRICAO DO SERVICO",
@@ -185,12 +185,12 @@ class OSService:
             FROM 
                 problem_grouping
             WHERE
-                problem_grouping."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                problem_grouping."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_modelos_str}
                 {subquery_oficinas_str}
                 {subquery_os_str}
             ORDER BY 
-                problem_grouping."DATA INICIO SERVIÇO"
+                problem_grouping."DATA DA ABERTURA DA OS"
         )
         SELECT
  		    od_fix."problem_no",
@@ -207,8 +207,14 @@ class OSService:
 	    ON 
             od."NUMERO DA OS" = od_fix."NUMERO DA OS" and od."DESCRICAO DO SERVICO" = od_fix."DESCRICAO DO SERVICO"
         WHERE
-            od."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            and od."CODIGO DO VEICULO" = '50714'
+            od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            --and (
+            --	od."CODIGO DO VEICULO" = '50714'
+            --	or 
+            --	od."CODIGO DO VEICULO" = '50774'
+            --	or
+            --	od."CODIGO DO VEICULO" = '50763'
+            --	)
 	    ORDER BY
 		    od."DATA DA ABERTURA DA OS" 
         """
@@ -247,7 +253,7 @@ class OSService:
 
     def get_tempo_cumulativo_para_retrabalho(self, df):
         # Processa cada problema de um veiculo
-        # Cálculo entre DATA DA ABERTURA DA OS do início do problem até a DATA DE FECHAMENTO DO SERVICO da solução
+        # Cálculo entre DATA DA ABERTURA DA OS do início do problem até a DATA DO FECHAMENTO DA OS da solução
 
         # Lista de tempos cumulativos
         tempos_cumulativos = []
@@ -257,10 +263,10 @@ class OSService:
                 # Vamos verificar se houve solução
                 if group["correcao"].sum() > 0:
                     data_abertura_os = pd.to_datetime(group["DATA DA ABERTURA DA OS"].min())
-                    data_fechamento_servico = pd.to_datetime(group["DATA DE FECHAMENTO DO SERVICO"].max())
+                    data_fechamento_os = pd.to_datetime(group["DATA DO FECHAMENTO DA OS"].max())
 
                     # Calcula a diferença em dias
-                    diff_in_days = (data_fechamento_servico - data_abertura_os).days
+                    diff_in_days = (data_fechamento_os - data_abertura_os).days
 
                     # Diff tem que ser no minimo 0
                     if diff_in_days < 0:
@@ -284,3 +290,57 @@ class OSService:
         )
 
         return df_tempos_cumulativos_sorted
+
+    def get_retrabalho_por_modelo(self, df):
+        df_agg_modelo_veiculo = (
+            df.groupby(["DESCRICAO DO MODELO", "CODIGO DO VEICULO"])
+            .agg(
+                {
+                    "NUMERO DA OS": "count",
+                    "retrabalho": "sum",
+                    "correcao": "sum",
+                    "correcao_primeira": "sum",
+                    "problem_no": lambda x: x.nunique(),  # Conta o número de problemas distintos
+                }
+            )
+            .reset_index()
+        )
+
+        df_modelo = (
+            df_agg_modelo_veiculo.groupby("DESCRICAO DO MODELO")
+            .agg(
+                {
+                    "NUMERO DA OS": "sum",
+                    "retrabalho": "sum",
+                    "correcao": "sum",
+                    "correcao_primeira": "sum",
+                    "problem_no": "sum",  #
+                }
+            )
+            .reset_index()
+            .copy()
+        )
+
+        # Renomeia algumas colunas para  CAPS LOCK para facilitar a visualização
+        df_modelo.rename(
+            columns={
+                "NUMERO DA OS": "TOTAL_DE_OS",
+                "retrabalho": "RETRABALHO",
+                "correcao": "CORRECAO",
+                "correcao_primeira": "CORRECOES_DE_PRIMEIRA",
+                "problem_no": "NUM_PROBLEMAS",
+            },
+            inplace=True,
+        )
+
+        # Adiciona algumas colunas para facilitar a análise
+        df_modelo["CORRECOES_TARDIA"] = df_modelo["CORRECAO"] - df_modelo["CORRECOES_DE_PRIMEIRA"]
+
+        # Calcula as porcentagens
+        df_modelo["PERC_RETRABALHO"] = 100 * (df_modelo["RETRABALHO"] / df_modelo["TOTAL_DE_OS"])
+        df_modelo["PERC_CORRECOES"] = 100 * (df_modelo["CORRECAO"] / df_modelo["TOTAL_DE_OS"])
+        df_modelo["PERC_CORRECOES_DE_PRIMEIRA"] = 100 * (df_modelo["CORRECOES_DE_PRIMEIRA"] / df_modelo["TOTAL_DE_OS"])
+        df_modelo["PERC_CORRECOES_TARDIA"] = 100 * (df_modelo["CORRECOES_TARDIA"] / df_modelo["TOTAL_DE_OS"])
+        df_modelo["REL_PROBLEMA_OS"] = df_modelo["NUM_PROBLEMAS"] / df_modelo["TOTAL_DE_OS"]
+
+        return df_modelo
