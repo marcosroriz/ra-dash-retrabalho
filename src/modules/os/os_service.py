@@ -208,13 +208,13 @@ class OSService:
             od."NUMERO DA OS" = od_fix."NUMERO DA OS" and od."DESCRICAO DO SERVICO" = od_fix."DESCRICAO DO SERVICO"
         WHERE
             od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            --and (
-            --	od."CODIGO DO VEICULO" = '50714'
+            and (
+            	od."CODIGO DO VEICULO" = '50714'
             --	or 
             --	od."CODIGO DO VEICULO" = '50774'
             --	or
             --	od."CODIGO DO VEICULO" = '50763'
-            --	)
+            	)
 	    ORDER BY
 		    od."DATA DA ABERTURA DA OS" 
         """

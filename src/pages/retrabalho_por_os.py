@@ -311,7 +311,38 @@ def plota_grafico_retrabalho_por_modelo_perc_os(store_payload):
 
     # Gera o gráfico
     fig = os_graficos.gerar_grafico_barras_retrabalho_por_modelo_perc(df_modelo)
-    
+
+    return fig
+
+
+def plota_grafico_evolucao_retrabalho_por_oficina_por_mes_os(store_payload):
+    if store_payload["vazio"]:
+        return go.Figure()
+
+    # Obtem os dados
+    df_os_raw = pd.DataFrame(store_payload["df_os"])
+
+    # Remove duplicatas
+    df = df_os_raw.drop_duplicates(subset=["NUMERO DA OS"])
+
+    # Adiciona a coluna de ano-mês
+    df["year_month"] = pd.to_datetime(df["DATA DA ABERTURA DA OS"]).dt.strftime("%Y-%m")
+
+    result = (
+        df.groupby(["year_month", "DESCRICAO DA OFICINA"])
+        .agg(
+            PERC_RETRABALHO=("retrabalho", lambda x: 100 * round(x.sum() / len(x), 4)),
+            PERC_CORRECAO_PRIMEIRA=("correcao_primeira", lambda x: 100 * round(x.sum() / len(x), 4)),
+        )
+        .reset_index()
+    )
+
+    # Estatística por oficina
+    df_oficina = os_service.get_retrabalho_por_oficina(df)
+
+    # Gera o gráfico
+    fig = os_graficos.gerar_grafico_evolucao_retrabalho_por_oficina_por_mes(df_oficina)
+
     return fig
 
 
