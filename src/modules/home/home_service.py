@@ -46,9 +46,9 @@ class HomeService:
                 100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
                 100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
             FROM
-                mat_view_retrabalho_{min_dias}_dias
+                mat_view_retrabalho_{min_dias}_dias_distinct
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -86,9 +86,9 @@ class HomeService:
             "DESCRICAO DO MODELO", 
             COUNT(DISTINCT "CODIGO DO VEICULO") AS "TOTAL_FROTA_PERIODO"
         FROM 
-            mat_view_retrabalho_{min_dias}_dias
+            mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str}
         GROUP BY 
             "DESCRICAO DO MODELO"
@@ -99,9 +99,9 @@ class HomeService:
             "DESCRICAO DO MODELO", 
             COUNT(DISTINCT "CODIGO DO VEICULO") AS "TOTAL_FROTA_TEVE_PROBLEMA"
         FROM 
-            mat_view_retrabalho_{min_dias}_dias
+            mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -114,9 +114,9 @@ class HomeService:
             "DESCRICAO DO MODELO", 
             COUNT(DISTINCT "CODIGO DO VEICULO") AS "TOTAL_FROTA_TEVE_RETRABALHO"
         FROM 
-            mat_view_retrabalho_{min_dias}_dias
+            mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -169,14 +169,14 @@ class HomeService:
 
         query = f"""
         SELECT
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             "DESCRICAO DA OFICINA",
             100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
         FROM
-            mat_view_retrabalho_{min_dias}_dias
+            mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -225,14 +225,14 @@ class HomeService:
 
         query = f"""
         SELECT
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             "DESCRICAO DA SECAO",
             100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
         FROM
-            mat_view_retrabalho_{min_dias}_dias
+            mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -282,8 +282,8 @@ class HomeService:
 
         query = f"""
         SELECT
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month_str,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month_str,
             AVG(CASE WHEN retrabalho THEN osclass."SCORE_SYMPTOMS_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SINTOMA_COM_RETRABALHO",
             AVG(CASE WHEN retrabalho THEN osclass."SCORE_SOLUTION_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SOLUCAO_COM_RETRABALHO",
             AVG(CASE WHEN correcao_primeira THEN osclass."SCORE_SYMPTOMS_TEXT_QUALITY" ELSE NULL END) AS "NOTA_MEDIA_SINTOMA_SOLUCAO",
@@ -294,7 +294,7 @@ class HomeService:
             os_dados_classificacao AS osclass
             ON retview."KEY_HASH" = osclass."KEY_HASH"
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -366,18 +366,18 @@ class HomeService:
 
         query = f"""
         SELECT
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month_str,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month_str,
             SUM(pg."VALOR") AS "TOTAL_GASTO",
 	        SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
         FROM
-            mat_view_retrabalho_{min_dias}_dias AS main
+            mat_view_retrabalho_{min_dias}_dias_distinct AS main
         JOIN
             view_pecas_desconsiderando_combustivel pg 
         ON
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -439,9 +439,9 @@ class HomeService:
                 "CODIGO DO VEICULO",
                 "problem_no"
             FROM
-                mat_view_retrabalho_{min_dias}_dias
+                mat_view_retrabalho_{min_dias}_dias_distinct
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -478,7 +478,7 @@ class HomeService:
             100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
             COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA"
         FROM
-            mat_view_retrabalho_{min_dias}_dias main
+            mat_view_retrabalho_{min_dias}_dias_distinct AS main
         LEFT JOIN
             os_problema op
         ON
@@ -486,7 +486,7 @@ class HomeService:
             AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
             AND main."DESCRICAO DO SERVICO" = op.servico
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -518,13 +518,13 @@ class HomeService:
             100 * ROUND(SUM(CASE WHEN NOT osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_NAO_COERENTE",
             100 * ROUND(SUM(CASE WHEN osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_COERENTE"
         FROM
-            mat_view_retrabalho_{min_dias}_dias main
+            mat_view_retrabalho_{min_dias}_dias_distinct AS main
         LEFT JOIN 
             os_dados_classificacao AS osclass
         ON 
             main."KEY_HASH" = osclass."KEY_HASH"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -554,13 +554,13 @@ class HomeService:
             SUM(pg."VALOR") AS "TOTAL_GASTO",
             SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
         FROM
-            mat_view_retrabalho_{min_dias}_dias main
+            mat_view_retrabalho_{min_dias}_dias_distinct AS main
         JOIN
             view_pecas_desconsiderando_combustivel pg 
         ON
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -623,7 +623,7 @@ class HomeService:
                 FROM
                     mat_view_retrabalho_{min_dias}_dias
                 WHERE
-                    "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                    "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                     {subquery_oficinas_str}
                     {subquery_secoes_str}
                     {subquery_os_str}
@@ -659,7 +659,7 @@ class HomeService:
                 ON
                 main."COLABORADOR QUE EXECUTOU O SERVICO" = cp.colaborador
             WHERE
-                main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {inner_subquery_oficinas_str}
                 {inner_subquery_secoes_str}
                 {inner_subquery_os_str}
@@ -705,7 +705,7 @@ class HomeService:
         ON 
             main."KEY_HASH" = osclass."KEY_HASH"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -741,7 +741,7 @@ class HomeService:
         ON
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -781,7 +781,7 @@ class HomeService:
         ON
             main."KEY_HASH" = od."KEY_HASH"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -838,9 +838,9 @@ class HomeService:
                     "CODIGO DO VEICULO" AS cod_veiculo,
                     "problem_no"
                 FROM
-                    mat_view_retrabalho_{min_dias}_dias
+                    mat_view_retrabalho_{min_dias}_dias_distinct
                 WHERE
-                    "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                    "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                     {subquery_oficinas_str}
                     {subquery_secoes_str}
                     {subquery_os_str}
@@ -872,14 +872,14 @@ class HomeService:
                 100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
                 COALESCE(op.num_problema, 0) AS "TOTAL_PROBLEMA"
             FROM
-                mat_view_retrabalho_{min_dias}_dias main
+                mat_view_retrabalho_{min_dias}_dias_distinct main
             LEFT JOIN
                 os_problema op
             ON
                 main."DESCRICAO DO MODELO" = op."DESCRICAO DO MODELO"
                 AND main."CODIGO DO VEICULO" = op.cod_veiculo
             WHERE
-                main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {inner_subquery_oficinas_str}
                 {inner_subquery_secoes_str}
                 {inner_subquery_os_str}
@@ -903,13 +903,13 @@ class HomeService:
             AVG(osclass."SCORE_SOLUTION_TEXT_QUALITY") AS "NOTA_MEDIA_SOLUCAO",
             100 * ROUND(SUM(CASE WHEN osclass."SOLUTION_HAS_COHERENCE_TO_PROBLEM" THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_SOLUCAO_COERENTE"
         FROM
-            mat_view_retrabalho_{min_dias}_dias main
+            mat_view_retrabalho_{min_dias}_dias_distinct main
         LEFT JOIN 
             os_dados_classificacao AS osclass
         ON 
             main."KEY_HASH" = osclass."KEY_HASH"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -936,13 +936,13 @@ class HomeService:
             SUM(pg."VALOR") AS "TOTAL_GASTO",
             SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
         FROM
-            mat_view_retrabalho_{min_dias}_dias main
+            mat_view_retrabalho_{min_dias}_dias_distinct main
         JOIN
             view_pecas_desconsiderando_combustivel pg 
         ON
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
