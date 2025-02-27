@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 # Imports auxiliares
-from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os
+from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, subquery_modelos
 from modules.entities_utils import get_mecanicos
 
 
@@ -18,7 +18,7 @@ class HomeService:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
 
-    def get_sintese_geral(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_sintese_geral(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a síntese geral (que será usado para o gráfico de pizza)"""
 
         # Extraí a data inicial (já em string)
@@ -31,6 +31,7 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
@@ -49,6 +50,7 @@ class HomeService:
                 mat_view_retrabalho_{min_dias}_dias_distinct
             WHERE
                 "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_modelos_str}
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -62,7 +64,7 @@ class HomeService:
 
         return df
 
-    def get_retrabalho_por_modelo(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_retrabalho_por_modelo(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter o quantitativo de retrabalho e correções de primeira por modelo"""
 
         # Extraí a data inicial (já em string)
@@ -75,6 +77,7 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
@@ -89,6 +92,7 @@ class HomeService:
             mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
             {subquery_oficinas_str}
         GROUP BY 
             "DESCRICAO DO MODELO"
@@ -102,6 +106,7 @@ class HomeService:
             mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -117,6 +122,7 @@ class HomeService:
             mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -147,7 +153,7 @@ class HomeService:
 
         return df
 
-    def get_evolucao_retrabalho_por_modelo_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_evolucao_retrabalho_por_modelo_por_mes(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a evolução do retrabalho por modelo por mes"""
         # Extraí a data inicial (já em string)
         data_inicio_str = datas[0]
@@ -159,6 +165,7 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
@@ -173,6 +180,7 @@ class HomeService:
             mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -201,7 +209,7 @@ class HomeService:
 
         return df_combinado
 
-    def get_evolucao_retrabalho_por_oficina_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_evolucao_retrabalho_por_oficina_por_mes(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a evolução do retrabalho por oficina por mes"""
         # Extraí a data inicial (já em string)
         data_inicio_str = datas[0]
@@ -213,6 +221,7 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
@@ -227,6 +236,7 @@ class HomeService:
             mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -255,7 +265,7 @@ class HomeService:
 
         return df_combinado
 
-    def get_evolucao_retrabalho_por_secao_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_evolucao_retrabalho_por_secao_por_mes(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a evolução do retrabalho por seção por mes"""
         # Extraí a data inicial (já em string)
         data_inicio_str = datas[0]
@@ -267,6 +277,7 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
@@ -281,6 +292,7 @@ class HomeService:
             mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -309,7 +321,7 @@ class HomeService:
 
         return df_combinado
 
-    def get_evolucao_retrabalho_por_nota_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_evolucao_retrabalho_por_nota_por_mes(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a evolução do retrabalho por nota por mes"""
 
         # Extraí a data inicial (já em string)
@@ -322,6 +334,7 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
@@ -341,6 +354,7 @@ class HomeService:
             ON retview."KEY_HASH" = osclass."KEY_HASH"
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -393,7 +407,7 @@ class HomeService:
 
         return df_combinado
 
-    def get_evolucao_retrabalho_por_custo_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_evolucao_retrabalho_por_custo_por_mes(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a evolução do retrabalho por custo por mes"""
 
         # Extraí a data inicial (já em string)
@@ -406,6 +420,7 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
@@ -424,6 +439,7 @@ class HomeService:
             main."NUMERO DA OS" = pg."OS"
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_modelos_str}
             {subquery_oficinas_str}
             {subquery_secoes_str}
             {subquery_os_str}
@@ -456,7 +472,7 @@ class HomeService:
 
         return df_custo
 
-    def get_top_os_geral_retrabalho(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_top_os_geral_retrabalho(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter as OSs com mais retrabalho"""
 
         # Datas
@@ -468,10 +484,12 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
 
+        inner_subquery_modelos_str = subquery_modelos(lista_modelos, "main.", termo_all="TODOS")
         inner_subquery_oficinas_str = subquery_oficinas(lista_oficinas, "main.")
         inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
         inner_subquery_os_str = subquery_os(lista_os, "main.")
@@ -488,6 +506,7 @@ class HomeService:
                 mat_view_retrabalho_{min_dias}_dias_distinct
             WHERE
                 "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_modelos_str}
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
@@ -533,6 +552,7 @@ class HomeService:
             AND main."DESCRICAO DO SERVICO" = op.servico
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_modelos_str}
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -571,6 +591,7 @@ class HomeService:
             main."KEY_HASH" = osclass."KEY_HASH"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_modelos_str}
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -607,6 +628,7 @@ class HomeService:
             main."NUMERO DA OS" = pg."OS"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_modelos_str}
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -634,7 +656,7 @@ class HomeService:
 
         return df_combinado
 
-    def get_top_os_colaboradores(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_top_os_colaboradores(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter os colaboradores com mais retrabalho"""
 
         # Obtem lista de mecânicos
@@ -649,10 +671,12 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
 
+        inner_subquery_modelos_str = subquery_modelos(lista_modelos, "main.", termo_all="TODOS")
         inner_subquery_oficinas_str = subquery_oficinas(lista_oficinas, "main.")
         inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
         inner_subquery_os_str = subquery_os(lista_os, "main.")
@@ -668,6 +692,7 @@ class HomeService:
                     mat_view_retrabalho_{min_dias}_dias
                 WHERE
                     "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                    {subquery_modelos_str}
                     {subquery_oficinas_str}
                     {subquery_secoes_str}
                     {subquery_os_str}
@@ -704,6 +729,7 @@ class HomeService:
                 main."COLABORADOR QUE EXECUTOU O SERVICO" = cp.colaborador
             WHERE
                 main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {inner_subquery_modelos_str}
                 {inner_subquery_oficinas_str}
                 {inner_subquery_secoes_str}
                 {inner_subquery_os_str}
@@ -748,6 +774,7 @@ class HomeService:
             main."KEY_HASH" = osclass."KEY_HASH"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_modelos_str}
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -784,6 +811,7 @@ class HomeService:
             main."NUMERO DA OS" = pg."OS"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_modelos_str}
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -824,6 +852,7 @@ class HomeService:
             main."KEY_HASH" = od."KEY_HASH"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_modelos_str}
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -852,7 +881,7 @@ class HomeService:
 
         return df_combinado
 
-    def get_top_veiculos(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    def get_top_veiculos(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter os veículos  com mais retrabalho"""
 
         # Datas
@@ -864,10 +893,12 @@ class HomeService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
 
+        inner_subquery_modelos_str = subquery_modelos(lista_modelos, "main.", termo_all="TODOS")
         inner_subquery_oficinas_str = subquery_oficinas(lista_oficinas, "main.")
         inner_subquery_secoes_str = subquery_secoes(lista_secaos, "main.")
         inner_subquery_os_str = subquery_os(lista_os, "main.")
@@ -882,6 +913,7 @@ class HomeService:
                     mat_view_retrabalho_{min_dias}_dias_distinct
                 WHERE
                     "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                    {subquery_modelos_str}
                     {subquery_oficinas_str}
                     {subquery_secoes_str}
                     {subquery_os_str}
@@ -921,6 +953,7 @@ class HomeService:
                 AND main."CODIGO DO VEICULO" = op.cod_veiculo
             WHERE
                 main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {inner_subquery_modelos_str}
                 {inner_subquery_oficinas_str}
                 {inner_subquery_secoes_str}
                 {inner_subquery_os_str}
@@ -951,6 +984,7 @@ class HomeService:
             main."KEY_HASH" = osclass."KEY_HASH"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_modelos_str}
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}
@@ -984,6 +1018,7 @@ class HomeService:
             main."NUMERO DA OS" = pg."OS"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {inner_subquery_modelos_str}
             {inner_subquery_oficinas_str}
             {inner_subquery_secoes_str}
             {inner_subquery_os_str}

@@ -52,7 +52,7 @@ def gerar_grafico_pizza_sinteze_geral(df, labels, values):
     # Remove o espaçamento em torno do gráfico
     fig.update_layout(
         margin=dict(t=40, b=0),  # Remove as margens
-        height=320,  # Ajuste conforme necessário
+        height=420,  # Ajuste conforme necessário
         legend=dict(
             orientation="h",  # Legenda horizontal
             yanchor="top",  # Ancora no topo
@@ -112,9 +112,7 @@ def gerar_grafico_retrabalho_por_modelo(df):
     bar_chart.update_traces(
         text=[
             f"{perc_teve_prob_e_retrab:.0f}%<br>({teve_prob_e_retrab:.0f})"
-            for teve_prob_e_retrab, perc_teve_prob_e_retrab in zip(
-                df["TEVE_PROBLEMA_E_RETRABALHO"], df["PERC_TEVE_PROBLEMA_E_RETRABALHO"]
-            )
+            for teve_prob_e_retrab, perc_teve_prob_e_retrab in zip(df["TEVE_PROBLEMA_E_RETRABALHO"], df["PERC_TEVE_PROBLEMA_E_RETRABALHO"])
         ],
         selector=dict(name="PERC_TEVE_PROBLEMA_E_RETRABALHO"),
     )
@@ -125,9 +123,13 @@ def gerar_grafico_retrabalho_por_modelo(df):
     # Ajustar a margem inferior para evitar corte de rótulos
     bar_chart.update_layout(
         yaxis=dict(range=[0, 118]),
-        margin=dict(t=10, b=200),
-        height=500,  # Adjust the upper limit as needed
     )
+
+    if len(df) > 5:
+        bar_chart.update_layout(
+            margin=dict(t=10, b=200),
+            height=500,
+        )
 
     # Separador numérico
     bar_chart.update_layout(separators=",.")
@@ -190,7 +192,7 @@ def gerar_grafico_evolucao_retrabalho_por_modelo_por_mes(df):
                 showarrow=False,
                 font=dict(size=16),
             ),
-        ]
+        ],
     )
 
     # Gera ticks todo mês
