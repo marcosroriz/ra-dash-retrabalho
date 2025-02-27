@@ -568,7 +568,7 @@ class HomeService:
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
-        # Adicionaa campo de relação entre OS e problemas
+        # Adiciona campo de relação entre OS e problemas
         df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
 
         # Novo DF com notas LLM

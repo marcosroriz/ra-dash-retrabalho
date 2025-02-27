@@ -218,7 +218,6 @@ class OSService:
 	    ORDER BY
 		    od."DATA DA ABERTURA DA OS" 
         """
-        print(query)
 
         df_os_query = pd.read_sql_query(query, self.dbEngine)
 
@@ -227,6 +226,92 @@ class OSService:
         df_os_query["DATA DE FECHAMENTO DO SERVICO"] = pd.to_datetime(df_os_query["DATA DE FECHAMENTO DO SERVICO"])
 
         return df_os_query
+
+
+    def obtem_dados_os_llm_sql(self, datas, min_dias, lista_modelos, lista_oficinas, lista_os):
+        # Extraí a data inicial (já em string)
+        data_inicio_str = datas[0]
+
+        # Extraí a data final
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, prefix="main.", termo_all="TODOS")
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas, prefix="main.")
+        subquery_os_str = subquery_os(lista_os, prefix="main.")
+
+        query = f"""
+        SELECT 
+            *
+        FROM 
+            os_dados main
+        LEFT JOIN
+            os_dados_classificacao osclass
+        ON 
+            main."KEY_HASH" = osclass."KEY_HASH"
+        WHERE
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            AND main."DATA DA ABERTURA DA OS" IS NOT NULL 
+            AND main."DATA DO FECHAMENTO DA OS" IS NOT NULL 
+            AND main."DATA DA ABERTURA DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+            AND main."DATA DO FECHAMENTO DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+            AND main."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
+            {subquery_modelos_str}
+            {subquery_oficinas_str}
+            {subquery_os_str}
+	    """
+        print(query)
+
+        df_llm = pd.read_sql_query(query, self.dbEngine)
+        df_llm = df_llm.loc[:, ~df_llm.columns.duplicated()]
+
+        return df_llm
+
+
+    def obtem_dados_os_custo_sql(self, datas, min_dias, lista_modelos, lista_oficinas, lista_os):
+        # Extraí a data inicial (já em string)
+        data_inicio_str = datas[0]
+
+        # Extraí a data final
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, prefix="main.", termo_all="TODOS")
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas, prefix="main.")
+        subquery_os_str = subquery_os(lista_os, prefix="main.")
+
+        query = f"""
+        SELECT 
+            *
+        FROM 
+            os_dados main
+        LEFT JOIN
+            view_pecas_desconsiderando_combustivel pg
+        ON
+            main."NUMERO DA OS" = pg."OS"
+        WHERE
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            AND main."DATA DA ABERTURA DA OS" IS NOT NULL 
+            AND main."DATA DO FECHAMENTO DA OS" IS NOT NULL 
+            AND main."DATA DA ABERTURA DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+            AND main."DATA DO FECHAMENTO DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+            AND main."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
+            {subquery_modelos_str}
+            {subquery_oficinas_str}
+            {subquery_os_str}
+	    """
+        print(query)
+
+        df_custo = pd.read_sql_query(query, self.dbEngine)
+        df_custo = df_custo.loc[:, ~df_custo.columns.duplicated()]
+
+        return df_custo
 
     # Função que retorna a sintese geral das OS
     def get_sintese_os(self, df):
@@ -344,3 +429,54 @@ class OSService:
         df_modelo["REL_PROBLEMA_OS"] = df_modelo["NUM_PROBLEMAS"] / df_modelo["TOTAL_DE_OS"]
 
         return df_modelo
+
+    def get_indicadores_colaboradores(self, df):
+        df_colaborador = (
+            df.groupby("COLABORADOR QUE EXECUTOU O SERVICO")
+            .agg(
+                {
+                    "NUMERO DA OS": "count",
+                    "retrabalho": "sum",
+                    "correcao": "sum",
+                    "correcao_primeira": "sum",
+                    "problem_no": lambda x: x.nunique(),  # Conta o número de problemas distintos
+                }
+            )
+            .reset_index()
+        )
+
+        # Renomeia algumas colunas
+        df_colaborador = df_colaborador.rename(
+            columns={
+                "NUMERO DA OS": "TOTAL_DE_OS",
+                "retrabalho": "RETRABALHOS",
+                "correcao": "CORRECOES",
+                "correcao_primeira": "CORRECOES_DE_PRIMEIRA",
+                "problem_no": "NUM_PROBLEMAS",
+            }
+        )
+
+        # Correções Tardias
+        df_colaborador["CORRECOES_TARDIA"] = (
+            df_colaborador["CORRECOES"] - df_colaborador["CORRECOES_DE_PRIMEIRA"]
+        )
+        # Calcula as porcentagens
+        df_colaborador["PERC_RETRABALHO"] = 100 * (
+            df_colaborador["RETRABALHOS"] / df_colaborador["TOTAL_DE_OS"]
+        )
+        df_colaborador["PERC_CORRECOES"] = 100 * (
+            df_colaborador["CORRECOES"] / df_colaborador["TOTAL_DE_OS"]
+        )
+        df_colaborador["PERC_CORRECOES_DE_PRIMEIRA"] = 100 * (
+            df_colaborador["CORRECOES_DE_PRIMEIRA"] / df_colaborador["TOTAL_DE_OS"]
+        )
+        df_colaborador["PERC_CORRECOES_TARDIA"] = 100 * (
+            df_colaborador["CORRECOES_TARDIA"] / df_colaborador["TOTAL_DE_OS"]
+        )
+        df_colaborador["REL_PROBLEMA_OS"] = (
+            df_colaborador["NUM_PROBLEMAS"] / df_colaborador["TOTAL_DE_OS"]
+        )
+
+        print(df)
+        print(df)
+        pass
