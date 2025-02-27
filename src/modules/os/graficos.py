@@ -162,9 +162,7 @@ def gerar_grafico_barras_retrabalho_por_modelo_perc(df):
     bar_chart.update_traces(
         text=[
             f"{correcoes} ({perc_correcoes:.2f}%)"
-            for correcoes, perc_correcoes in zip(
-                df["CORRECOES_TARDIA"], df["PERC_CORRECOES_TARDIA"]
-            )
+            for correcoes, perc_correcoes in zip(df["CORRECOES_TARDIA"], df["PERC_CORRECOES_TARDIA"])
         ],
         selector=dict(name="PERC_CORRECOES_TARDIA"),
     )
@@ -173,9 +171,7 @@ def gerar_grafico_barras_retrabalho_por_modelo_perc(df):
     bar_chart.update_traces(
         text=[
             f"{correcoes} ({perc_correcoes:.2f}%)"
-            for correcoes, perc_correcoes in zip(
-                df["RETRABALHO"], df["PERC_RETRABALHO"]
-            )
+            for correcoes, perc_correcoes in zip(df["RETRABALHO"], df["PERC_RETRABALHO"])
         ],
         selector=dict(name="PERC_RETRABALHO"),
     )
@@ -183,8 +179,16 @@ def gerar_grafico_barras_retrabalho_por_modelo_perc(df):
     # Exibir os rótulos nas barras
     bar_chart.update_traces(texttemplate="%{text}")
 
+    bar_chart.update_layout(
+        yaxis=dict(range=[0, 118]),
+    )
+
     # Ajustar a margem inferior para evitar corte de rótulos
-    bar_chart.update_layout(margin=dict(b=200), height=600)
+    if len(df) > 5:
+        bar_chart.update_layout(
+            margin=dict(t=10, b=200),
+            height=500,
+        )
 
     # Retorna o gráfico
     return bar_chart

@@ -208,17 +208,20 @@ class OSService:
             od."NUMERO DA OS" = od_fix."NUMERO DA OS" and od."DESCRICAO DO SERVICO" = od_fix."DESCRICAO DO SERVICO"
         WHERE
             od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            and (
-            	od."CODIGO DO VEICULO" = '50714'
+            AND (
+                od."COLABORADOR QUE EXECUTOU O SERVICO" = '3561'
+            )
+            --and (
+            --	od."CODIGO DO VEICULO" = '50714'
             --	or 
             --	od."CODIGO DO VEICULO" = '50774'
             --	or
             --	od."CODIGO DO VEICULO" = '50763'
-            	)
+            --	)
 	    ORDER BY
 		    od."DATA DA ABERTURA DA OS" 
         """
-
+        print(query)
         df_os_query = pd.read_sql_query(query, self.dbEngine)
 
         # Tratamento de datas
@@ -226,7 +229,6 @@ class OSService:
         df_os_query["DATA DE FECHAMENTO DO SERVICO"] = pd.to_datetime(df_os_query["DATA DE FECHAMENTO DO SERVICO"])
 
         return df_os_query
-
 
     def obtem_dados_os_llm_sql(self, datas, min_dias, lista_modelos, lista_oficinas, lista_os):
         # Extraí a data inicial (já em string)
@@ -263,13 +265,11 @@ class OSService:
             {subquery_oficinas_str}
             {subquery_os_str}
 	    """
-        print(query)
 
         df_llm = pd.read_sql_query(query, self.dbEngine)
         df_llm = df_llm.loc[:, ~df_llm.columns.duplicated()]
 
         return df_llm
-
 
     def obtem_dados_os_custo_sql(self, datas, min_dias, lista_modelos, lista_oficinas, lista_os):
         # Extraí a data inicial (já em string)
@@ -306,12 +306,114 @@ class OSService:
             {subquery_oficinas_str}
             {subquery_os_str}
 	    """
-        print(query)
 
         df_custo = pd.read_sql_query(query, self.dbEngine)
         df_custo = df_custo.loc[:, ~df_custo.columns.duplicated()]
 
         return df_custo
+
+    # Função que retorna os dados dos colaboradores de um conjunto de OS
+    def obtem_dados_colaboradores_pandas(self, df_os, df_llm, df_custo):
+        # Obtem lista de mecânicos
+        df_mecanicos = get_mecanicos(self.dbEngine)
+
+        # Estatísticas por colaborador
+        df_colaborador = (
+            df_os.groupby("COLABORADOR QUE EXECUTOU O SERVICO")
+            .agg(
+                {
+                    "NUMERO DA OS": "count",
+                    "retrabalho": "sum",
+                    "correcao": "sum",
+                    "correcao_primeira": "sum",
+                    "problem_no": lambda x: x.nunique(),  # Conta o número de problemas distintos
+                }
+            )
+            .reset_index()
+        )
+
+        # Renomeia algumas colunas
+        df_colaborador = df_colaborador.rename(
+            columns={
+                "NUMERO DA OS": "TOTAL_DE_OS",
+                "retrabalho": "RETRABALHOS",
+                "correcao": "CORRECOES",
+                "correcao_primeira": "CORRECOES_DE_PRIMEIRA",
+                "problem_no": "NUM_PROBLEMAS",
+            }
+        )
+        df_colaborador["TOTAL_PROBLEMA"] = df_colaborador["NUM_PROBLEMAS"]
+
+        # Calcula notas LLM
+        df_llm_agg = df_llm.groupby("COLABORADOR QUE EXECUTOU O SERVICO").agg(
+            {"SOLUTION_HAS_COHERENCE_TO_PROBLEM": ["sum", "count"], "SCORE_SOLUTION_TEXT_QUALITY": "mean"}
+        ).reset_index()
+
+        df_llm_agg.columns = ["COLABORADOR QUE EXECUTOU O SERVICO", "sum_coherence", "count_coherence", "NOTA_MEDIA_SOLUCAO"]
+        # Drop nans
+        df_llm_agg = df_llm_agg.dropna()
+        df_llm_agg["PERC_SOLUCAO_COERENTE"] = 100 * (df_llm_agg["sum_coherence"] / df_llm_agg["count_coherence"])
+
+        # Merge colaborador com LLM
+        df_colaborador = df_colaborador.merge(df_llm_agg, how="left", on="COLABORADOR QUE EXECUTOU O SERVICO")
+
+        # Retrabalho
+        df_retrabalho = df_os[df_os["retrabalho"]]
+        df_retrabalho_custo = df_retrabalho.merge(df_custo, how="left", on="NUMERO DA OS")
+        # Primeiro agrupa por OS e colaborador para evitar contar mais de uma vez o custo de uma OS de um colaborador
+        df_retrabalho_custo_agg = df_retrabalho_custo.groupby(["COLABORADOR QUE EXECUTOU O SERVICO","NUMERO DA OS"])["VALOR"].sum().reset_index()
+        # Agora agrupa por colaborador
+        df_retrabalho_custo_colaborador = df_retrabalho_custo_agg.groupby("COLABORADOR QUE EXECUTOU O SERVICO")["VALOR"].sum().reset_index()
+        # Renomeia coluna VALOR para TOTAL_GASTO_RETRABALHO
+        df_retrabalho_custo_colaborador = df_retrabalho_custo_colaborador.rename(columns={"VALOR": "TOTAL_GASTO_RETRABALHO"})
+
+        # Gasto total
+        df_colaborador_custo = df_os.merge(df_custo, how="left", on="NUMERO DA OS")
+        # Primeiro agrupa por OS e colaborador para evitar contar mais de uma vez o custo de uma OS de um colaborador
+        df_colaborador_custo_agg = df_colaborador_custo.groupby(["COLABORADOR QUE EXECUTOU O SERVICO","NUMERO DA OS"])["VALOR"].sum().reset_index()
+        # Agora agrupa por colaborador
+        df_total_custo_colaborador = df_colaborador_custo_agg.groupby("COLABORADOR QUE EXECUTOU O SERVICO")["VALOR"].sum().reset_index()
+        # Renomeia coluna VALOR para TOTAL_GASTO
+        df_total_custo_colaborador = df_total_custo_colaborador.rename(columns={"VALOR": "TOTAL_GASTO"})
+
+        # Merge com custos
+        df_colaborador = df_colaborador.merge(df_retrabalho_custo_colaborador, on="COLABORADOR QUE EXECUTOU O SERVICO", how="left")
+        df_colaborador = df_colaborador.merge(df_total_custo_colaborador, on="COLABORADOR QUE EXECUTOU O SERVICO", how="left")
+        df_colaborador = df_colaborador.fillna(0)
+
+        # Correções Tardias
+        df_colaborador["CORRECOES_TARDIA"] = df_colaborador["CORRECOES"] - df_colaborador["CORRECOES_DE_PRIMEIRA"]
+        # Calcula as porcentagens
+        df_colaborador["PERC_RETRABALHO"] = 100 * (df_colaborador["RETRABALHOS"] / df_colaborador["TOTAL_DE_OS"])
+        df_colaborador["PERC_CORRECOES"] = 100 * (df_colaborador["CORRECOES"] / df_colaborador["TOTAL_DE_OS"])
+        df_colaborador["PERC_CORRECAO_PRIMEIRA"] = 100 * (
+            df_colaborador["CORRECOES_DE_PRIMEIRA"] / df_colaborador["TOTAL_DE_OS"]
+        )
+        df_colaborador["PERC_CORRECOES_TARDIA"] = 100 * (
+            df_colaborador["CORRECOES_TARDIA"] / df_colaborador["TOTAL_DE_OS"]
+        )
+        df_colaborador["REL_OS_PROBLEMA"] =  df_colaborador["TOTAL_DE_OS"] / df_colaborador["NUM_PROBLEMAS"]
+
+        # Adiciona label de nomes
+        df_colaborador["COLABORADOR QUE EXECUTOU O SERVICO"] = df_colaborador[
+            "COLABORADOR QUE EXECUTOU O SERVICO"
+        ].astype(int)
+
+        # Encontra o nome do colaborador
+        for ix, linha in df_colaborador.iterrows():
+            colaborador = linha["COLABORADOR QUE EXECUTOU O SERVICO"]
+            nome_colaborador = "Não encontrado"
+            if colaborador in df_mecanicos["cod_colaborador"].values:
+                nome_colaborador = df_mecanicos[df_mecanicos["cod_colaborador"] == colaborador][
+                    "nome_colaborador"
+                ].values[0]
+                nome_colaborador = re.sub(r"(?<!^)([A-Z])", r" \1", nome_colaborador)
+
+            df_colaborador.at[ix, "LABEL_COLABORADOR"] = f"{nome_colaborador} - {int(colaborador)}"
+            df_colaborador.at[ix, "NOME_COLABORADOR"] = f"{nome_colaborador}"
+            df_colaborador.at[ix, "ID_COLABORADOR"] = int(colaborador)
+
+        return df_colaborador
 
     # Função que retorna a sintese geral das OS
     def get_sintese_os(self, df):
@@ -357,7 +459,9 @@ class OSService:
                     if diff_in_days < 0:
                         diff_in_days = 0
 
-                    tempos_cumulativos.append({"problem_no": problem_no, "vehicle_id": vehicle_id, "tempo_cumulativo": diff_in_days})
+                    tempos_cumulativos.append(
+                        {"problem_no": problem_no, "vehicle_id": vehicle_id, "tempo_cumulativo": diff_in_days}
+                    )
             except Exception as e:
                 print(e)
                 # Adiciona como -1 para indicar que não foi possível calcular e sinalizar o problema
@@ -371,7 +475,9 @@ class OSService:
 
         # Criando a coluna cumulativa em termos percentuais
         df_tempos_cumulativos_sorted["cumulative_percentage"] = (
-            df_tempos_cumulativos_sorted["tempo_cumulativo"].expanding().count() / len(df_tempos_cumulativos_sorted) * 100
+            df_tempos_cumulativos_sorted["tempo_cumulativo"].expanding().count()
+            / len(df_tempos_cumulativos_sorted)
+            * 100
         )
 
         return df_tempos_cumulativos_sorted
@@ -430,6 +536,60 @@ class OSService:
 
         return df_modelo
 
+    def get_indicadores_gerais(self, df):
+        # Tempo para conclusão
+        df_dias_para_correcao = (
+            df.groupby(["problem_no", "CODIGO DO VEICULO", "DESCRICAO DO MODELO"])
+            .agg(
+                data_inicio=("DATA DA ABERTURA DA OS", "min"),
+                data_fim=("DATA DO FECHAMENTO DA OS", "max"),
+            )
+            .reset_index()
+        )
+        df_dias_para_correcao["data_inicio"] = pd.to_datetime(df_dias_para_correcao["data_inicio"])
+        df_dias_para_correcao["data_fim"] = pd.to_datetime(df_dias_para_correcao["data_fim"])
+        df_dias_para_correcao["dias_correcao"] = (
+            df_dias_para_correcao["data_fim"] - df_dias_para_correcao["data_inicio"]
+        ).dt.days
+
+        # Num de OS para correção
+        df_num_os_por_problema = df.groupby(["problem_no", "CODIGO DO VEICULO"]).size().reset_index(name="TOTAL_DE_OS")
+
+        # DF estatística
+        df_estatistica = pd.DataFrame(
+            {
+                "TOTAL_DE_OS": len(df),
+                "TOTAL_DE_PROBLEMAS": len(df[df["correcao"]]),
+                "TOTAL_DE_RETRABALHOS": len(df[df["retrabalho"]]),
+                "TOTAL_DE_CORRECOES": len(df[df["correcao"]]),
+                "TOTAL_DE_CORRECOES_DE_PRIMEIRA": len(df[df["correcao_primeira"]]),
+                "MEDIA_DE_DIAS_PARA_CORRECAO": df_dias_para_correcao["dias_correcao"].mean(),
+                "MEDIANA_DE_DIAS_PARA_CORRECAO": df_dias_para_correcao["dias_correcao"].median(),
+                "MEDIA_DE_OS_PARA_CORRECAO": df_num_os_por_problema["TOTAL_DE_OS"].mean(),
+            },
+            index=[0],
+        )
+        # Correções tardias
+        df_estatistica["TOTAL_DE_CORRECOES_TARDIAS"] = (
+            df_estatistica["TOTAL_DE_CORRECOES"] - df_estatistica["TOTAL_DE_CORRECOES_DE_PRIMEIRA"]
+        )
+        # Rel probl/os
+        df_estatistica["RELACAO_OS_PROBLEMA"] = df_estatistica["TOTAL_DE_OS"] / df_estatistica["TOTAL_DE_PROBLEMAS"]
+
+        # Porcentagens
+        df_estatistica["PERC_RETRABALHO"] = 100 * (
+            df_estatistica["TOTAL_DE_RETRABALHOS"] / df_estatistica["TOTAL_DE_OS"]
+        )
+        df_estatistica["PERC_CORRECOES"] = 100 * (df_estatistica["TOTAL_DE_CORRECOES"] / df_estatistica["TOTAL_DE_OS"])
+        df_estatistica["PERC_CORRECOES_DE_PRIMEIRA"] = 100 * (
+            df_estatistica["TOTAL_DE_CORRECOES_DE_PRIMEIRA"] / df_estatistica["TOTAL_DE_OS"]
+        )
+        df_estatistica["PERC_CORRECOES_TARDIAS"] = 100 * (
+            df_estatistica["TOTAL_DE_CORRECOES_TARDIAS"] / df_estatistica["TOTAL_DE_OS"]
+        )
+
+        return df_dias_para_correcao, df_num_os_por_problema, df_estatistica
+
     def get_indicadores_colaboradores(self, df):
         df_colaborador = (
             df.groupby("COLABORADOR QUE EXECUTOU O SERVICO")
@@ -457,26 +617,16 @@ class OSService:
         )
 
         # Correções Tardias
-        df_colaborador["CORRECOES_TARDIA"] = (
-            df_colaborador["CORRECOES"] - df_colaborador["CORRECOES_DE_PRIMEIRA"]
-        )
+        df_colaborador["CORRECOES_TARDIA"] = df_colaborador["CORRECOES"] - df_colaborador["CORRECOES_DE_PRIMEIRA"]
         # Calcula as porcentagens
-        df_colaborador["PERC_RETRABALHO"] = 100 * (
-            df_colaborador["RETRABALHOS"] / df_colaborador["TOTAL_DE_OS"]
-        )
-        df_colaborador["PERC_CORRECOES"] = 100 * (
-            df_colaborador["CORRECOES"] / df_colaborador["TOTAL_DE_OS"]
-        )
+        df_colaborador["PERC_RETRABALHO"] = 100 * (df_colaborador["RETRABALHOS"] / df_colaborador["TOTAL_DE_OS"])
+        df_colaborador["PERC_CORRECOES"] = 100 * (df_colaborador["CORRECOES"] / df_colaborador["TOTAL_DE_OS"])
         df_colaborador["PERC_CORRECOES_DE_PRIMEIRA"] = 100 * (
             df_colaborador["CORRECOES_DE_PRIMEIRA"] / df_colaborador["TOTAL_DE_OS"]
         )
         df_colaborador["PERC_CORRECOES_TARDIA"] = 100 * (
             df_colaborador["CORRECOES_TARDIA"] / df_colaborador["TOTAL_DE_OS"]
         )
-        df_colaborador["REL_PROBLEMA_OS"] = (
-            df_colaborador["NUM_PROBLEMAS"] / df_colaborador["TOTAL_DE_OS"]
-        )
+        df_colaborador["REL_PROBLEMA_OS"] = df_colaborador["NUM_PROBLEMAS"] / df_colaborador["TOTAL_DE_OS"]
 
-        print(df)
-        print(df)
-        pass
+        return df_colaborador
