@@ -93,7 +93,7 @@ class ColaboradorService:
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
             COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QTD_SERVICOS_DIFERENTES"
         FROM
-            mat_view_retrabalho_{min_dias}_dias
+            mat_view_retrabalho_{min_dias}_dias_distinct
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
@@ -363,7 +363,7 @@ class ColaboradorService:
         df['nota_media_colaborador'] = df['nota_media_colaborador'].replace(np.nan, 0)
         df['nota_media_os'] = df['nota_media_os'].replace(np.nan, 0)
         
-        return df.to_dict("records")
+        return df
     
     
     def dados_grafico_top_10_do_colaborador(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
@@ -911,11 +911,10 @@ class ColaboradorService:
         return df_mecanico
     
     @staticmethod
-
     # Função para gerar o Excel e retornar um link de download
-    def gerar_excel():
+    def gerar_excel(df):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            .to_excel(writer, index=False, sheet_name="Dados")
+            df.to_excel(writer, index=False, sheet_name="Dados")
         output.seek(0)
-        return base64.b64encode(output.read()).decode()
+        return output.getvalue()

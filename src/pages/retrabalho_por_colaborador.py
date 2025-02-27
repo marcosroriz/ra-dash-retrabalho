@@ -610,7 +610,7 @@ def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
         lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
         lista_oficina=lista_oficina
-    )
+    ).to_dict("records")
     
 @callback(
     Output("graph-evolucao-nota-por-mes", "figure"), 
@@ -675,18 +675,39 @@ def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, l
 
     fig = generate_grafico_evolucao_gasto(df_os_analise)
     return fig
+
+
     
     # Callback para atualizar o link de download quando o botão for clicado
 @callback(
-    dash.Output("link-download", "href"),
-    dash.Output("link-download", "style"),
-    dash.Input("btn-exportar", "n_clicks"),
+    Output("download-excel", "data")
+    ,
+    [
+        Input("btn-exportar", "n_clicks"),
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
     prevent_initial_call=True
 )
-def atualizar_download(n_clicks):
-    excel_data = colab.gerar_excel()
-    link = f"data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{excel_data}"
-    return link, {"display": "block"}
+def atualizar_download(n_clicks, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+        return dash.no_update
+    
+    date_now = datetime.now().strftime('%d-%m-%Y')
+    
+    df = colab.dados_tabela_do_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    excel_data = colab.gerar_excel(df=df)
+    return dcc.send_bytes(excel_data, f"tabela_os_retrabalho{date_now}.xlsx")
+
 
 
 ##############################################################################
@@ -1330,15 +1351,33 @@ layout = dbc.Container(
             # style={"height": 400, "resize": "vertical", "overflow": "hidden"}, #-> permite resize
         ),
         dmc.Space(h=10),
-        html.Br(),
-
-        # Botão para exportar
-        html.Button("Exportar para Excel", id="btn-exportar", n_clicks=0),
-
-        html.Br(),
-    # Link para download do arquivo Excel
-            html.A("Clique aqui para baixar o arquivo", id="link-download", href="", style={"display": "none"})
-        
+        html.Div(
+            [
+                html.Button(
+                    "Exportar para Excel",
+                    id="btn-exportar",
+                    n_clicks=0,
+                    style={
+                        "background-color": "#007bff",  # Azul
+                        "color": "white",
+                        "border": "none",
+                        "padding": "10px 20px",
+                        "border-radius": "8px",  # Bordas arredondadas
+                        "cursor": "pointer",
+                        "font-size": "16px",
+                        "font-weight": "bold",
+                    },
+                ),
+                dcc.Download(id="download-excel"),
+            ],
+            className="export-container",
+            style={
+                "display": "flex",
+                "justify-content": "center",
+                "align-items": "center",
+                "margin-top": "10px",
+            },
+        )
     ]
 )
 
