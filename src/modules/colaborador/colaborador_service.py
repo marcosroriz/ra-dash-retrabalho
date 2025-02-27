@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 import traceback
+import base64
 import re
+import io
 
 from db import PostgresSingleton
 from ..sql_utils import *
@@ -52,7 +54,7 @@ class ColaboradorService:
         FROM
             os_dados
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
@@ -61,8 +63,8 @@ class ColaboradorService:
         df_os_mecanico_query = pd.read_sql_query(query, self.pgEngine)
         # Tratamento de datas
         df_os_mecanico_query["DATA INICIO SERVICO"] = pd.to_datetime(df_os_mecanico_query["DATA INICIO SERVIÇO"])
-        df_os_mecanico_query["DATA DE FECHAMENTO DO SERVICO"] = pd.to_datetime(
-            df_os_mecanico_query["DATA DE FECHAMENTO DO SERVICO"]
+        df_os_mecanico_query["DATA DO FECHAMENTO DA OS"] = pd.to_datetime(
+            df_os_mecanico_query["DATA DO FECHAMENTO DA OS"]
         )
         return df_os_mecanico_query 
 
@@ -93,7 +95,7 @@ class ColaboradorService:
         FROM
             mat_view_retrabalho_{min_dias}_dias
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
@@ -125,11 +127,11 @@ class ColaboradorService:
             FROM mat_view_retrabalho_{min_dias}_dias
             WHERE 
                 "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-                AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
         )
         SELECT
             'COLABORADOR' AS escopo,
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
@@ -141,7 +143,7 @@ class ColaboradorService:
             mat_view_retrabalho_{min_dias}_dias
         WHERE
             "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-            AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND "DESCRICAO DA SECAO" IN (SELECT "DESCRICAO DA SECAO" FROM oficina_colaborador)
         GROUP BY
             year_month
@@ -150,7 +152,7 @@ class ColaboradorService:
 
         SELECT
             "DESCRICAO DA SECAO" AS escopo,
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
@@ -161,7 +163,7 @@ class ColaboradorService:
         FROM
             mat_view_retrabalho_{min_dias}_dias
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND "DESCRICAO DA SECAO" IN (SELECT "DESCRICAO DA SECAO" FROM oficina_colaborador)
             {subquery_secoes_str}
             {subquery_os_str}
@@ -204,7 +206,7 @@ class ColaboradorService:
         FROM
             mat_view_retrabalho_{min_dias}_dias
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
@@ -256,7 +258,7 @@ class ColaboradorService:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelo_str}
@@ -292,7 +294,7 @@ class ColaboradorService:
             LEFT JOIN os_dados_classificacao odc
             ON mt."KEY_HASH" = odc."KEY_HASH"
             WHERE
-                mt."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                mt."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {inner_subquery_secoes_str1}
                 {inner_subquery_os_str1}
                 {inner_subquery_modelo_str1}
@@ -342,7 +344,7 @@ class ColaboradorService:
         ON
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
             {inner_subquery_secoes_str2}
             {inner_subquery_os_str2}
             {inner_subquery_modelo_str2}
@@ -399,7 +401,7 @@ class ColaboradorService:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelo_str}
@@ -435,7 +437,7 @@ class ColaboradorService:
             LEFT JOIN os_dados_classificacao odc
             ON mt."KEY_HASH" = odc."KEY_HASH"
             WHERE
-                mt."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                mt."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {inner_subquery_secoes_str1}
                 {inner_subquery_os_str1}
                 {inner_subquery_modelo_str1}
@@ -485,7 +487,7 @@ class ColaboradorService:
         ON
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
             {inner_subquery_secoes_str2}
             {inner_subquery_os_str2}
             {inner_subquery_modelo_str2}
@@ -525,7 +527,7 @@ class ColaboradorService:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelo_str}
@@ -568,7 +570,7 @@ class ColaboradorService:
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
-                "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelo_str}
@@ -624,7 +626,7 @@ class ColaboradorService:
             "DESCRICAO DO SERVICO" AS "LABEL"
             FROM 
                 mat_view_retrabalho_{min_dias}_dias mvrd 
-            WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             
             ORDER BY
                 "DESCRICAO DO SERVICO"
@@ -651,7 +653,7 @@ class ColaboradorService:
             "DESCRICAO DO MODELO" as "LABEL"
             FROM 
                 mat_view_retrabalho_{min_dias}_dias mvrd 
-            WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_secoes_str}
             {subquery_os_str}
             ORDER BY
@@ -684,7 +686,7 @@ class ColaboradorService:
 		    os_dados_classificacao odc  on mt."KEY_HASH" = odc."KEY_HASH" 
 
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
@@ -714,11 +716,11 @@ class ColaboradorService:
             FROM mat_view_retrabalho_{min_dias}_dias
             WHERE 
                 "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-                AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
         )
         SELECT
             'COLABORADOR' AS escopo,
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media
         FROM
             mat_view_retrabalho_{min_dias}_dias mt1
@@ -726,7 +728,7 @@ class ColaboradorService:
 		    os_dados_classificacao odc  on mt1."KEY_HASH" = odc."KEY_HASH"
         WHERE
             "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-            AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA"  FROM oficina_colaborador)
         GROUP BY
             year_month
@@ -735,7 +737,7 @@ class ColaboradorService:
 
         SELECT
             "DESCRICAO DA OFICINA" AS escopo,
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media
         FROM
             mat_view_retrabalho_{min_dias}_dias mt2
@@ -743,7 +745,7 @@ class ColaboradorService:
 		    os_dados_classificacao odc  on mt2."KEY_HASH" = odc."KEY_HASH" 
       
         WHERE 
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA" FROM oficina_colaborador)
             {subquery_secoes_str}
             {subquery_os_str}
@@ -786,7 +788,7 @@ class ColaboradorService:
         LEFT JOIN
             os_dados_classificacao odc ON mt."KEY_HASH" = odc."KEY_HASH"
         WHERE
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
@@ -826,19 +828,19 @@ class ColaboradorService:
             FROM mat_view_retrabalho_{min_dias}_dias
             WHERE 
                 "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-                AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
         )
         SELECT
             'COLABORADOR' AS escopo,
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            Round(SUM(pg."VALOR"), 2) AS total_gasto
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            Round(avg(pg."VALOR"), 2) AS total_gasto
         FROM
             mat_view_retrabalho_{min_dias}_dias mt1
         JOIN view_pecas_desconsiderando_combustivel pg
             ON mt1."NUMERO DA OS" = pg."OS"
         WHERE
             "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-            AND "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA"  FROM oficina_colaborador)
         GROUP BY
             year_month
@@ -847,15 +849,15 @@ class ColaboradorService:
 
         SELECT
             "DESCRICAO DA OFICINA" AS escopo,
-            to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            Round(SUM(pg."VALOR"), 2) AS total_gasto
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            Round(avg(pg."VALOR"), 2) AS total_gasto
         FROM
             mat_view_retrabalho_{min_dias}_dias mt2
         JOIN view_pecas_desconsiderando_combustivel pg
             ON mt2."NUMERO DA OS" = pg."OS"
       
         WHERE 
-            "DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA" FROM oficina_colaborador)
             {subquery_secoes_str}
             {subquery_os_str}
@@ -867,6 +869,8 @@ class ColaboradorService:
         ORDER BY
             year_month,
             escopo;'''
+        
+        print(query)
         df_mecanico = pd.read_sql(query, self.pgEngine)
         return df_mecanico
     
@@ -893,7 +897,7 @@ class ColaboradorService:
         ON
             main."NUMERO DA OS" = pg."OS"
         WHERE
-            main."DATA DE FECHAMENTO DO SERVICO" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
@@ -905,3 +909,13 @@ class ColaboradorService:
         df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].fillna(0).astype(float).round(2)
         df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
         return df_mecanico
+    
+    @staticmethod
+
+    # Função para gerar o Excel e retornar um link de download
+    def gerar_excel():
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            .to_excel(writer, index=False, sheet_name="Dados")
+        output.seek(0)
+        return base64.b64encode(output.read()).decode()

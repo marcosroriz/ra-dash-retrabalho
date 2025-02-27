@@ -676,6 +676,17 @@ def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, l
     fig = generate_grafico_evolucao_gasto(df_os_analise)
     return fig
     
+    # Callback para atualizar o link de download quando o botão for clicado
+@callback(
+    dash.Output("link-download", "href"),
+    dash.Output("link-download", "style"),
+    dash.Input("btn-exportar", "n_clicks"),
+    prevent_initial_call=True
+)
+def atualizar_download(n_clicks):
+    excel_data = colab.gerar_excel()
+    link = f"data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{excel_data}"
+    return link, {"display": "block"}
 
 
 ##############################################################################
@@ -808,41 +819,41 @@ layout = dbc.Container(
                                                     dcc.Dropdown(
                                                         id="input-select-secao-colaborador",
                                                         options=[
-                                                            {"label": "TODAS", "value": "TODAS"},
-                                                            {
-                                                                "label": "BORRACHARIA",
-                                                                "value": "MANUTENCAO BORRACHARIA",
-                                                            },
+                                                            # {"label": "TODAS", "value": "TODAS"},
+                                                            # {
+                                                            #     "label": "BORRACHARIA",
+                                                            #     "value": "MANUTENCAO BORRACHARIA",
+                                                            # },
                                                             {
                                                                 "label": "ELETRICA",
                                                                 "value": "MANUTENCAO ELETRICA",
                                                             },
-                                                            {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            {
-                                                                "label": "LANTERNAGEM",
-                                                                "value": "MANUTENCAO LANTERNAGEM",
-                                                            },
-                                                            {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
+                                                            # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
+                                                            # {
+                                                            #     "label": "LANTERNAGEM",
+                                                            #     "value": "MANUTENCAO LANTERNAGEM",
+                                                            # },
+                                                            # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
                                                             {
                                                                 "label": "MECANICA",
                                                                 "value": "MANUTENCAO MECANICA",
                                                             },
-                                                            {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            {
-                                                                "label": "SERVIÇOS DE TERCEIROS",
-                                                                "value": "SERVIÇOS DE TERCEIROS",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE ALINHAMENTO",
-                                                                "value": "SETOR DE ALINHAMENTO",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE POLIMENTO",
-                                                                "value": "SETOR DE POLIMENTO",
-                                                            },
+                                                            # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
+                                                            # {
+                                                            #     "label": "SERVIÇOS DE TERCEIROS",
+                                                            #     "value": "SERVIÇOS DE TERCEIROS",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE ALINHAMENTO",
+                                                            #     "value": "SETOR DE ALINHAMENTO",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE POLIMENTO",
+                                                            #     "value": "SETOR DE POLIMENTO",
+                                                            # },
                                                         ],
                                                         multi=True,
-                                                        value=["TODAS"],
+                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],
@@ -1318,7 +1329,15 @@ layout = dbc.Container(
             },
             # style={"height": 400, "resize": "vertical", "overflow": "hidden"}, #-> permite resize
         ),
-        dmc.Space(h=40),
+        dmc.Space(h=10),
+        html.Br(),
+
+        # Botão para exportar
+        html.Button("Exportar para Excel", id="btn-exportar", n_clicks=0),
+
+        html.Br(),
+    # Link para download do arquivo Excel
+            html.A("Clique aqui para baixar o arquivo", id="link-download", href="", style={"display": "none"})
         
     ]
 )
