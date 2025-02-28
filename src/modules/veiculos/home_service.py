@@ -335,19 +335,23 @@ class HomeServiceVeiculo:
                 {subquery_veiculos_str};
         """
 
-        query_descobrir_problemas = f"""
-            SELECT
-                SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-                SUM(CASE WHEN "NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS"
-            FROM
-                mat_view_retrabalho_{min_dias}_dias
-            WHERE
-                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-                {subquery_oficinas_str}
-                {subquery_secoes_str}
-                {subquery_os_str}
-                {subquery_veiculos_str};
+        query_descobrir_os_problemas = f"""
+            SELECT 
+            COUNT(DISTINCT "NUMERO DA OS") AS "TOTAL_OS",
+            COUNT(DISTINCT "DESCRICAO DO SERVICO")  AS "TOTAL_DESCRIÇOES",
+            COUNT(DISTINCT ("problem_no", "DESCRICAO DO SERVICO")) AS "TOTAL_PROBLEMOS_DESCRICOES",
+            COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO")  AS "TOTAL_COLABORADORES"
+            FROM (
+                SELECT "NUMERO DA OS", "DESCRICAO DO SERVICO", "problem_no", "COLABORADOR QUE EXECUTOU O SERVICO"
+                FROM mat_view_retrabalho_{min_dias}_dias
+                WHERE "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                    {subquery_oficinas_str}
+                    {subquery_secoes_str}
+                    {subquery_os_str}
+                    {subquery_veiculos_str}
+            ) AS subquery;
         """
+
 
         query_ranking_os_problemas = f"""
             SELECT
@@ -373,10 +377,16 @@ class HomeServiceVeiculo:
         df_ranking_sorted = df_ranking.sort_values(by="RANKING", ascending=True)
 
         ### INDICADORES DE PROBLEMAS
-        df_problemas = pd.read_sql(query_descobrir_problemas, self.dbEngine)
-        total_problemas = df_problemas["TOTAL_CORRECAO"].iloc[0]
 
-        os_veiculo_filtradas = df_problemas["TOTAL_OS"].iloc[0]
+        df_qtd_os = pd.read_sql(query_descobrir_os_problemas, self.dbEngine) 
+
+        total_problemas = df_qtd_os["TOTAL_PROBLEMOS_DESCRICOES"].iloc[0]
+
+        os_veiculo_filtradas = df_qtd_os["TOTAL_OS"].iloc[0]
+
+        servicos_diff = df_qtd_os["TOTAL_DESCRIÇOES"].iloc[0]
+        
+        total_colaboradores = df_qtd_os["TOTAL_COLABORADORES"].iloc[0]
 
 
         ##QUERY OK !!
@@ -492,7 +502,6 @@ class HomeServiceVeiculo:
         
         mecanicos_diferentes = int(df_colab_dif['TOTAL_COLABORADORES_DIFERENTES'].sum())
         os_diferentes = int(df_unico['QUANTIDADE_DE_OS_DIF'].sum())
-        
         os_totais_veiculo = int(df_soma_mes_veiculos['QUANTIDADE_DE_OS'].sum()) # 
         
         if len(df_soma_mes_veiculos) >= 1:
@@ -519,7 +528,7 @@ class HomeServiceVeiculo:
                 contagem_ranking_modelos = len(df_ranking_modelos)
                 rk_os_problema_modelos = f'{rk_n_problema_mode}°/{contagem_ranking_modelos}'
 
-        return os_diferentes, mecanicos_diferentes, os_veiculo_filtradas, os_problema, df_soma_mes, df_os_unicas, rk_os_problema_geral, rk_os_problema_modelos
+        return servicos_diff, total_colaboradores, os_veiculo_filtradas, os_problema, df_soma_mes, df_os_unicas, rk_os_problema_geral, rk_os_problema_modelos
     
     def pecas_trocadas_por_mes_fun(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
             # Converte equipamentos para formato compatível com SQL (lista formatada)
@@ -810,7 +819,7 @@ class HomeServiceVeiculo:
             
             #df_detalhes["VALOR_T"] = df_detalhes["VALOR"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
             df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).round(2)
-
+        
             #num_meses = df_detalhes['DT'].dt.to_period('M').nunique() ## MESES DAS PEÇAS
             num_meses = len(pd.date_range(start=data_inicio_dt, end=data_fim, freq='MS'))
 
@@ -836,13 +845,14 @@ class HomeServiceVeiculo:
             pecas_mes = round((numero_pecas_veiculos_total / num_meses), 2)
             valor_mes = round((valor_total_veiculos / num_meses), 2)
             valor_mes_str = f"R$ {valor_mes:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            
 
             df_detalhes_dict = df_detalhes.to_dict("records")
-            return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk
+            return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total
 
         except Exception as e:
             print(f"Erro ao executar a consulta da tabela: {e}")
-            return [], 0, 0, 0
+            return [], 0, 0, 0, 0
         
     def tabela_top_os_geral_retrabalho_fun(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
         # Datas
@@ -873,7 +883,7 @@ class HomeServiceVeiculo:
                 "CODIGO DO VEICULO",
                 "problem_no"
             FROM
-                mat_view_retrabalho_{min_dias}_dias_distinct
+                mat_view_retrabalho_{min_dias}_dias
             WHERE
                 "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
@@ -899,51 +909,111 @@ class HomeServiceVeiculo:
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
                 servico
+        ),
+        ind1 AS (
+            SELECT
+                main."DESCRICAO DA OFICINA",
+                main."DESCRICAO DA SECAO",
+                main."DESCRICAO DO SERVICO",
+                main."CODIGO DO VEICULO",
+                COUNT(DISTINCT CONCAT(main."NUMERO DA OS", '-', main."DESCRICAO DO SERVICO")) AS "TOTAL_OS",
+                SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+                SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+                COUNT(DISTINCT main.problem_no) AS "TOTAL_PROBLEMA",
+                100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_RETRABALHO",
+                100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO",
+                100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+                --ROUND(SUM(pg."QUANTIDADE")) AS "QUANTIDADE DE PECAS",
+                --SUM(pg."VALOR") AS "VALOR",
+                COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") AS "QUANTIDADE DE COLABORADORES"
+            FROM
+                mat_view_retrabalho_{min_dias}_dias main
+            LEFT JOIN
+                os_problema op
+            ON
+                main."DESCRICAO DA OFICINA" = op."DESCRICAO DA OFICINA"
+                AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
+                AND main."DESCRICAO DO SERVICO" = op.servico
+            LEFT JOIN
+                view_pecas_desconsiderando_combustivel pg
+            ON 
+                main."NUMERO DA OS" = pg."OS"
+            WHERE
+                main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {inner_subquery_oficinas_str}
+                {inner_subquery_secoes_str}
+                {inner_subquery_os_str}
+                {inner_subquery_veiculos_str}
+            GROUP BY
+                main."DESCRICAO DA OFICINA",
+                main."DESCRICAO DA SECAO",
+                main."DESCRICAO DO SERVICO",
+                main."CODIGO DO VEICULO",
+                op.num_problema
+        ),
+        ind2 AS (
+            SELECT
+                main."DESCRICAO DA OFICINA",
+                main."DESCRICAO DA SECAO",
+                main."DESCRICAO DO SERVICO",
+                main."CODIGO DO VEICULO",
+                ROUND(SUM(pg."QUANTIDADE")) AS "QUANTIDADE DE PECAS",
+                SUM(pg."VALOR") AS "VALOR",
+                SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO"
+            FROM
+                mat_view_retrabalho_{min_dias}_dias_distinct main
+            LEFT JOIN
+                os_problema op
+            ON
+                main."DESCRICAO DA OFICINA" = op."DESCRICAO DA OFICINA"
+                AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
+                AND main."DESCRICAO DO SERVICO" = op.servico
+            LEFT JOIN
+                view_pecas_desconsiderando_combustivel pg
+            ON 
+                main."NUMERO DA OS" = pg."OS"
+            WHERE
+                main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {inner_subquery_oficinas_str}
+                {inner_subquery_secoes_str}
+                {inner_subquery_os_str}
+                {inner_subquery_veiculos_str}
+            GROUP BY
+                main."DESCRICAO DA OFICINA",
+                main."DESCRICAO DA SECAO",
+                main."DESCRICAO DO SERVICO",
+                main."CODIGO DO VEICULO",
+                op.num_problema
         )
         SELECT
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
-            main."DESCRICAO DO SERVICO",
-            main."CODIGO DO VEICULO",
-            COUNT(DISTINCT CONCAT(main."NUMERO DA OS", '-', main."DESCRICAO DO SERVICO")) AS "TOTAL_OS",
-            SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-            SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-            SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-            COUNT(DISTINCT main.problem_no) AS "TOTAL_PROBLEMA",
-            100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO",
-            100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            ROUND(SUM(pg."QUANTIDADE")) AS "QUANTIDADE DE PECAS",
-            SUM(pg."VALOR") AS "VALOR",
-            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
-            COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") AS "QUANTIDADE DE COLABORADORES"
+            ind1."DESCRICAO DA OFICINA",
+            ind1."DESCRICAO DA SECAO",
+            ind1."DESCRICAO DO SERVICO",
+            ind1."CODIGO DO VEICULO",
+            ind1."TOTAL_OS",
+            ind1."TOTAL_RETRABALHO",
+            ind1."TOTAL_CORRECAO",
+            ind1."TOTAL_CORRECAO_PRIMEIRA",
+            ind1."TOTAL_PROBLEMA",
+            ind1."PERC_RETRABALHO",
+            ind1."PERC_CORRECAO",
+            ind1."PERC_CORRECAO_PRIMEIRA",
+            ind1."QUANTIDADE DE COLABORADORES",
+            ind2."QUANTIDADE DE PECAS" AS "QUANTIDADE DE PECAS",
+            ind2."VALOR" AS "VALOR",
+            ind2."TOTAL_GASTO_RETRABALHO" AS "TOTAL_GASTO_RETRABALHO"
         FROM
-            mat_view_retrabalho_{min_dias}_dias main
+            ind1
         LEFT JOIN
-            os_problema op
+            ind2
         ON
-            main."DESCRICAO DA OFICINA" = op."DESCRICAO DA OFICINA"
-            AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
-            AND main."DESCRICAO DO SERVICO" = op.servico
-        LEFT JOIN
-            view_pecas_desconsiderando_combustivel pg
-        ON 
-            main."NUMERO DA OS" = pg."OS"
-        WHERE
-            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            {inner_subquery_oficinas_str}
-            {inner_subquery_secoes_str}
-            {inner_subquery_os_str}
-            {inner_subquery_veiculos_str}
-        GROUP BY
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
-            main."DESCRICAO DO SERVICO",
-            main."CODIGO DO VEICULO",
-            op.num_problema
+            ind1."DESCRICAO DA OFICINA" = ind2."DESCRICAO DA OFICINA"
+            AND ind1."DESCRICAO DA SECAO" = ind2."DESCRICAO DA SECAO"
+            AND ind1."DESCRICAO DO SERVICO" = ind2."DESCRICAO DO SERVICO"
+            AND ind1."CODIGO DO VEICULO" = ind2."CODIGO DO VEICULO"
         ORDER BY
-            "PERC_RETRABALHO" DESC;
-
+            ind1."PERC_RETRABALHO" DESC;
 
         """
         subquery_oficinas_str_mod = subquery_oficinas(lista_oficinas, "od")
@@ -952,38 +1022,6 @@ class HomeServiceVeiculo:
         subquery_veiculos_str_mod = subquery_veiculos(lista_veiculo, "od")
 
 
-
-        query2 = f"""
-                SELECT
-                pg."EQUIPAMENTO",
-                pg."OS",
-                pg."MODELO",
-                pg."PRODUTO",
-                pg."QUANTIDADE",
-                pg."VALOR",
-                pg."DATA",
-                od."DESCRICAO DO SERVICO",
-                SUM(CASE WHEN od."NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS"
-                SUM(CASE WHEN od.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-                SUM(CASE WHEN od.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-                SUM(CASE WHEN od.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA"
-            FROM view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
-                ON pg."OS" = od."NUMERO DA OS"
-            WHERE
-                1=1
-                {subquery_oficinas_str_mod}
-                {subquery_secoes_str_mod}
-                {subquery_os_str_mod}
-                {subquery_veiculos_str_mod}
-                AND od."DATA DO FECHAMENTO DA OS"::DATE 
-                    BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY') 
-                    AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-                AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-            ORDER BY 
-                pg."VALOR" ASC;
-
-                """
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
@@ -998,11 +1036,13 @@ class HomeServiceVeiculo:
 
         df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
         df["TOTAL_GASTO_RETRABALHO_"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
+        valor_retrabalho = df["TOTAL_GASTO_RETRABALHO"].sum().round(2)
+        valor_retralho_str = f"R${valor_retrabalho}"
         df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
 
         df_dict = df.to_dict("records")
 
-        return df_dict
+        return df_dict, valor_retralho_str
     
     def ranking_retrabalho_veiculos_fun(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         # Datas
@@ -1059,7 +1099,6 @@ class HomeServiceVeiculo:
                 ) subquery
                 WHERE
                     ranking_retrabalho >= 1  -- Exemplo de filtro pelo ranking
-                    --{subquery_veiculos_str}
                 ORDER BY 
                     ranking_retrabalho, ranking_correcao, ranking_correcao_primeira;                
     """

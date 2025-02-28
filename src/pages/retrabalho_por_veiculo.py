@@ -877,7 +877,7 @@ layout = dbc.Container(
                                         dmc.Group(
                                             [
                                                 dmc.Title(
-                                                    id="indicador-problema-retrabalho",
+                                                    id="indicador-qtd-pecas",
                                                     order=2,
                                                 ),
                                                 DashIconify(
@@ -1322,6 +1322,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_
     Output("indicador-pecas-totais", "children"),
     Output("indicador-pecas-mes", "children"),
     Output("indicador-ranking-pecas", "children"),
+    Output("indicador-qtd-pecas", "children"),
     ],
     #Input("graph-pecas-trocadas-por-mes", "clickData"),
     [
@@ -1337,13 +1338,15 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_
 def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-        return [], " ", " ", " "
-    df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
-    return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk
+        return [], " ", " ", " ", " "
+    df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
+    return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total
 
 # TABELA DE DESCRIÇÃO DE SERVIÇOS
 @callback(
-    Output("tabela-descricao-de-servico", "rowData"),
+    [Output("tabela-descricao-de-servico", "rowData"),
+     Output("indicador-valor-geral-retrabalho", "children"),],
+
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
@@ -1357,10 +1360,10 @@ def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_o
 def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
-        return []
+        return [], " "
 
-    df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
-    return df_dict
+    df_dict, valor_retrabalho = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
+    return df_dict, valor_retrabalho
 
 #Tabela de ranking de modelo
 # @callback(
