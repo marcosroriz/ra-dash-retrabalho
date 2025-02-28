@@ -22,7 +22,7 @@ tbl_top_os_geral_retrabalho = [
     },
     {
         "field": "QUANTIDADE DE PECAS",
-        "headerName": "PEÇAS TROCADAS/OS",
+        "headerName": "PEÇAS TROCADAS",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",

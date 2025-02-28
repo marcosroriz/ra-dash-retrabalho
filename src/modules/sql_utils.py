@@ -22,9 +22,7 @@ def subquery_secoes(lista_secaos, prefix="", termo_all="TODAS"):
 
 
 def subquery_os(lista_os, prefix="", termo_all="TODAS"):
-    if not lista_os or termo_all in lista_os:
-        return ""  # Retorna uma string vazia se não for necessário adicionar a condição
-
+    query = ""
     if termo_all not in lista_os:
         query = f"""AND {prefix}"DESCRICAO DO SERVICO" IN ({', '.join([f"'{x}'" for x in lista_os])})"""
 

@@ -891,7 +891,7 @@ layout = dbc.Container(
                                             mb="xs",
                                         ),
                                     ),
-                                    dbc.CardFooter("Problemas de retrabalho"),
+                                    dbc.CardFooter("Quantidade de peças trocadas"),
                                 ],
                                 class_name="card-box-shadow",
                             ),
@@ -1336,8 +1336,8 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_
 )
 def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     # Valida input
-    if not input_valido3(datas, min_dias, lista_veiculos):
-        return [], 0, 0, 0
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+        return [], " ", " ", " "
     df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk
 

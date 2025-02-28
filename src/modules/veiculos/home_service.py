@@ -82,7 +82,7 @@ class HomeServiceVeiculo:
         df_lista_servicos = pd.read_sql(query,self.dbEngine,)
 
         # Extrair e retornar a lista de serviços
-        lista_servicos = df_lista_servicos["DESCRICAO DO SERVICO"].dropna().unique().tolist()
+        lista_servicos = sorted(df_lista_servicos["DESCRICAO DO SERVICO"].dropna().unique().tolist())
         
         return lista_servicos
 
@@ -300,6 +300,7 @@ class HomeServiceVeiculo:
                 "CODIGO DO VEICULO",
                 DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
                 COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
+                COUNT(DISTINCT "NUMERO DA OS") AS "QUANTIDADE_DE_OS_DIF",
                 "DESCRICAO DO SERVICO",
                 "DESCRICAO DO MODELO",
                 COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO") AS "QTD_COLABORADORES"
@@ -490,7 +491,8 @@ class HomeServiceVeiculo:
         df_colab_dif = pd.read_sql(query_colaboradores_diferentes, self.dbEngine)
         
         mecanicos_diferentes = int(df_colab_dif['TOTAL_COLABORADORES_DIFERENTES'].sum())
-        os_diferentes = int(df_unico['QUANTIDADE_DE_OS'].sum())
+        os_diferentes = int(df_unico['QUANTIDADE_DE_OS_DIF'].sum())
+        
         os_totais_veiculo = int(df_soma_mes_veiculos['QUANTIDADE_DE_OS'].sum()) # 
         
         if len(df_soma_mes_veiculos) >= 1:
@@ -903,7 +905,7 @@ class HomeServiceVeiculo:
             main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO",
             main."CODIGO DO VEICULO",
-            COUNT(*) AS "TOTAL_OS",
+            COUNT(DISTINCT CONCAT(main."NUMERO DA OS", '-', main."DESCRICAO DO SERVICO")) AS "TOTAL_OS",
             SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
@@ -911,7 +913,7 @@ class HomeServiceVeiculo:
             100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO",
             100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            ROUND(SUM(pg."QUANTIDADE") / NULLIF(COUNT(*), 0), 2) AS "QUANTIDADE DE PECAS",
+            ROUND(SUM(pg."QUANTIDADE")) AS "QUANTIDADE DE PECAS",
             SUM(pg."VALOR") AS "VALOR",
             SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
             COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") AS "QUANTIDADE DE COLABORADORES"
