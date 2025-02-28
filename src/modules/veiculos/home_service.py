@@ -564,7 +564,7 @@ class HomeServiceVeiculo:
                 ROUND(SUM(pg."VALOR"), 2) AS total_pecas,
                 pg."EQUIPAMENTO"
             FROM view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
                 od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
@@ -599,7 +599,7 @@ class HomeServiceVeiculo:
                 to_char(pg."DATA"::DATE, 'YYYY-MM') AS year_month,
                 ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_geral
             FROM view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
                 od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
@@ -619,7 +619,7 @@ class HomeServiceVeiculo:
             ROUND(SUM(pg."VALOR") / COUNT(DISTINCT pg."EQUIPAMENTO"), 2) AS media_modelo
         FROM 
             view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                 ON pg."OS" = od."NUMERO DA OS"
         WHERE 
             od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
@@ -702,7 +702,7 @@ class HomeServiceVeiculo:
                 pg."DATA",
                 od."DESCRICAO DO SERVICO"
             FROM view_pecas_desconsiderando_combustivel pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                 ON pg."OS" = od."NUMERO DA OS"
             WHERE
                 1=1
@@ -723,7 +723,7 @@ class HomeServiceVeiculo:
                     ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
                     SUM(pg."VALOR") as total_pecas
                 FROM view_pecas_desconsiderando_combustivel pg
-                LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
+                LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                     ON pg."OS" = od."NUMERO DA OS"
                 WHERE
                     1=1
@@ -766,7 +766,7 @@ class HomeServiceVeiculo:
                     ROW_NUMBER() OVER (ORDER BY SUM("VALOR") ASC) AS ranking,
                     SUM(pg."VALOR") as total_pecas
                 FROM view_pecas_desconsiderando_combustivel pg
-                LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
+                LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                 ON pg."OS" = od."NUMERO DA OS"
                 WHERE
                     1=1
@@ -871,7 +871,7 @@ class HomeServiceVeiculo:
                 "CODIGO DO VEICULO",
                 "problem_no"
             FROM
-                mat_view_retrabalho_{min_dias}_dias
+                mat_view_retrabalho_{min_dias}_dias_distinct
             WHERE
                 "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
@@ -1174,7 +1174,7 @@ class HomeServiceVeiculo:
             pg."MODELO",
             SUM(pg."VALOR") AS "VALOR"
             FROM pecas_gerais pg
-            LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
+            LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
         ON pg."OS" = od."NUMERO DA OS"
         WHERE
             TO_DATE(pg."DATA", 'DD/MM/YY')
@@ -1310,7 +1310,7 @@ class HomeServiceVeiculo:
                     pg."EQUIPAMENTO" AS "VEICULO",
                     SUM(pg."VALOR") AS "VALOR"
                 FROM view_pecas_desconsiderando_combustivel pg
-                LEFT JOIN mat_view_retrabalho_{min_dias}_dias AS od 
+                LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                 ON pg."OS" = od."NUMERO DA OS"
                 WHERE 1=1
                     AND TO_DATE(od."DATA DO FECHAMENTO DA OS", 'YYYY/MM/DD')
