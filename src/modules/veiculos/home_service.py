@@ -711,7 +711,8 @@ class HomeServiceVeiculo:
                 pg."QUANTIDADE",
                 pg."VALOR",
                 pg."DATA",
-                od."DESCRICAO DO SERVICO"
+                od."DESCRICAO DO SERVICO",
+                od."retrabalho"  -- Adicionado aqui
             FROM view_pecas_desconsiderando_combustivel pg
             LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                 ON pg."OS" = od."NUMERO DA OS"
@@ -725,7 +726,9 @@ class HomeServiceVeiculo:
                 AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
             ORDER BY 
                 pg."VALOR" ASC;
-                """
+            """
+        
+        print(query_teste)
 
         query_teste_ranking = f"""
          WITH ranking_veiculos AS (
@@ -1016,6 +1019,8 @@ class HomeServiceVeiculo:
             ind1."PERC_RETRABALHO" DESC;
 
         """
+        
+
         subquery_oficinas_str_mod = subquery_oficinas(lista_oficinas, "od")
         subquery_secoes_str_mod = subquery_secoes(lista_secaos, "od")
         subquery_os_str_mod = subquery_os(lista_os, "od")

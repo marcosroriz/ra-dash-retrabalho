@@ -1056,7 +1056,7 @@ layout = dbc.Container(
                      "sort": "desc"
                 },
                 {"field": "DATA", "minWidth": 130},
-                {"field": "RETRABALHO", "minWidth": 130}
+                {"field": "retrabalho","headerName": "RETRABALHO", "minWidth": 130}
             ],
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
