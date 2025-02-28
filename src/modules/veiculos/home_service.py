@@ -299,13 +299,13 @@ class HomeServiceVeiculo:
             SELECT 
                 "CODIGO DO VEICULO",
                 DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
-                COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
+                COUNT(DISTINCT "NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                 COUNT(DISTINCT "NUMERO DA OS") AS "QUANTIDADE_DE_OS_DIF",
                 "DESCRICAO DO SERVICO",
                 "DESCRICAO DO MODELO",
                 COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO") AS "QTD_COLABORADORES"
             FROM
-                mat_view_retrabalho_{min_dias}_dias
+                mat_view_retrabalho_{min_dias}_dias_distinct
             WHERE
                 "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_oficinas_str}
@@ -395,7 +395,7 @@ class HomeServiceVeiculo:
                 SELECT 
                     "CODIGO DO VEICULO",
                     DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
-                    COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
+                    COUNT(DISTINCT "NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                     COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QUANTIDADE_DE_DESCRICOES_DISTINTAS"
                 FROM mat_view_retrabalho_{min_dias}_dias
                 WHERE 
@@ -443,7 +443,7 @@ class HomeServiceVeiculo:
                 SELECT 
                     "CODIGO DO VEICULO",
                     DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
-                    COUNT("NUMERO DA OS") AS "QUANTIDADE_DE_OS",
+                    COUNT(DISTINCT "NUMERO DA OS") AS "QUANTIDADE_DE_OS",
                     COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QUANTIDADE_DE_DESCRICOES_DISTINTAS",
                     "DESCRICAO DO MODELO"
                 FROM mat_view_retrabalho_{min_dias}_dias
