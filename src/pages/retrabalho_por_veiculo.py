@@ -1046,7 +1046,7 @@ layout = dbc.Container(
             columnDefs=[
                 {"field": "OS", "minWidth": 100},
                 {"field": "EQUIPAMENTO", "minWidth": 100},
-                {"field": "DESCRICAO DO SERVICO", "minWidth": 100},
+                {"field": "DESCRICAO DO SERVICO","headerName": "DESCRIÇÃO DO SERVICO", "minWidth": 100},
                 {"field": "MODELO", "minWidth": 300},
                 {"field": "PRODUTO", "minWidth": 350},
                 {"field": "QUANTIDADE", "minWidth": 100},
@@ -1055,7 +1055,8 @@ layout = dbc.Container(
                      "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
                      "sort": "desc"
                 },
-                {"field": "DATA", "minWidth": 130}
+                {"field": "DATA", "minWidth": 130},
+                {"field": "RETRABALHO", "minWidth": 130}
             ],
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
