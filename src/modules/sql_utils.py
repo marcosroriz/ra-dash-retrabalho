@@ -56,3 +56,10 @@ def subquery_modelos_veiculos(lista_modelos, prefix=""):
         return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODOS":
     query = f"""AND {prefix}"DESCRICAO DO MODELO" IN ({', '.join([f"'{x}'" for x in lista_modelos])})"""
     return query
+
+def subquery_modelos_pecas(lista_modelos, prefix=""):
+    #query = ""
+    if not lista_modelos or "TODOS" in lista_modelos:
+        return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODOS":
+    query = f"""AND {prefix}"MODELO" IN ({', '.join([f"'{x}'" for x in lista_modelos])})"""
+    return query

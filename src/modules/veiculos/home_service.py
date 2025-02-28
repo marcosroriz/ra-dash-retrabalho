@@ -712,6 +712,7 @@ class HomeServiceVeiculo:
                 pg."VALOR",
                 pg."DATA",
                 od."DESCRICAO DO SERVICO"
+                pg."MODELO"
             FROM view_pecas_desconsiderando_combustivel pg
             LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
                 ON pg."OS" = od."NUMERO DA OS"
@@ -1037,7 +1038,7 @@ class HomeServiceVeiculo:
         df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
         df["TOTAL_GASTO_RETRABALHO_"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
         valor_retrabalho = df["TOTAL_GASTO_RETRABALHO"].sum().round(2)
-        valor_retralho_str = f"R${valor_retrabalho}"
+        valor_retralho_str = f"R$ {valor_retrabalho:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
 
         df_dict = df.to_dict("records")
