@@ -840,6 +840,89 @@ layout = dbc.Container(
                         ),
                     ]
                 ),
+                dbc.Row(dmc.Space(h=20)),
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(
+                                                    id="indicador-valor-geral-retrabalho",
+                                                    order=2,
+                                                ),
+                                                DashIconify(
+                                                    icon="mdi:reload",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Valor de retrabalho"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(
+                                                    id="indicador-problema-retrabalho",
+                                                    order=2,
+                                                ),
+                                                DashIconify(
+                                                    icon="mdi:reload-alert",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Problemas de retrabalho"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-ranking-valor-pecas-modelo", order=2),
+                                                DashIconify(
+                                                    icon="mdi:podium",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Ranking valor de peça por modelo"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                    ]
+                ),
             ]
             
         ),
@@ -1014,39 +1097,39 @@ layout = dbc.Container(
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Tabela ranking valor de peças por modelo",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("ranking-de-pecas-substituidas-filtros"),
-                        ]
-                    ),
-                    width=True,
-                ),
+        # dbc.Row(
+        #     [
+        #         dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+        #         dbc.Col(
+        #             dbc.Row(
+        #                 [
+        #                     html.H4(
+        #                         "Tabela ranking valor de peças por modelo",
+        #                         className="align-self-center",
+        #                     ),
+        #                     dmc.Space(h=5),
+        #                     gera_labels_inputs_veiculos("ranking-de-pecas-substituidas-filtros"),
+        #                 ]
+        #             ),
+        #             width=True,
+        #         ),
                 
-            ],
-            align="center",
-        ),
-        dmc.Space(h=20),
-        dag.AgGrid(
-            enableEnterpriseModules=True,
-            id="tabela-ranking-de-pecas",
-            columnDefs=tbl_ranking_por_modelo,
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            dashGridOptions={
-                "localeText": locale_utils.AG_GRID_LOCALE_BR,
-            },
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
-        ),
+        #     ],
+        #     align="center",
+        # ),
+        # dmc.Space(h=20),
+        # dag.AgGrid(
+        #     enableEnterpriseModules=True,
+        #     id="tabela-ranking-de-pecas",
+        #     columnDefs=tbl_ranking_por_modelo,
+        #     rowData=[],
+        #     defaultColDef={"filter": True, "floatingFilter": True},
+        #     columnSize="autoSize",
+        #     dashGridOptions={
+        #         "localeText": locale_utils.AG_GRID_LOCALE_BR,
+        #     },
+        #     style={"height": 400, "resize": "vertical", "overflow": "hidden"},
+        # ),
         dmc.Space(h=60),
         
 # Indicadores
@@ -1280,26 +1363,26 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     return df_dict
 
 #Tabela de ranking de modelo
-@callback(
-    [Output("tabela-ranking-de-pecas", "rowData")],
-    [
-        Input("input-intervalo-datas-por-veiculo", "value"),
-        Input("input-select-dias-geral-retrabalho", "value"),
-        Input("input-select-oficina-visao-geral", "value"),
-        Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
-        Input("input-select-veiculos", "value"),
-    ],
-)
-def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
-    if not input_valido3(datas, min_dias, lista_veiculos):
-        return [[]]
+# @callback(
+#     [Output("tabela-ranking-de-pecas", "rowData")],
+#     [
+#         Input("input-intervalo-datas-por-veiculo", "value"),
+#         Input("input-select-dias-geral-retrabalho", "value"),
+#         Input("input-select-oficina-visao-geral", "value"),
+#         Input("input-select-secao-visao-geral", "value"),
+#         Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
+#         Input("input-select-veiculos", "value"),
+#     ],
+# )
+# def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
+#     if not input_valido3(datas, min_dias, lista_veiculos):
+#         return [[]]
     
-    df_ranking_dict = home_service_veiculos.tabela_ranking_pecas_fun(
-        datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos
-    )
+#     df_ranking_dict = home_service_veiculos.tabela_ranking_pecas_fun(
+#         datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos
+#     )
     
-    return [df_ranking_dict]
+#     return [df_ranking_dict]
 
 # RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA 
 @callback(
