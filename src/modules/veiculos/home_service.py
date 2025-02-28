@@ -712,6 +712,7 @@ class HomeServiceVeiculo:
                 pg."VALOR",
                 pg."DATA",
                 od."DESCRICAO DO SERVICO"
+                od."DESCRICAO DO SERVICO",
                 pg."MODELO"
             FROM view_pecas_desconsiderando_combustivel pg
             LEFT JOIN mat_view_retrabalho_{min_dias}_dias_distinct AS od 
