@@ -260,6 +260,7 @@ def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, 
         Output("indicador-nota-colaborador", "children"),
         Output("indicador-rank-posicao-nota", "children"),
         Output("indicador-gasto-total-colaborador", "children"),
+        Output("indicador-gasto-retrabalho-total-colaborador", "children")#indicador-gasto-retrabalho-total-colaborador
         
     ],
     [
@@ -280,7 +281,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     if datas is None or not datas or None in datas or min_dias is None:
         return False
     if not id_colaborador or not datas or any(d is None for d in datas) or not isinstance(min_dias, int) or min_dias < 1:
-        return '', '', '', '','', '', '', '', ''
+        return '', '', '', '','', '', '', '', '',''
     
     
     # Obtém análise estatística
@@ -294,6 +295,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
@@ -336,6 +338,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
         )
     
     df_rank_os = colab.indcador_rank_total_os(
@@ -347,6 +350,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
@@ -376,6 +380,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
         )
     nota_media = f"{df_nota_media['nota_media_colaborador'].iloc[0] if not df_nota_media['nota_media_colaborador'].iloc[0]  is None else 0}"
     
@@ -395,6 +400,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
         )
 
     rank_nota_posicao = f"{df_nota_posicao['rank_colaborador'].iloc[0]}"
@@ -405,8 +411,9 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         lista_oficina=lista_oficina  
     )
     gasto_colaborador = f"{df_gasto['TOTAL_GASTO'].iloc[0]}"
+    gasto_retrabalho = f"{df_gasto['TOTAL_GASTO_RETRABALHO'].iloc[0]}"
     
-    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao, gasto_colaborador
+    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao, gasto_colaborador, gasto_retrabalho
 
 
 
@@ -1236,6 +1243,31 @@ layout = dbc.Container(
                     md=4,
                     style={"margin-bottom": "20px"},
                 ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-gasto-retrabalho-total-colaborador", order=2),
+                                        DashIconify(
+                                            icon="mdi:wrench",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",  # Centralize conteúdo no card
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Gasto total de Retrabalho do colaborador"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=4,
+                    style={"margin-bottom": "20px"},
+                ),
             ],
             justify="center",
         ),
@@ -1294,7 +1326,7 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Evolução das Métricas: Total gasto por mês",
+                                "Evolução das Métricas: Media de gasto por mês",
                                 className="align-self-center"
                             ),
                             dmc.Space(h=5),

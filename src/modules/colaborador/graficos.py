@@ -198,7 +198,7 @@ def generate_grafico_evolucao_gasto(dados):
     fig = px.line(
         dados,
         x="year_month",
-        y="total_gasto",
+        y="media_gasto",
         color="escopo",
         facet_col_spacing=0.05,  # Espaçamento entre os gráficos
         labels={"escopo": "Oficina", "year_month_dt": "Ano-Mês"},
