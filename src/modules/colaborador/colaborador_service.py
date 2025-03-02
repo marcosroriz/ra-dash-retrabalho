@@ -232,6 +232,10 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
+        #Corrigindo data das peças
+        data_inicio_pecas = pd.to_datetime(data_inicio_str).strftime("%d/%m/%Y")
+        data_fim_pecas = data_fim.strftime("%d/%m/%Y")
+
         # Subqueries
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
@@ -249,41 +253,7 @@ class ColaboradorService:
         inner_subquery_oficina_str2 = subquery_oficinas(lista_oficina, "main.")
         
         query = f"""
-        WITH normaliza_problema AS (
-            SELECT
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                "DESCRICAO DO SERVICO" as servico,
-                "CODIGO DO VEICULO",
-                "problem_no"
-            FROM
-                mat_view_retrabalho_{min_dias}_dias_distinct
-            WHERE
-                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
-                {subquery_secoes_str}
-                {subquery_os_str}
-                {subquery_modelo_str}
-                {subquery_ofcina_str}
-            GROUP BY
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                "DESCRICAO DO SERVICO",
-                "CODIGO DO VEICULO",
-                "problem_no"
-        ),
-        os_problema AS (
-            SELECT
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                servico,
-                COUNT(*) AS num_problema
-            FROM
-                normaliza_problema
-            GROUP BY
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                servico
-        ),
+        WITH 
         os_nota_media AS (
             -- Calculando a nota média por OS (sem filtro de colaborador)
             SELECT
