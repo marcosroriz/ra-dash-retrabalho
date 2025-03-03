@@ -52,7 +52,7 @@ pgDB = PostgresSingleton.get_instance()
 pgEngine = pgDB.get_engine()
 
 # Cria o serviço
-home_service_veiculos = HomeServiceVeiculo(pgEngine)
+home_service_veiculos = VeiculoService(pgEngine)
 
 # Colaboradores / Mecânicos
 df_mecanicos = get_mecanicos(pgEngine)
@@ -1367,26 +1367,26 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     return df_dict, valor_retrabalho
 
 #Tabela de ranking de modelo
-# @callback(
-#     [Output("tabela-ranking-de-pecas", "rowData")],
-#     [
-#         Input("input-intervalo-datas-por-veiculo", "value"),
-#         Input("input-select-dias-geral-retrabalho", "value"),
-#         Input("input-select-oficina-visao-geral", "value"),
-#         Input("input-select-secao-visao-geral", "value"),
-#         Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
-#         Input("input-select-veiculos", "value"),
-#     ],
-# )
-# def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
-#     if not input_valido3(datas, min_dias, lista_veiculos):
-#         return [[]]
+@callback(
+    [Output("indicador-ranking-valor-pecas-modelo", "children")],
+    [
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
+        Input("input-select-veiculos", "value"),
+    ],
+)
+def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
+    if not input_valido3(datas, min_dias, lista_veiculos):
+        return [""]
     
-#     df_ranking_dict = home_service_veiculos.tabela_ranking_pecas_fun(
-#         datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos
-#     )
+    indicador_ranking_pecas_modelos = home_service_veiculos.tabela_ranking_pecas_fun(
+        datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos
+    )
     
-#     return [df_ranking_dict]
+    return [indicador_ranking_pecas_modelos]
 
 # RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA 
 @callback(
