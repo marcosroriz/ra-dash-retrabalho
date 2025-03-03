@@ -727,8 +727,6 @@ class VeiculoService:
             ORDER BY 
                 pg."VALOR" ASC;
             """
-        
-        print(query_teste)
 
         query_teste_ranking = f"""
          WITH ranking_veiculos AS (
@@ -1281,60 +1279,7 @@ class VeiculoService:
             print(f"Erro ao executar a consulta da tabela: {e}")
             return [], "R$ 0,00", "R$ 0,00",[]
         
-    # def atualizar_pecas_fun(self, datas, min_dias, lista_veiculos, descricao_servico):
-    #     data_inicio_str = datas[0]
-    
-    #     data_fim = pd.to_datetime(datas[1])
-    #     data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-    
-    #     data_inicio_dt = pd.to_datetime(data_inicio_str)
-    #     data_inicio_str = data_inicio_dt.strftime("%d/%m/%Y")
-    #     data_fim_str = data_fim.strftime("%d/%m/%Y")
-    
-    #     subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
 
-        
-    #     if data_inicio_str is None:
-    #         return go.Figure()  # Ou algum valor padrão válido
-    #     if data_fim_str is None:
-    #         return go.Figure()  # Ou algum valor padrão válido
-        
-    #     # Ajustar para múltiplos serviços selecionados
-    #     if isinstance(descricao_servico, list):
-    #         descricao_servico_str = "', '".join(descricao_servico)  # Transforma lista em string separada por vírgula
-    #         filtro_servico = f"od.\"DESCRICAO DO SERVICO\" IN ('{descricao_servico_str}')"
-    #     else:
-    #         filtro_servico = f"od.\"DESCRICAO DO SERVICO\" = '{descricao_servico}'"
-    
-    #     query_detalhes = f"""
-    #         SELECT
-    #             pg."OS" AS "NÚMERO DA OS",
-    #             pg."PRODUTO" AS "PEÇA TROCADA",
-    #             pg."QUANTIDADE" AS "QUANTIDADE DE PEÇAS",
-    #             od."DESCRICAO DO SERVICO",
-    #             pg."MODELO" AS "MODELO",
-    #             pg."VALOR" AS "VALOR"
-    #         FROM pecas_gerais pg
-    #         JOIN mat_view_retrabalho_{min_dias}_dias as od ON pg."OS" = od."NUMERO DA OS"
-    #         WHERE
-    #             {filtro_servico}
-    #             AND TO_DATE(pg."DATA", 'DD/MM/YY')
-    #                 BETWEEN TO_DATE('{data_inicio_str}', 'DD/MM/YYYY')
-    #                     AND TO_DATE('{data_fim_str}', 'DD/MM/YYYY')
-    #             AND pg."GRUPO" NOT IN ('COMBUSTIVEIS E LUBRIFICANTES', 'Lubrificantes e Combustiveis Especiais')
-    #         {subquery_veiculos_str}
-    #         ORDER BY
-    #             pg."OS" ASC, pg."PRODUTO" ASC;
-    #     """
-    
-    #     try:
-    #         df_detalhes = pd.read_sql(query_detalhes, self.dbEngine)
-    #         df_detalhes["VALOR"] = df_detalhes["VALOR"].astype(float).round(2)#.apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-    #         return df_detalhes
-    
-    #     except Exception as e:
-    #         print(f"Erro ao executar a consulta da tabela: {e}")
-    #         return pd.DataFrame()
 
     def tabela_ranking_pecas_fun(self, datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
         subquery_oficinas_str = subquery_oficinas(lista_oficinas, "od.")
@@ -1398,38 +1343,7 @@ class VeiculoService:
                     contagem_ranking_geral = len(df)
                     rk_n_valor_modelo = df_veiculo.iloc[0]["POSICAO"]
                     rk_valor_modelo = f'{rk_n_valor_modelo}°/{contagem_ranking_geral}'
-            print(rk_valor_modelo)
             return rk_valor_modelo
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            df_ranking = pd.read_sql(query_ranking_modelo, self.dbEngine)
-            
-            # 3. Adicionar a coluna "MODELO" para todos os veículos
-            df_ranking["MODELO"] = modelo_unico
-
-            # 4. Formatar VALOR como moeda brasileira (R$ 1.234,56)
-            df_ranking["VALOR"] = df_ranking["VALOR"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-
-            df_ranking_dict = df_ranking.to_dict("records")
-            return df_ranking_dict
 
         except Exception as e:
             print(f"Erro ao executar a consulta do ranking de peças por modelo: {e}")

@@ -1213,7 +1213,7 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
         return go.Figure(), "", ""
     total_retrabalho, total_correcao_primeira, labels, values = home_service_veiculos.sintese_geral_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     fig = grafico_pizza_sintese_geral(labels, values)
-    return fig, total_retrabalho, total_correcao_primeira,
+    return fig, total_retrabalho, total_correcao_primeira
 
 # GRÁFICO DE RETRABALHOS POR VEÍCULOS
 @callback(
