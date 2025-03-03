@@ -337,7 +337,7 @@ class HomeServiceVeiculo:
 
         query_descobrir_os_problemas = f"""
             SELECT 
-            COUNT(DISTINCT "NUMERO DA OS") AS "TOTAL_OS",
+            COUNT("NUMERO DA OS") AS "TOTAL_OS",
             COUNT(DISTINCT "DESCRICAO DO SERVICO")  AS "TOTAL_DESCRIÇOES",
             COUNT(DISTINCT ("problem_no", "DESCRICAO DO SERVICO")) AS "TOTAL_PROBLEMOS_DESCRICOES",
             COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO")  AS "TOTAL_COLABORADORES"
@@ -357,8 +357,8 @@ class HomeServiceVeiculo:
             SELECT
                 "CODIGO DO VEICULO",
                 "DESCRICAO DO MODELO",
-                SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-                SUM(CASE WHEN "NUMERO DA OS" IS NOT NULL THEN 1 ELSE 0 END) AS "TOTAL_OS"
+                COUNT(DISTINCT ("problem_no", "DESCRICAO DO SERVICO"))AS "TOTAL_CORRECAO",
+                COUNT("NUMERO DA OS") AS "TOTAL_OS"
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
