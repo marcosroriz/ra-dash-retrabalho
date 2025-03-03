@@ -265,7 +265,7 @@ class ColaboradorService:
             LEFT JOIN os_dados_classificacao odc
             ON mt."KEY_HASH" = odc."KEY_HASH"
             WHERE
-                mt."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND mt."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+                mt."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {inner_subquery_secoes_str1}
                 {inner_subquery_os_str1}
                 {inner_subquery_modelo_str1}
@@ -274,6 +274,22 @@ class ColaboradorService:
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
                 "DESCRICAO DO SERVICO"
+        ),
+        gastos_os AS (
+            -- Subquery para calcular os gastos por OS
+            SELECT 
+                pg."OS",
+                SUM(pg."VALOR") AS "TOTAL_GASTO",
+                SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
+                100 * ROUND(
+                    COALESCE(SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / NULLIF(SUM(pg."VALOR")::NUMERIC, 0), 0),
+                4) AS "PERC_GASTO_RETRABALHO"
+            FROM view_pecas_desconsiderando_combustivel pg
+            left JOIN mat_view_retrabalho_10_dias_distinct main
+                ON main."NUMERO DA OS" = pg."OS"
+                AND main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            WHERE  pg."DATA" BETWEEN '{data_inicio_pecas}' AND '{data_fim_pecas}'
+            GROUP BY pg."OS"
         )
         SELECT
             main."DESCRICAO DA OFICINA",
@@ -287,27 +303,20 @@ class ColaboradorService:
             100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
             100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
             100 * ROUND(COUNT(*)::NUMERIC / SUM(COUNT(*)) OVER (), 4) AS "PERC_TOTAL_OS",
-            ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media_colaborador,
-            osn.nota_media_os AS "nota_media_os",
-            SUM(pg."VALOR") AS "TOTAL_GASTO",
-            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / SUM(pg."VALOR")::NUMERIC, 4) AS "PERC_GASTO_RETRABALHO"
-        FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct main
-        LEFT JOIN 
-        	os_dados_classificacao odc  
-        ON
-            main."KEY_HASH" = odc."KEY_HASH"
-            
+            ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS "nota_media_colaborador",
+            osn.nota_media_os,
+            MAX(pg."TOTAL_GASTO") AS "TOTAL_GASTO",
+            MAX(pg."TOTAL_GASTO_RETRABALHO") AS "TOTAL_GASTO_RETRABALHO",
+            MAX(pg."PERC_GASTO_RETRABALHO") AS "PERC_GASTO_RETRABALHO"
+        FROM mat_view_retrabalho_10_dias_distinct main
+        LEFT JOIN os_dados_classificacao odc
+            ON main."KEY_HASH" = odc."KEY_HASH"
         LEFT JOIN os_nota_media osn
             ON main."DESCRICAO DA OFICINA" = osn."DESCRICAO DA OFICINA"
             AND main."DESCRICAO DA SECAO" = osn."DESCRICAO DA SECAO"
             AND main."DESCRICAO DO SERVICO" = osn."DESCRICAO DO SERVICO"
-        LEFT JOIN
-            view_pecas_desconsiderando_combustivel pg 
-        ON
-            main."NUMERO DA OS" = pg."OS"
-            AND pg."DATA" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+        LEFT JOIN gastos_os pg
+            ON main."NUMERO DA OS" = pg."OS"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
             {inner_subquery_secoes_str2}
