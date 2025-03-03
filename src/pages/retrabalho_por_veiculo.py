@@ -41,7 +41,7 @@ from modules.veiculos.tabelas import *
 from modules.sql_utils import *
 from modules.veiculos.inputs import *
 from modules.veiculos.graficos import *
-from modules.veiculos.home_service import *
+from modules.veiculos.veiculo_service import *
 from modules.veiculos.helps import HelpsVeiculos
 
 ##############################################################################
