@@ -915,8 +915,6 @@ class HomeServiceVeiculo:
         ),
         ind1 AS (
             SELECT
-                main."DESCRICAO DA OFICINA",
-                main."DESCRICAO DA SECAO",
                 main."DESCRICAO DO SERVICO",
                 main."CODIGO DO VEICULO",
                 COUNT(DISTINCT CONCAT(main."NUMERO DA OS", '-', main."DESCRICAO DO SERVICO")) AS "TOTAL_OS",
@@ -927,8 +925,6 @@ class HomeServiceVeiculo:
                 100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_RETRABALHO",
                 100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO",
                 100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-                --ROUND(SUM(pg."QUANTIDADE")) AS "QUANTIDADE DE PECAS",
-                --SUM(pg."VALOR") AS "VALOR",
                 COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") AS "QUANTIDADE DE COLABORADORES"
             FROM
                 mat_view_retrabalho_{min_dias}_dias main
@@ -949,29 +945,18 @@ class HomeServiceVeiculo:
                 {inner_subquery_os_str}
                 {inner_subquery_veiculos_str}
             GROUP BY
-                main."DESCRICAO DA OFICINA",
-                main."DESCRICAO DA SECAO",
                 main."DESCRICAO DO SERVICO",
                 main."CODIGO DO VEICULO",
                 op.num_problema
         ),
         ind2 AS (
             SELECT
-                main."DESCRICAO DA OFICINA",
-                main."DESCRICAO DA SECAO",
                 main."DESCRICAO DO SERVICO",
                 main."CODIGO DO VEICULO",
                 ROUND(SUM(pg."QUANTIDADE")) AS "QUANTIDADE DE PECAS",
-                SUM(pg."VALOR") AS "VALOR",
-                SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO"
+                SUM(pg."VALOR") AS "VALOR"
             FROM
                 mat_view_retrabalho_{min_dias}_dias_distinct main
-            LEFT JOIN
-                os_problema op
-            ON
-                main."DESCRICAO DA OFICINA" = op."DESCRICAO DA OFICINA"
-                AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
-                AND main."DESCRICAO DO SERVICO" = op.servico
             LEFT JOIN
                 view_pecas_desconsiderando_combustivel pg
             ON 
@@ -983,15 +968,44 @@ class HomeServiceVeiculo:
                 {inner_subquery_os_str}
                 {inner_subquery_veiculos_str}
             GROUP BY
-                main."DESCRICAO DA OFICINA",
-                main."DESCRICAO DA SECAO",
+                main."DESCRICAO DO SERVICO",
+                main."CODIGO DO VEICULO"
+        ),
+        ind3 AS (
+            WITH retrabalho_enumerado AS (
+                SELECT 
+                    "DESCRICAO DO SERVICO", 
+                    "CODIGO DO VEICULO", 
+                    "NUMERO DA OS", 
+                    "DATA DO FECHAMENTO DA OS", 
+                    "DESCRICAO DA SECAO",
+                    "retrabalho",
+                    ROW_NUMBER() OVER (
+                        PARTITION BY "CODIGO DO VEICULO", "NUMERO DA OS" 
+                        ORDER BY "DATA DO FECHAMENTO DA OS" ASC
+                    ) AS rn
+                FROM mat_view_retrabalho_{min_dias}_dias
+                WHERE retrabalho = true
+            )
+            SELECT DISTINCT 
                 main."DESCRICAO DO SERVICO",
                 main."CODIGO DO VEICULO",
-                op.num_problema
+                SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO"
+            FROM retrabalho_enumerado main
+            LEFT JOIN view_pecas_desconsiderando_combustivel pg
+                ON main."NUMERO DA OS" = pg."OS"
+            WHERE
+                main.rn = 1  -- Pegamos apenas a primeira ocorrência
+                AND main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {inner_subquery_oficinas_str}
+                {inner_subquery_secoes_str}
+                {inner_subquery_os_str}
+                {inner_subquery_veiculos_str}
+            GROUP BY
+                main."DESCRICAO DO SERVICO",
+                main."CODIGO DO VEICULO"
         )
         SELECT
-            ind1."DESCRICAO DA OFICINA",
-            ind1."DESCRICAO DA SECAO",
             ind1."DESCRICAO DO SERVICO",
             ind1."CODIGO DO VEICULO",
             ind1."TOTAL_OS",
@@ -1005,27 +1019,23 @@ class HomeServiceVeiculo:
             ind1."QUANTIDADE DE COLABORADORES",
             ind2."QUANTIDADE DE PECAS" AS "QUANTIDADE DE PECAS",
             ind2."VALOR" AS "VALOR",
-            ind2."TOTAL_GASTO_RETRABALHO" AS "TOTAL_GASTO_RETRABALHO"
+            ind3."TOTAL_GASTO_RETRABALHO" AS "TOTAL_GASTO_RETRABALHO"
         FROM
             ind1
         LEFT JOIN
             ind2
         ON
-            ind1."DESCRICAO DA OFICINA" = ind2."DESCRICAO DA OFICINA"
-            AND ind1."DESCRICAO DA SECAO" = ind2."DESCRICAO DA SECAO"
-            AND ind1."DESCRICAO DO SERVICO" = ind2."DESCRICAO DO SERVICO"
+            ind1."DESCRICAO DO SERVICO" = ind2."DESCRICAO DO SERVICO"
             AND ind1."CODIGO DO VEICULO" = ind2."CODIGO DO VEICULO"
+        LEFT JOIN
+            ind3
+        ON
+            ind1."DESCRICAO DO SERVICO" = ind3."DESCRICAO DO SERVICO"
+            AND ind1."CODIGO DO VEICULO" = ind3."CODIGO DO VEICULO"
         ORDER BY
             ind1."PERC_RETRABALHO" DESC;
 
         """
-        
-
-        subquery_oficinas_str_mod = subquery_oficinas(lista_oficinas, "od")
-        subquery_secoes_str_mod = subquery_secoes(lista_secaos, "od")
-        subquery_os_str_mod = subquery_os(lista_os, "od")
-        subquery_veiculos_str_mod = subquery_veiculos(lista_veiculo, "od")
-
 
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
