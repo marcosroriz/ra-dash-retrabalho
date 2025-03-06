@@ -22,11 +22,14 @@ def subquery_secoes(lista_secaos, prefix="", termo_all="TODAS"):
 
 
 def subquery_os(lista_os, prefix="", termo_all="TODAS"):
-    query = ""
-    if termo_all not in lista_os:
-        query = f"""AND {prefix}"DESCRICAO DO SERVICO" IN ({', '.join([f"'{x}'" for x in lista_os])})"""
+    if not lista_os or termo_all in lista_os:
+        return ""
+    valores = ", ".join([f"'{x}'" for x in lista_os if x])  
+    if not valores:  
+        return ""
 
-    return query
+    return f'AND {prefix}"DESCRICAO DO SERVICO" IN ({valores})'
+
 
 
 def subquery_modelos(lista_modelos, prefix="", termo_all="TODAS"):

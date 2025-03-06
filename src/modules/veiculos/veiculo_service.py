@@ -7,7 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 # Imports auxiliares
-from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, subquery_veiculos, subquery_modelos_veiculos, subquery_equipamentos
+from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, subquery_veiculos, subquery_modelos_veiculos, subquery_equipamentos, subquery_modelos_pecas
 from modules.veiculos.helps import HelpsVeiculos
 
 # Classe do serviço
@@ -985,7 +985,7 @@ class VeiculoService:
                 FROM mat_view_retrabalho_{min_dias}_dias
                 WHERE retrabalho = true
             )
-            SELECT DISTINCT 
+            SELECT 
                 main."DESCRICAO DO SERVICO",
                 main."CODIGO DO VEICULO",
                 SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO"
@@ -1285,7 +1285,8 @@ class VeiculoService:
         subquery_oficinas_str = subquery_oficinas(lista_oficinas, "od.")
         subquery_secoes_str = subquery_secoes(lista_secoes, "od.")
         subquery_os_str = subquery_os(lista_os, "od.")
-        subquery_veiculos_str = subquery_equipamentos(lista_veiculos)
+        #subquery_veiculos_str = subquery_equipamentos(lista_veiculos, "pg.")
+        subquery_vei_str = subquery_veiculos(lista_veiculos)
         
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1]) - pd.DateOffset(days=min_dias + 1)
@@ -1295,16 +1296,20 @@ class VeiculoService:
         try:
             # 1. Buscar APENAS um modelo associado aos veículos selecionados
             query_modelo = f"""
-            SELECT DISTINCT "MODELO"
-            FROM view_pecas_desconsiderando_combustivel
-            WHERE "EQUIPAMENTO" IN ('{','.join(map(str, lista_veiculos))}')
+            SELECT DISTINCT 
+                "DESCRICAO DO MODELO" AS "MODELO"
+            FROM mat_view_retrabalho_{min_dias}_dias_distinct
+            WHERE 
+                1=1
+                {subquery_vei_str}
             LIMIT 1;
             """
 
             df_modelo = pd.read_sql(query_modelo, self.dbEngine)
-            modelo_unico = df_modelo["MODELO"].iloc[0] if not df_modelo.empty else "N/A"
+            modelo_unico = df_modelo["MODELO"].iloc[0].strip() if not df_modelo.empty else "N/A"
+            subquery_modelos_veiculos_str = subquery_modelos_pecas([modelo_unico],"pg.")
 
-            # 2. Query principal utilizando o modelo único como filtro
+
             query_ranking_modelo = f"""
             WITH ranking_veiculos AS (
                 SELECT 
@@ -1320,7 +1325,7 @@ class VeiculoService:
                         {subquery_oficinas_str}
                         {subquery_secoes_str}
                         {subquery_os_str}
-                    AND pg."MODELO" = '{modelo_unico}'  -- Filtrando apenas pelo modelo único
+                        {subquery_modelos_veiculos_str}
                 GROUP BY pg."EQUIPAMENTO"
             ),
             ranking_filtrado AS (
@@ -1333,13 +1338,16 @@ class VeiculoService:
             WHERE 1=1
             ORDER BY "POSICAO";
             """
-
             rk_valor_modelo = f'0°'
-        
-            if len(lista_veiculos) <= 1:
+            if len(lista_veiculos) > 1 or len(lista_veiculos) == 0:
+                return rk_valor_modelo  
+            if len(lista_veiculos) == 1:
                 df = pd.read_sql(query_ranking_modelo, self.dbEngine)
-                df_veiculo = df.loc[df["EQUIPAMENTO"] == lista_veiculos[0]]
-                if len(df_veiculo) >= 1:
+                equipamento_alvo = str(lista_veiculos[0]).strip()
+                df_veiculo = df[df["EQUIPAMENTO"].astype(str).str.contains(equipamento_alvo, case=False, na=False)]
+                print("DF TOTAL")
+                print(df)
+                if len(df_veiculo) == 1:
                     contagem_ranking_geral = len(df)
                     rk_n_valor_modelo = df_veiculo.iloc[0]["POSICAO"]
                     rk_valor_modelo = f'{rk_n_valor_modelo}°/{contagem_ranking_geral}'
