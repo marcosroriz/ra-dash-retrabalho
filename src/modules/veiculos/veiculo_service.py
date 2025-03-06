@@ -121,7 +121,7 @@ class VeiculoService:
                 {subquery_os_str}
                 {subquery_veiculos_os}
         """
-
+        print(query)
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
@@ -900,15 +900,11 @@ class VeiculoService:
         ),
         os_problema AS (
             SELECT
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
                 servico,
-                COUNT(DISTINCT problem_no) AS num_problema
+                COUNT(*) AS num_problema
             FROM
                 normaliza_problema
             GROUP BY
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
                 servico
         ),
         ind1 AS (
@@ -919,23 +915,12 @@ class VeiculoService:
                 SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
                 SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
                 SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-                COUNT(DISTINCT main.problem_no) AS "TOTAL_PROBLEMA",
-                100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_RETRABALHO",
-                100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO",
-                100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+                100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+                100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+                100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
                 COUNT(main."COLABORADOR QUE EXECUTOU O SERVICO") AS "QUANTIDADE DE COLABORADORES"
             FROM
                 mat_view_retrabalho_{min_dias}_dias main
-            LEFT JOIN
-                os_problema op
-            ON
-                main."DESCRICAO DA OFICINA" = op."DESCRICAO DA OFICINA"
-                AND main."DESCRICAO DA SECAO" = op."DESCRICAO DA SECAO"
-                AND main."DESCRICAO DO SERVICO" = op.servico
-            LEFT JOIN
-                view_pecas_desconsiderando_combustivel pg
-            ON 
-                main."NUMERO DA OS" = pg."OS"
             WHERE
                 main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {inner_subquery_oficinas_str}
@@ -944,8 +929,7 @@ class VeiculoService:
                 {inner_subquery_veiculos_str}
             GROUP BY
                 main."DESCRICAO DO SERVICO",
-                main."CODIGO DO VEICULO",
-                op.num_problema
+                main."CODIGO DO VEICULO"
         ),
         ind2 AS (
             SELECT
@@ -1010,7 +994,7 @@ class VeiculoService:
             ind1."TOTAL_RETRABALHO",
             ind1."TOTAL_CORRECAO",
             ind1."TOTAL_CORRECAO_PRIMEIRA",
-            ind1."TOTAL_PROBLEMA",
+            --ind1."TOTAL_PROBLEMA",
             ind1."PERC_RETRABALHO",
             ind1."PERC_CORRECAO",
             ind1."PERC_CORRECAO_PRIMEIRA",
@@ -1024,12 +1008,12 @@ class VeiculoService:
             ind2
         ON
             ind1."DESCRICAO DO SERVICO" = ind2."DESCRICAO DO SERVICO"
-            AND ind1."CODIGO DO VEICULO" = ind2."CODIGO DO VEICULO"
+                AND ind1."CODIGO DO VEICULO" = ind2."CODIGO DO VEICULO"
         LEFT JOIN
             ind3
         ON
             ind1."DESCRICAO DO SERVICO" = ind3."DESCRICAO DO SERVICO"
-            AND ind1."CODIGO DO VEICULO" = ind3."CODIGO DO VEICULO"
+                AND ind1."CODIGO DO VEICULO" = ind3."CODIGO DO VEICULO"
         ORDER BY
             ind1."PERC_RETRABALHO" DESC;
 
@@ -1038,7 +1022,7 @@ class VeiculoService:
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
-        df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
+        #df["REL_OS_PROBLEMA"] = round(df["TOTAL_OS"] / df["TOTAL_PROBLEMA"], 2)
 
         df["QUANTIDADE DE PECAS"] = df["QUANTIDADE DE PECAS"].fillna(0).astype(int)
 
@@ -1345,8 +1329,6 @@ class VeiculoService:
                 df = pd.read_sql(query_ranking_modelo, self.dbEngine)
                 equipamento_alvo = str(lista_veiculos[0]).strip()
                 df_veiculo = df[df["EQUIPAMENTO"].astype(str).str.contains(equipamento_alvo, case=False, na=False)]
-                print("DF TOTAL")
-                print(df)
                 if len(df_veiculo) == 1:
                     contagem_ranking_geral = len(df)
                     rk_n_valor_modelo = df_veiculo.iloc[0]["POSICAO"]
