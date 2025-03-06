@@ -337,7 +337,7 @@ class VeiculoService:
 
         query_descobrir_os_problemas = f"""
             SELECT 
-            COUNT("NUMERO DA OS") AS "TOTAL_OS",
+            COUNT(DISTINCT "NUMERO DA OS") AS "TOTAL_OS",
             COUNT(DISTINCT "DESCRICAO DO SERVICO")  AS "TOTAL_DESCRIÇOES",
             COUNT(DISTINCT ("problem_no", "DESCRICAO DO SERVICO")) AS "TOTAL_PROBLEMOS_DESCRICOES",
             COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO")  AS "TOTAL_COLABORADORES"
@@ -915,7 +915,7 @@ class VeiculoService:
             SELECT
                 main."DESCRICAO DO SERVICO",
                 main."CODIGO DO VEICULO",
-                COUNT(DISTINCT CONCAT(main."NUMERO DA OS", '-', main."DESCRICAO DO SERVICO")) AS "TOTAL_OS",
+                COUNT(DISTINCT main."NUMERO DA OS") AS "TOTAL_OS",
                 SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
                 SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
                 SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
