@@ -33,7 +33,6 @@ class ColaboradorService:
         except Exception as e:
             return pd.DataFrame()
         
-
     def obtem_dados_os_mecanico(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
         # Query
         data_inicio_str = datas[0]
@@ -67,7 +66,6 @@ class ColaboradorService:
             df_os_mecanico_query["DATA DO FECHAMENTO DA OS"]
         )
         return df_os_mecanico_query 
-
     
     def obtem_estatistica_retrabalho_sql(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
         '''Obtem estatisticas e dados analisados de retrabalho para o grafico de pizza geral'''
@@ -84,7 +82,7 @@ class ColaboradorService:
         subquery_ofcina_str = subquery_oficinas(lista_oficina)
         query = f"""
         SELECT
-            COUNT("DESCRICAO DO SERVICO") AS "TOTAL_OS",
+            COUNT("NUMERO DA OS") AS "TOTAL_OS",
             SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
@@ -221,7 +219,6 @@ class ColaboradorService:
         df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
         return df
 
-
     def dados_tabela_do_colaborador(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
         '''Obtem dados para tabela'''
         # Datas
@@ -231,16 +228,6 @@ class ColaboradorService:
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        #Corrigindo data das peças
-        data_inicio_pecas = pd.to_datetime(data_inicio_str).strftime("%d/%m/%Y")
-        data_fim_pecas = data_fim.strftime("%d/%m/%Y")
-
-        # Subqueries
-        subquery_secoes_str = subquery_secoes(lista_secaos)
-        subquery_os_str = subquery_os(lista_os)
-        subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
 
         inner_subquery_secoes_str1 = subquery_secoes(lista_secaos, "mt.")
         inner_subquery_os_str1= subquery_os(lista_os, "mt.")
@@ -274,28 +261,12 @@ class ColaboradorService:
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
                 "DESCRICAO DO SERVICO"
-        ),
-        gastos_os AS (
-            -- Subquery para calcular os gastos por OS
-            SELECT 
-                pg."OS",
-                SUM(pg."VALOR") AS "TOTAL_GASTO",
-                SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
-                100 * ROUND(
-                    COALESCE(SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / NULLIF(SUM(pg."VALOR")::NUMERIC, 0), 0),
-                4) AS "PERC_GASTO_RETRABALHO"
-            FROM view_pecas_desconsiderando_combustivel pg
-            left JOIN mat_view_retrabalho_10_dias_distinct main
-                ON main."NUMERO DA OS" = pg."OS"
-                AND main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            WHERE  pg."DATA" BETWEEN '{data_inicio_pecas}' AND '{data_fim_pecas}'
-            GROUP BY pg."OS"
         )
-        SELECT
+        SELECT 
             main."DESCRICAO DA OFICINA",
             main."DESCRICAO DA SECAO",
             main."DESCRICAO DO SERVICO",
-            COUNT(main."DESCRICAO DO SERVICO") AS "TOTAL_OS",
+            COUNT(distinct main."NUMERO DA OS") AS "TOTAL_OS",
             SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
             SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
             SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
@@ -305,17 +276,19 @@ class ColaboradorService:
             100 * ROUND(COUNT(*)::NUMERIC / SUM(COUNT(*)) OVER (), 4) AS "PERC_TOTAL_OS",
             ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS "nota_media_colaborador",
             osn.nota_media_os,
-            MAX(pg."TOTAL_GASTO") AS "TOTAL_GASTO",
-            MAX(pg."TOTAL_GASTO_RETRABALHO") AS "TOTAL_GASTO_RETRABALHO",
-            MAX(pg."PERC_GASTO_RETRABALHO") AS "PERC_GASTO_RETRABALHO"
-        FROM mat_view_retrabalho_10_dias_distinct main
+            SUM(pg."VALOR") AS "TOTAL_GASTO",
+            SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
+            100 * ROUND(
+                COALESCE(SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / NULLIF(SUM(pg."VALOR")::NUMERIC, 0), 0),
+            4) AS "PERC_GASTO_RETRABALHO"
+        FROM mat_view_retrabalho_{min_dias}_dias_distinct main
         LEFT JOIN os_dados_classificacao odc
             ON main."KEY_HASH" = odc."KEY_HASH"
         LEFT JOIN os_nota_media osn
             ON main."DESCRICAO DA OFICINA" = osn."DESCRICAO DA OFICINA"
             AND main."DESCRICAO DA SECAO" = osn."DESCRICAO DA SECAO"
             AND main."DESCRICAO DO SERVICO" = osn."DESCRICAO DO SERVICO"
-        LEFT JOIN gastos_os pg
+        LEFT JOIN  view_pecas_desconsiderando_combustivel pg
             ON main."NUMERO DA OS" = pg."OS"
         WHERE
             main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
@@ -339,7 +312,6 @@ class ColaboradorService:
         df['nota_media_os'] = df['nota_media_os'].replace(np.nan, 0)
         
         return df
-    
     
     def dados_grafico_top_10_do_colaborador(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
         # Datas
@@ -561,7 +533,6 @@ class ColaboradorService:
         
         return df_mecanicos
 
-    
     def df_lista_os(self):
         '''Retorna uma lista das OSs'''
         df_lista_os = pd.read_sql(
