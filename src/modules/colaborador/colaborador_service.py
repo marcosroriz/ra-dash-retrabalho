@@ -273,7 +273,7 @@ class ColaboradorService:
             100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
             100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            100 * ROUND(COUNT(*)::NUMERIC / SUM(COUNT(*)) OVER (), 4) AS "PERC_TOTAL_OS",
+            100 * ROUND(COUNT(distinct main."NUMERO DA OS")::NUMERIC / SUM(COUNT(distinct main."NUMERO DA OS")) OVER (), 4) AS "PERC_TOTAL_OS",
             ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS "nota_media_colaborador",
             osn.nota_media_os,
             SUM(pg."VALOR") AS "TOTAL_GASTO",
