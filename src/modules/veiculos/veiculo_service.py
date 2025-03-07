@@ -121,7 +121,7 @@ class VeiculoService:
                 {subquery_os_str}
                 {subquery_veiculos_os}
         """
-        print(query)
+        
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
