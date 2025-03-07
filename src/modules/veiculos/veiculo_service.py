@@ -955,19 +955,21 @@ class VeiculoService:
         ),
         ind3 AS (
             WITH retrabalho_enumerado AS (
-                SELECT 
+                SELECT DISTINCT 
                     "DESCRICAO DO SERVICO", 
                     "CODIGO DO VEICULO", 
                     "NUMERO DA OS", 
                     "DATA DO FECHAMENTO DA OS", 
                     "DESCRICAO DA SECAO",
-                    "retrabalho",
-                    ROW_NUMBER() OVER (
-                        PARTITION BY "CODIGO DO VEICULO", "NUMERO DA OS" 
-                        ORDER BY "DATA DO FECHAMENTO DA OS" ASC
-                    ) AS rn
+                    "retrabalho"
                 FROM mat_view_retrabalho_{min_dias}_dias
-                WHERE retrabalho = true
+                WHERE 
+                    "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                    AND retrabalho = true
+                    {subquery_oficinas_str}
+                    {subquery_secoes_str}
+                    {subquery_os_str}
+                    {subquery_veiculos_str}
             )
             SELECT 
                 main."DESCRICAO DO SERVICO",
@@ -977,8 +979,7 @@ class VeiculoService:
             LEFT JOIN view_pecas_desconsiderando_combustivel pg
                 ON main."NUMERO DA OS" = pg."OS"
             WHERE
-                main.rn = 1  -- Pegamos apenas a primeira ocorrência
-                AND main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {inner_subquery_oficinas_str}
                 {inner_subquery_secoes_str}
                 {inner_subquery_os_str}
