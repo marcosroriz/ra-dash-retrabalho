@@ -51,7 +51,7 @@ class ColaboradorService:
         SELECT
             *
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct
+            mat_view_retrabalho_{min_dias}_dias
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
@@ -91,7 +91,7 @@ class ColaboradorService:
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
             COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QTD_SERVICOS_DIFERENTES"
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct
+            mat_view_retrabalho_{min_dias}_dias
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
@@ -123,7 +123,7 @@ class ColaboradorService:
         query = f"""
             WITH oficina_colaborador AS (
             SELECT DISTINCT "DESCRICAO DA SECAO"
-            FROM mat_view_retrabalho_{min_dias}_dias_distinct
+            FROM mat_view_retrabalho_{min_dias}_dias
             WHERE 
                 "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
                 AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
@@ -139,7 +139,7 @@ class ColaboradorService:
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
             COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QTD_SERVICOS_DIFERENTES"
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct
+            mat_view_retrabalho_{min_dias}_dias
         WHERE
             "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
@@ -160,7 +160,7 @@ class ColaboradorService:
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
             COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QTD_SERVICOS_DIFERENTES"
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct
+            mat_view_retrabalho_{min_dias}_dias
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             AND "DESCRICAO DA SECAO" IN (SELECT "DESCRICAO DA SECAO" FROM oficina_colaborador)
@@ -203,7 +203,7 @@ class ColaboradorService:
             100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct
+            mat_view_retrabalho_{min_dias}_dias
         WHERE
             "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             {subquery_secoes_str}
@@ -248,7 +248,7 @@ class ColaboradorService:
                 "DESCRICAO DA SECAO",
                 "DESCRICAO DO SERVICO",
                 ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS nota_media_os
-            FROM mat_view_retrabalho_{min_dias}_dias_distinct mt
+            FROM mat_view_retrabalho_{min_dias}_dias mt
             LEFT JOIN os_dados_classificacao odc
             ON mt."KEY_HASH" = odc."KEY_HASH"
             WHERE
@@ -281,7 +281,7 @@ class ColaboradorService:
             100 * ROUND(
                 COALESCE(SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / NULLIF(SUM(pg."VALOR")::NUMERIC, 0), 0),
             4) AS "PERC_GASTO_RETRABALHO"
-        FROM mat_view_retrabalho_{min_dias}_dias_distinct main
+        FROM mat_view_retrabalho_{min_dias}_dias main
         LEFT JOIN os_dados_classificacao odc
             ON main."KEY_HASH" = odc."KEY_HASH"
         LEFT JOIN os_nota_media osn
@@ -346,7 +346,7 @@ class ColaboradorService:
                 "CODIGO DO VEICULO",
                 "problem_no"
             FROM
-                mat_view_retrabalho_{min_dias}_dias_distinct
+                mat_view_retrabalho_{min_dias}_dias
             WHERE
                 "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
                 {subquery_secoes_str}
@@ -380,7 +380,7 @@ class ColaboradorService:
                 "DESCRICAO DA SECAO",
                 "DESCRICAO DO SERVICO",
                 ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS nota_media_os
-            FROM mat_view_retrabalho_{min_dias}_dias_distinct mt
+            FROM mat_view_retrabalho_{min_dias}_dias mt
             LEFT JOIN os_dados_classificacao odc
             ON mt."KEY_HASH" = odc."KEY_HASH"
             WHERE
@@ -412,7 +412,7 @@ class ColaboradorService:
             SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / SUM(pg."VALOR")::NUMERIC, 4) AS "PERC_GASTO_RETRABALHO"
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct main
+            mat_view_retrabalho_{min_dias}_dias main
         LEFT JOIN 
         	os_dados_classificacao odc  
         ON
@@ -466,7 +466,7 @@ class ColaboradorService:
             COUNT(DISTINCT "DESCRICAO DO SERVICO") AS quantidade_de_servicos_diferentes,
             ROW_NUMBER() OVER (ORDER BY COUNT(DISTINCT "DESCRICAO DO SERVICO") DESC) AS rank_colaborador
             FROM
-                mat_view_retrabalho_{min_dias}_dias_distinct
+                mat_view_retrabalho_{min_dias}_dias
             WHERE
                 "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_secoes_str}
@@ -509,7 +509,7 @@ class ColaboradorService:
                 COUNT(*) AS quantidade_de_OS,
                 ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) AS rank_colaborador
             FROM
-                mat_view_retrabalho_{min_dias}_dias_distinct
+                mat_view_retrabalho_{min_dias}_dias
             WHERE
                 "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_secoes_str}
@@ -565,7 +565,7 @@ class ColaboradorService:
             "DESCRICAO DA SECAO" as "SECAO",
             "DESCRICAO DO SERVICO" AS "LABEL"
             FROM 
-                mat_view_retrabalho_{min_dias}_dias_distinct mvrd 
+                mat_view_retrabalho_{min_dias}_dias mvrd 
             WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             
             ORDER BY
@@ -592,7 +592,7 @@ class ColaboradorService:
             SELECT DISTINCT
             "DESCRICAO DO MODELO" as "LABEL"
             FROM 
-                mat_view_retrabalho_{min_dias}_dias_distinct mvrd 
+                mat_view_retrabalho_{min_dias}_dias mvrd 
             WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
             {subquery_secoes_str}
             {subquery_os_str}
@@ -621,7 +621,7 @@ class ColaboradorService:
         SELECT
           	ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media_colaborador
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct mt
+            mat_view_retrabalho_{min_dias}_dias mt
         LEFT JOIN
 		    os_dados_classificacao odc  on mt."KEY_HASH" = odc."KEY_HASH" 
 
@@ -653,7 +653,7 @@ class ColaboradorService:
         query = f"""
             WITH oficina_colaborador AS (
             SELECT DISTINCT "DESCRICAO DA OFICINA"
-            FROM mat_view_retrabalho_{min_dias}_dias_distinct
+            FROM mat_view_retrabalho_{min_dias}_dias
             WHERE 
                 "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
                 AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
@@ -663,7 +663,7 @@ class ColaboradorService:
             to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct mt1
+            mat_view_retrabalho_{min_dias}_dias mt1
         LEFT JOIN
 		    os_dados_classificacao odc  on mt1."KEY_HASH" = odc."KEY_HASH"
         WHERE
@@ -680,7 +680,7 @@ class ColaboradorService:
             to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct mt2
+            mat_view_retrabalho_{min_dias}_dias mt2
         LEFT JOIN
 		    os_dados_classificacao odc  on mt2."KEY_HASH" = odc."KEY_HASH" 
       
@@ -724,7 +724,7 @@ class ColaboradorService:
                     ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) DESC NULLS LAST
             ) AS rank_colaborador
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct mt
+            mat_view_retrabalho_{min_dias}_dias mt
         LEFT JOIN
             os_dados_classificacao odc ON mt."KEY_HASH" = odc."KEY_HASH"
         WHERE
@@ -765,7 +765,7 @@ class ColaboradorService:
         query = f'''
             WITH oficina_colaborador AS (
             SELECT DISTINCT "DESCRICAO DA OFICINA"
-            FROM mat_view_retrabalho_{min_dias}_dias_distinct
+            FROM mat_view_retrabalho_{min_dias}_dias
             WHERE 
                 "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
                 AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
@@ -775,7 +775,7 @@ class ColaboradorService:
             to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             Round(avg(pg."VALOR"), 2) AS media_gasto
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct mt1
+            mat_view_retrabalho_{min_dias}_dias mt1
         JOIN view_pecas_desconsiderando_combustivel pg
             ON mt1."NUMERO DA OS" = pg."OS"
         WHERE
@@ -792,7 +792,7 @@ class ColaboradorService:
             to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             Round(avg(pg."VALOR"), 2) AS media_gasto
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct mt2
+            mat_view_retrabalho_{min_dias}_dias mt2
         JOIN view_pecas_desconsiderando_combustivel pg
             ON mt2."NUMERO DA OS" = pg."OS"
       
@@ -830,7 +830,7 @@ class ColaboradorService:
             SUM(pg."VALOR") AS "TOTAL_GASTO",
             SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
         FROM
-            mat_view_retrabalho_{min_dias}_dias_distinct main
+            mat_view_retrabalho_{min_dias}_dias main
         JOIN
             view_pecas_desconsiderando_combustivel pg 
         ON
