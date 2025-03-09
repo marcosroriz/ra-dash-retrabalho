@@ -36,7 +36,11 @@ class VeiculoService:
         df_lista_veiculos = df_lista_veiculos.sort_values("VEICULO")
 
         # Adicionar a opção "TODAS" manualmente
-        lista_todos_veiculos = [{"VEICULO": "TODAS", "MODELO": "TODOS OS VEÍCULOS"}] + df_lista_veiculos.to_dict(orient="records")
+        # PARA VOLTAR A FUNÇÃO "TODAS", SÓ DESCOMENTAR E COMENTAR/EXCLUIR A LINHA POSTERIOR 
+        #lista_todos_veiculos = [{"VEICULO": "TODAS", "MODELO": "TODOS OS VEÍCULOS"}] + df_lista_veiculos.to_dict(orient="records")
+
+        # Adicionar a opção "TODAS" manualmente
+        lista_todos_veiculos = df_lista_veiculos.to_dict(orient="records")
 
         return lista_todos_veiculos
     

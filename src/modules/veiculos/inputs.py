@@ -78,3 +78,4 @@ def corrige_input(lista):
 
     # Por fim, se não caiu em nenhum caso, retorna o valor original
     return lista
+

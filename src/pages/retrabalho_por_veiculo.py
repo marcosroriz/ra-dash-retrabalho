@@ -267,7 +267,7 @@ layout = dbc.Container(
                                                     dbc.Label("Veículos"),
                                                     dcc.Dropdown(
                                                         id="input-select-veiculos",
-                                                        multi=True,
+                                                        multi=False,
                                                         placeholder="Selecione um ou mais veículos...",
                                                     )
                                                 ],
@@ -1160,8 +1160,14 @@ def atualizar_veiculos(modelos_selecionados):
         {"label": f'{veiculo["VEICULO"]} ({veiculo["MODELO"]})', "value": veiculo["VEICULO"]}
         for veiculo in lista_todos_veiculos
     ]
+    
+    #DESCOMENTAR CASO USE A OPÇÃO MULTIPLA DO DROPDOWN
     # Selecionar o segundo item como padrão, se existir
-    value = [options[1]["value"]] if len(options) > 1 else []
+    #value = [options[1]["value"]] if len(options) > 1 else []
+
+    #COMENTAR CASO USE A OPÇÃO MULTIPLA DO DROPDOWN
+    # Selecionar o segundo item como padrão, se existir
+    value = options[1]["value"] if len(options) > 1 else None  # None para evitar erro
     return options, value
 
 @callback(
@@ -1175,9 +1181,9 @@ def atualizar_veiculos(modelos_selecionados):
     ]
 )
 def atualizar_servicos(datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     if not input_valido4(datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
-        return []  # Retorna uma lista vazia de opções se lista_veiculos for None
-    
+        return []  # Retorna uma lista vazia de opções se lista_veiculos for None  
     # Chama a função atualizar_servicos_func para obter a lista de serviços
     lista_servicos = home_service_veiculos.atualizar_servicos_func(
         datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos
@@ -1208,6 +1214,7 @@ def atualizar_servicos(datas, min_dias, lista_oficinas, lista_secaos, lista_veic
     ],
 )
 def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure(), "", ""
@@ -1229,6 +1236,7 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
 )
 def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     # Valida input
+    lista_veiculos = [lista_veiculos]
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure()
     df = home_service_veiculos.evolucao_retrabalho_por_veiculo_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
@@ -1248,6 +1256,7 @@ def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(datas, min_dias, lista
     ],
 )
 def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure()
@@ -1275,6 +1284,7 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     ],
 )
 def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure(), "", "", "", "", "", ""
@@ -1298,6 +1308,7 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     ],
 )
 def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
+    equipamentos = [equipamentos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
         return go.Figure()
@@ -1337,6 +1348,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_
     
 )
 def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return [], " ", " ", " ", " "
@@ -1356,9 +1368,10 @@ def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_o
         Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
-    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
+    
 )
 def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
+    lista_veiculo = [lista_veiculo]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
         return [], " "
@@ -1379,6 +1392,8 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     ],
 )
 def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
+
     if not input_valido3(datas, min_dias, lista_veiculos):
         return [""]
     
@@ -1402,8 +1417,10 @@ def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_
         Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
+    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
 )
 def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return "", "", "", ""
