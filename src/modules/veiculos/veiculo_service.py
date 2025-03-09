@@ -337,7 +337,7 @@ class VeiculoService:
 
         query_descobrir_os_problemas = f"""
             SELECT 
-            COUNT(DISTINCT "NUMERO DA OS") AS "TOTAL_OS",
+            COUNT(DISTINCT ("NUMERO DA OS", "DESCRICAO DO SERVICO")) AS "TOTAL_OS",
             COUNT(DISTINCT "DESCRICAO DO SERVICO")  AS "TOTAL_DESCRIÇOES",
             COUNT(DISTINCT ("problem_no", "DESCRICAO DO SERVICO")) AS "TOTAL_PROBLEMOS_DESCRICOES",
             COUNT(DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO")  AS "TOTAL_COLABORADORES"
@@ -358,7 +358,7 @@ class VeiculoService:
                 "CODIGO DO VEICULO",
                 "DESCRICAO DO MODELO",
                 COUNT(DISTINCT ("problem_no", "DESCRICAO DO SERVICO"))AS "TOTAL_CORRECAO",
-                COUNT("NUMERO DA OS") AS "TOTAL_OS"
+                COUNT(DISTINCT ("NUMERO DA OS", "DESCRICAO DO SERVICO")) AS "TOTAL_OS"
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
@@ -395,7 +395,7 @@ class VeiculoService:
                 SELECT 
                     "CODIGO DO VEICULO",
                     DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
-                    COUNT(DISTINCT "NUMERO DA OS") AS "QUANTIDADE_DE_OS",
+                    COUNT(DISTINCT ("NUMERO DA OS", "DESCRICAO DO SERVICO")) AS "QUANTIDADE_DE_OS",
                     COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QUANTIDADE_DE_DESCRICOES_DISTINTAS"
                 FROM mat_view_retrabalho_{min_dias}_dias
                 WHERE 
@@ -443,7 +443,7 @@ class VeiculoService:
                 SELECT 
                     "CODIGO DO VEICULO",
                     DATE_TRUNC('month', "DATA DO FECHAMENTO DA OS"::timestamp) AS "MÊS",
-                    COUNT(DISTINCT "NUMERO DA OS") AS "QUANTIDADE_DE_OS",
+                    COUNT(DISTINCT ("NUMERO DA OS", "DESCRICAO DO SERVICO")) AS "QUANTIDADE_DE_OS",
                     COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QUANTIDADE_DE_DESCRICOES_DISTINTAS",
                     "DESCRICAO DO MODELO"
                 FROM mat_view_retrabalho_{min_dias}_dias
@@ -911,7 +911,7 @@ class VeiculoService:
             SELECT
                 main."DESCRICAO DO SERVICO",
                 main."CODIGO DO VEICULO",
-                COUNT(DISTINCT main."NUMERO DA OS") AS "TOTAL_OS",
+                COUNT(DISTINCT (main."NUMERO DA OS", main."DESCRICAO DO SERVICO")) AS "TOTAL_OS",
                 SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
                 SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
                 SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
