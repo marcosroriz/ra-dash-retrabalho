@@ -90,7 +90,6 @@ class VeiculoService:
         
         return lista_servicos
 
-
     def sintese_geral_fun(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
             # Datas
         data_inicio_str = datas[0]
@@ -1268,8 +1267,6 @@ class VeiculoService:
             print(f"Erro ao executar a consulta da tabela: {e}")
             return [], "R$ 0,00", "R$ 0,00",[]
         
-
-
     def tabela_ranking_pecas_fun(self, datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
         subquery_oficinas_str = subquery_oficinas(lista_oficinas, "od.")
         subquery_secoes_str = subquery_secoes(lista_secoes, "od.")

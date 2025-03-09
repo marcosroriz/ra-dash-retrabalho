@@ -1098,39 +1098,6 @@ layout = dbc.Container(
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
         dmc.Space(h=40),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-        #         dbc.Col(
-        #             dbc.Row(
-        #                 [
-        #                     html.H4(
-        #                         "Tabela ranking valor de peças por modelo",
-        #                         className="align-self-center",
-        #                     ),
-        #                     dmc.Space(h=5),
-        #                     gera_labels_inputs_veiculos("ranking-de-pecas-substituidas-filtros"),
-        #                 ]
-        #             ),
-        #             width=True,
-        #         ),
-                
-        #     ],
-        #     align="center",
-        # ),
-        # dmc.Space(h=20),
-        # dag.AgGrid(
-        #     enableEnterpriseModules=True,
-        #     id="tabela-ranking-de-pecas",
-        #     columnDefs=tbl_ranking_por_modelo,
-        #     rowData=[],
-        #     defaultColDef={"filter": True, "floatingFilter": True},
-        #     columnSize="autoSize",
-        #     dashGridOptions={
-        #         "localeText": locale_utils.AG_GRID_LOCALE_BR,
-        #     },
-        #     style={"height": 400, "resize": "vertical", "overflow": "hidden"},
-        # ),
         dmc.Space(h=60),
         
 # Indicadores
@@ -1143,7 +1110,7 @@ layout = dbc.Container(
 # CALLBACKS ##################################################################
 ##############################################################################
 
-# Callback para atualizar o dropdown de veículos
+# VEÍCULOS DO MODELO SELECIONADO
 @callback(
     [
         Output("input-select-veiculos", "options"),
@@ -1170,6 +1137,7 @@ def atualizar_veiculos(modelos_selecionados):
     value = options[1]["value"] if len(options) > 1 else None  # None para evitar erro
     return options, value
 
+# SERVIÇOS DO VEÍCULO SELECIONADO
 @callback(
     Output("input-select-ordens-servico-visao-geral-veiculos", "options"),
     [
@@ -1196,7 +1164,6 @@ def atualizar_servicos(datas, min_dias, lista_oficinas, lista_secaos, lista_veic
     options_servicos.insert(0, {"label": "TODAS", "value": "TODAS"})  
 
     return options_servicos
-
 
 # GRÁFICO DE PIZZA GERAL
 @callback(
@@ -1265,7 +1232,7 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     # Exibe o gráfico
     return fig
 
-# GRAFICO DA QUANTIDADE DE OSs, INDICADORES DE : PROBLEMAS DIFERENTES, MECANICOS DIFERENTES, OS DIFERENTES
+# GRAFICO DA QUANTIDADE DE OSs, INDICADORES DE : PROBLEMAS DIFERENTES, MECANICOS DIFERENTES, OS DIFERENTES, OS/PROBL, RANKING OS/PROBL
 @callback(
     [Output('graph-evolucao-os-mes-veiculo', 'figure'),
      Output("indicador-problemas-diferentes", "children"),
@@ -1328,7 +1295,7 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_
     fig = grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo)
     return fig
 
-# TABELA DE PEÇAS, INDICADORES DE: VALORES DE PECAS, VALOR DE PECAS/MES, RANKING DO VALOR DE PECAS
+# TABELA DE PEÇAS, INDICADORES DE: VALORES DE PECAS, VALOR DE PECAS/MES, RANKING DO VALOR DE PECAS, TOTAL DE PEÇAS
 @callback(
    [Output("tabela-pecas-substituidas", "rowData"),
     Output("indicador-pecas-totais", "children"),
@@ -1355,7 +1322,7 @@ def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_o
     df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total
 
-# TABELA DE DESCRIÇÃO DE SERVIÇOS
+# TABELA DE DESCRIÇÃO DE SERVIÇOS E INDICADO DE VALOR DE RETRABALHO
 @callback(
     [Output("tabela-descricao-de-servico", "rowData"),
      Output("indicador-valor-geral-retrabalho", "children"),],
@@ -1379,7 +1346,7 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     df_dict, valor_retrabalho = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
     return df_dict, valor_retrabalho
 
-#Tabela de ranking de modelo
+#INDICADOR RANKING DE VALOR DE PEÇAS POR MODELO
 @callback(
     [Output("indicador-ranking-valor-pecas-modelo", "children")],
     [
