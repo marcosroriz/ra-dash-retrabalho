@@ -8,17 +8,13 @@
 ##############################################################################
 # Bibliotecas básicas
 from datetime import date
-import math
-import numpy as np
 import pandas as pd
-import os
-import re
 
 # Importar bibliotecas do dash básicas e plotly
-import dash
-from dash import Dash, html, dcc, callback, Input, Output, State
-import plotly.express as px
+from dash import html, dcc, callback, Input, Output
 import plotly.graph_objects as go
+import plotly.express as px
+import dash
 
 # Importar bibliotecas do bootstrap e ag-grid
 import dash_bootstrap_components as dbc
@@ -29,11 +25,12 @@ import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
+from modules.entities_utils import gerar_excel
+from modules.colaborador.tabelas import *
 import locale_utils
 
 # Banco de Dados
 from db import PostgresSingleton
-from modules.colaborador.tabelas import *
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -712,7 +709,7 @@ def atualizar_download(n_clicks, id_colaborador, datas, min_dias, lista_secaos, 
         lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
         lista_oficina=lista_oficina
     )
-    excel_data = colab.gerar_excel(df=df)
+    excel_data = gerar_excel(df=df)
     return dcc.send_bytes(excel_data, f"tabela_os_retrabalho{date_now}.xlsx")
 
 
@@ -1362,7 +1359,37 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("tabela-colaborador-os"),
+                            dbc.Row(
+                                [
+                                    dbc.Col(gera_labels_inputs("tabela-colaborador-os"), width=True),
+                                    dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                justify="between",  # Deixa os itens espaçados
+                            ),
                         ]
                     ),
                     width=True,
@@ -1383,33 +1410,6 @@ layout = dbc.Container(
             # style={"height": 400, "resize": "vertical", "overflow": "hidden"}, #-> permite resize
         ),
         dmc.Space(h=10),
-        html.Div(
-            [
-                html.Button(
-                    "Exportar para Excel",
-                    id="btn-exportar",
-                    n_clicks=0,
-                    style={
-                        "background-color": "#007bff",  # Azul
-                        "color": "white",
-                        "border": "none",
-                        "padding": "10px 20px",
-                        "border-radius": "8px",  # Bordas arredondadas
-                        "cursor": "pointer",
-                        "font-size": "16px",
-                        "font-weight": "bold",
-                    },
-                ),
-                dcc.Download(id="download-excel"),
-            ],
-            className="export-container",
-            style={
-                "display": "flex",
-                "justify-content": "center",
-                "align-items": "center",
-                "margin-top": "10px",
-            },
-        )
     ]
 )
 

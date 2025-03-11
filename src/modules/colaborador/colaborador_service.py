@@ -1,9 +1,7 @@
 import pandas as pd
 import numpy as np
-import traceback
-import base64
 import re
-import io
+
 
 from db import PostgresSingleton
 from ..sql_utils import *
@@ -850,12 +848,3 @@ class ColaboradorService:
         df_mecanico["TOTAL_GASTO_RETRABALHO"] = df_mecanico["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
         df_mecanico["TOTAL_GASTO_RETRABALHO"] = df_mecanico["TOTAL_GASTO_RETRABALHO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
         return df_mecanico
-    
-    @staticmethod
-    # Função para gerar o Excel e retornar um link de download
-    def gerar_excel(df):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            df.to_excel(writer, index=False, sheet_name="Dados")
-        output.seek(0)
-        return output.getvalue()
