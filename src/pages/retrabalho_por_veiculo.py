@@ -1389,7 +1389,7 @@ def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_o
 )
 def dowload_excel_tabela_peças(n_clicks, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     lista_veiculos = [lista_veiculos]
-    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+    if not n_clicks or n_clicks <= 0: # Garantir que ao iniciar ou carregar a page, o arquivo não seja baixado
         return dash.no_update
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return dash.no_update
@@ -1398,8 +1398,14 @@ def dowload_excel_tabela_peças(n_clicks, datas, min_dias, lista_oficinas, lista
     timestamp = int(time.time())
     df_detalhes_dict, _, _, _, _ = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     df = pd.DataFrame(df_detalhes_dict)
+
+    # Converter a coluna "retrabalho" (supondo que seja essa a coluna correta)
+    if "retrabalho" in df.columns:
+        df["retrabalho"] = df["retrabalho"].map({True: "SIM", False: "NÃO"})
+
     excel_data = gerar_excel(df=df)
     return dcc.send_bytes(excel_data, f"tabela-peças-os-{date_now}-{timestamp}.xlsx")
+
 
 # TABELA DE DESCRIÇÃO DE SERVIÇOS E INDICADO DE VALOR DE RETRABALHO
 @callback(
