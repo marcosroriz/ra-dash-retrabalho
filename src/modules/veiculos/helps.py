@@ -39,7 +39,6 @@ class HelpsVeiculos:
             to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
             100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            "CODIGO DO VEICULO",
             "DESCRICAO DO MODELO"
         FROM
             mat_view_retrabalho_{min_dias}_dias
@@ -50,7 +49,7 @@ class HelpsVeiculos:
             {subquery_os_str}
             {subquery_modelos}
         GROUP BY
-            year_month, "CODIGO DO VEICULO", "DESCRICAO DO MODELO"
+            year_month, "DESCRICAO DO MODELO"
         ORDER BY
             year_month;
         """
@@ -64,7 +63,7 @@ class HelpsVeiculos:
         # Funde (melt) colunas de retrabalho e correção
         # Funde (melt) colunas de retrabalho e correção
         df_combinado = df.melt(
-            id_vars=["year_month_dt", "CODIGO DO VEICULO", "DESCRICAO DO MODELO"],
+            id_vars=["year_month_dt", "DESCRICAO DO MODELO"],
             value_vars=["PERC_RETRABALHO", "PERC_CORRECAO_PRIMEIRA"],
             var_name="CATEGORIA",
             value_name="PERC",
@@ -109,8 +108,7 @@ class HelpsVeiculos:
         SELECT
             to_char(to_timestamp("DATA DE FECHAMENTO DO SERVICO", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
             100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            "CODIGO DO VEICULO"
+            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
         FROM
             mat_view_retrabalho_{min_dias}_dias
         WHERE
@@ -119,7 +117,7 @@ class HelpsVeiculos:
             {subquery_secoes_str}
             {subquery_os_str}
         GROUP BY
-            year_month, "CODIGO DO VEICULO"
+            year_month
         ORDER BY
             year_month;
         """
@@ -131,20 +129,20 @@ class HelpsVeiculos:
         df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m", errors="coerce")
 
         # Funde (melt) colunas de retrabalho e correção
-        # Funde (melt) colunas de retrabalho e correção
         df_combinado = df.melt(
-            id_vars=["year_month_dt", "CODIGO DO VEICULO"],
+            id_vars=["year_month_dt"],
             value_vars=["PERC_RETRABALHO", "PERC_CORRECAO_PRIMEIRA"],
             var_name="CATEGORIA",
             value_name="PERC",
         )
 
-        #df_combinado["CODIGO DO VEICULO"] = "Geral"
 
         # Renomeia as colunas
         df_combinado["CATEGORIA"] = df_combinado["CATEGORIA"].replace(
             {"PERC_RETRABALHO": "RETRABALHO", "PERC_CORRECAO_PRIMEIRA": "CORRECAO_PRIMEIRA"}
         )
+
+        #print(df_combinado.head())
 
         df_media = df_combinado.groupby(["year_month_dt", "CATEGORIA"]).agg(
             PERC=('PERC', 'mean')

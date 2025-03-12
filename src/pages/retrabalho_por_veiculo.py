@@ -41,7 +41,7 @@ from modules.veiculos.tabelas import *
 from modules.sql_utils import *
 from modules.veiculos.inputs import *
 from modules.veiculos.graficos import *
-from modules.veiculos.home_service import *
+from modules.veiculos.veiculo_service import *
 from modules.veiculos.helps import HelpsVeiculos
 
 ##############################################################################
@@ -52,7 +52,7 @@ pgDB = PostgresSingleton.get_instance()
 pgEngine = pgDB.get_engine()
 
 # Cria o serviço
-home_service_veiculos = HomeServiceVeiculo(pgEngine)
+home_service_veiculos = VeiculoService(pgEngine)
 
 # Colaboradores / Mecânicos
 df_mecanicos = get_mecanicos(pgEngine)
@@ -66,6 +66,71 @@ df_lista_modelos = get_modelos(pgEngine)
 lista_todos_modelos = df_lista_modelos.to_dict(orient="records")
 lista_todos_modelos.insert(0, {"LABEL": "TODOS", "MODELO": "TODOS"})
 
+
+        # Input("input-intervalo-datas-por-veiculo", "value"),
+        # Input("input-select-dias-geral-retrabalho", "value"),
+        # Input("input-select-oficina-visao-geral", "value"),
+        # Input("input-select-secao-visao-geral", "value"),
+        # Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
+        # Input("input-select-veiculos", "value"),
+
+
+
+
+def gera_labels_inputs_veiculos(campo):
+    # Cria o callback
+    @callback(
+        [
+            Output(component_id=f"{campo}-labels", component_property="children"),
+        ],
+        [
+            Input("input-select-dias-geral-retrabalho", "value"),
+            Input(component_id="input-select-oficina-visao-geral", component_property="value"),
+            Input(component_id="input-select-secao-visao-geral", component_property="value"),
+            Input(component_id="input-select-ordens-servico-visao-geral-veiculos", component_property="value"),
+            Input(component_id="input-select-veiculos", component_property="value"),
+        ],
+    )
+    def atualiza_labels_inputs(min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+        labels_antes = [
+            # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
+            dmc.Badge("Filtro", color="gray", variant="outline"),
+        ]
+        min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
+        lista_oficinas_labels = []
+        lista_secaos_labels = []
+        lista_os_labels = []
+        lista_veiculos_labels = []
+
+        if lista_oficinas is None or not lista_oficinas or "TODAS" in lista_oficinas:
+            lista_oficinas_labels.append(dmc.Badge("Todas as oficinas", variant="outline"))
+        else:
+            for oficina in lista_oficinas:
+                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+
+        if lista_secaos is None or not lista_secaos or "TODAS" in lista_secaos:
+            lista_secaos_labels.append(dmc.Badge("Todas as seções", variant="outline"))
+        else:
+            for secao in lista_secaos:
+                lista_secaos_labels.append(dmc.Badge(secao, variant="dot"))
+
+        if lista_os is None or not lista_os or "TODAS" in lista_os:
+            lista_os_labels.append(dmc.Badge("Todas as ordens de serviço", variant="outline"))
+        else:
+            for os in lista_os:
+                lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
+            
+        if lista_veiculos is None or not lista_veiculos or "TODAS" in lista_veiculos:
+            lista_veiculos_labels.append(dmc.Badge("Todas os veículos", variant="outline"))
+        else:
+            for os in lista_veiculos:
+                lista_veiculos_labels.append(dmc.Badge(f"VEICULO: {os}", variant="dot"))
+        return [
+            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels + lista_veiculos_labels)
+        ]
+
+    # Cria o componente
+    return dmc.Group(id=f"{campo}-labels", children=[])
 
 ##############################################################################
 # Registro da página #########################################################
@@ -130,9 +195,9 @@ layout = dbc.Container(
                                                         id="input-intervalo-datas-por-veiculo",
                                                         allowSingleDateInRange=True,
                                                         type="range",
-                                                        minDate=date(2024, 1, 1),
+                                                        minDate=date(2024, 8, 1),
                                                         maxDate=date.today(),
-                                                        value=[date(2024, 1, 1), date.today()],
+                                                        value=[date(2024, 8, 1), date.today()],
                                                     ),
                                                 ],
                                                 className="dash-bootstrap",
@@ -202,7 +267,7 @@ layout = dbc.Container(
                                                     dbc.Label("Veículos"),
                                                     dcc.Dropdown(
                                                         id="input-select-veiculos",
-                                                        multi=True,
+                                                        multi=False,
                                                         placeholder="Selecione um ou mais veículos...",
                                                     )
                                                 ],
@@ -259,40 +324,40 @@ layout = dbc.Container(
                                                         id="input-select-secao-visao-geral",
                                                         options=[
                                                             {"label": "TODAS", "value": "TODAS"},
-                                                            {
-                                                                "label": "BORRACHARIA",
-                                                                "value": "MANUTENCAO BORRACHARIA",
-                                                            },
+                                                            # {
+                                                            #     "label": "BORRACHARIA",
+                                                            #     "value": "MANUTENCAO BORRACHARIA",
+                                                            # },
                                                             {
                                                                 "label": "ELETRICA",
                                                                 "value": "MANUTENCAO ELETRICA",
                                                             },
-                                                            {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            {
-                                                                "label": "LANTERNAGEM",
-                                                                "value": "MANUTENCAO LANTERNAGEM",
-                                                            },
-                                                            {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
+                                                            # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
+                                                            # {
+                                                            #     "label": "LANTERNAGEM",
+                                                            #     "value": "MANUTENCAO LANTERNAGEM",
+                                                            # },
+                                                            # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
                                                             {
                                                                 "label": "MECANICA",
                                                                 "value": "MANUTENCAO MECANICA",
                                                             },
-                                                            {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            {
-                                                                "label": "SERVIÇOS DE TERCEIROS",
-                                                                "value": "SERVIÇOS DE TERCEIROS",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE ALINHAMENTO",
-                                                                "value": "SETOR DE ALINHAMENTO",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE POLIMENTO",
-                                                                "value": "SETOR DE POLIMENTO",
-                                                            },
+                                                            # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
+                                                            # {
+                                                            #     "label": "SERVIÇOS DE TERCEIROS",
+                                                            #     "value": "SERVIÇOS DE TERCEIROS",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE ALINHAMENTO",
+                                                            #     "value": "SETOR DE ALINHAMENTO",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE POLIMENTO",
+                                                            #     "value": "SETOR DE POLIMENTO",
+                                                            # },
                                                         ],
                                                         multi=True,
-                                                        value=["TODAS"],
+                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],
@@ -311,11 +376,7 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Ordens de Serviço"),
                                                     dcc.Dropdown(
-                                                        id="input-select-ordens-servico-visao-geral",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_os
-                                                        ],
+                                                        id="input-select-ordens-servico-visao-geral-veiculos",
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione uma ou mais ordens de serviço...",
@@ -779,6 +840,89 @@ layout = dbc.Container(
                         ),
                     ]
                 ),
+                dbc.Row(dmc.Space(h=20)),
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(
+                                                    id="indicador-valor-geral-retrabalho",
+                                                    order=2,
+                                                ),
+                                                DashIconify(
+                                                    icon="mdi:reload",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Valor de retrabalho"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(
+                                                    id="indicador-qtd-pecas",
+                                                    order=2,
+                                                ),
+                                                DashIconify(
+                                                    icon="mdi:reload-alert",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Quantidade de peças trocadas"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-ranking-valor-pecas-modelo", order=2),
+                                                DashIconify(
+                                                    icon="mdi:podium",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="space-around",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Ranking valor de peça por modelo"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                        ),
+                    ]
+                ),
             ]
             
         ),
@@ -789,7 +933,19 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Relaçao de OS / mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Relaçao de OS / mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("evolucao-os-mes-veiculo"),
+                        ]
+                    ),
+                    width=True,
+                ),
             ],
             align="center",
         ),
@@ -800,7 +956,19 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Relações de retrabalho / mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Relações de retrabalho",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("evolucao-retrabalho-por-garagem-por-mes-veiculos"),
+                        ]
+                    ),
+                    width=True,
+                ),
             ],
             align="center",
         ),
@@ -809,7 +977,19 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Relações de retrabalho / mês / seção", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Relações de retrabalho / mês / seção",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("evolucao-retrabalho-por-secao-por-mes-veiculos"),
+                        ]
+                    ),
+                    width=True,
+                ),
             ],
             align="center",
         ),
@@ -820,17 +1000,53 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Valor das peças trocadas por mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Valor das peças trocadas por mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("pecas-trocadas-por-mes"),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
             ],
             align="center",
         ),
         dcc.Graph(id="graph-pecas-trocadas-por-mes"),
+        dmc.Space(h=20),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:cog-outline", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Tabela de peças por OS",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("pecas-substituidas-por-os-filtros"),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
         dag.AgGrid(
-            enableEnterpriseModules=True,
+            enableEnterpriseModules=True, 
             id="tabela-pecas-substituidas",
             columnDefs=[
                 {"field": "OS", "minWidth": 100},
                 {"field": "EQUIPAMENTO", "minWidth": 100},
+                {"field": "DESCRICAO DO SERVICO","headerName": "DESCRIÇÃO DO SERVICO", "minWidth": 100},
                 {"field": "MODELO", "minWidth": 300},
                 {"field": "PRODUTO", "minWidth": 350},
                 {"field": "QUANTIDADE", "minWidth": 100},
@@ -839,63 +1055,32 @@ layout = dbc.Container(
                      "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
                      "sort": "desc"
                 },
-                {"field": "DATA", "minWidth": 130}
+                {"field": "DATA", "minWidth": 130},
+                {"field": "retrabalho","headerName": "RETRABALHO", "minWidth": 130}
             ],
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
-        dmc.Space(h=40),
-        dag.AgGrid(
-            enableEnterpriseModules=True,
-            id="tabela-pecas-substituidas-por-descricao",
-            columnDefs=[
-                {"field": "DESCRIÇÃO DE SERVIÇO", "minWidth": 370},
-                {"field": "QUANTIDADE DE OS'S", "minWidth": 100},
-                {"field": "QUANTIDADE DE PEÇAS", "minWidth": 120},
-                {"field": "MODELO", "minWidth": 350},
-                {"field": "VALOR", "minWidth": 100,
-                     "type": ["numericColumn"],
-                     "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
-                     "sort": "desc"
-                },
-            ],
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-        ),
-        dmc.Space(h=40),
-        dbc.Label("SELEÇÃO DA DESCRIÇÃO DE SERVIÇO"),
-        dcc.Dropdown(
-            id="descricao_servico_unicas_lista",
-            multi=True,
-            placeholder="Selecione uma ou mais descrições...",
-        ),
-        dmc.Space(h=20),
-        dag.AgGrid(
-            enableEnterpriseModules=True,
-            id="tabela-pecas-substituidas-por-descricao-especifica",
-            columnDefs=[
-                {"field": "NÚMERO DA OS", "minWidth": 100},
-                {"field": "PEÇA TROCADA", "minWidth": 350},
-                {"field": "QUANTIDADE DE PEÇAS", "minWidth": 100},
-                {"field": "DESCRICAO DO SERVICO", "minWidth": 280},
-                {"field": "MODELO", "minWidth": 300},
-                {"field": "VALOR", "minWidth": 100,
-                     "type": ["numericColumn"],
-                     "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
-                     "sort": "desc"
-                },
-            ],
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-        ),
-        dmc.Space(h=40),
+        dmc.Space(h=40),   
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(html.H4("Tabela de retrabalho por descrição de serviço", className="align-self-center"), width=True),
+                dbc.Col(DashIconify(icon="mdi:tools", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Tabela de peças por descrição de seviço",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("tabela-de-pecas-por-descricao-filtros"),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
             ],
             align="center",
         ),
@@ -910,7 +1095,9 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
+        dmc.Space(h=40),
         dmc.Space(h=60),
         
 # Indicadores
@@ -923,7 +1110,7 @@ layout = dbc.Container(
 # CALLBACKS ##################################################################
 ##############################################################################
 
-# Callback para atualizar o dropdown de veículos
+# VEÍCULOS DO MODELO SELECIONADO
 @callback(
     [
         Output("input-select-veiculos", "options"),
@@ -940,9 +1127,43 @@ def atualizar_veiculos(modelos_selecionados):
         {"label": f'{veiculo["VEICULO"]} ({veiculo["MODELO"]})', "value": veiculo["VEICULO"]}
         for veiculo in lista_todos_veiculos
     ]
+    
+    #DESCOMENTAR CASO USE A OPÇÃO MULTIPLA DO DROPDOWN
     # Selecionar o segundo item como padrão, se existir
-    value = [options[1]["value"]] if len(options) > 1 else []
+    #value = [options[1]["value"]] if len(options) > 1 else []
+
+    #COMENTAR CASO USE A OPÇÃO MULTIPLA DO DROPDOWN
+    # Selecionar o segundo item como padrão, se existir
+    value = options[1]["value"] if len(options) > 1 else None  # None para evitar erro
     return options, value
+
+# SERVIÇOS DO VEÍCULO SELECIONADO
+@callback(
+    Output("input-select-ordens-servico-visao-geral-veiculos", "options"),
+    [
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-veiculos", "value"),
+    ]
+)
+def atualizar_servicos(datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
+    if not input_valido4(datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
+        return []  # Retorna uma lista vazia de opções se lista_veiculos for None  
+    # Chama a função atualizar_servicos_func para obter a lista de serviços
+    lista_servicos = home_service_veiculos.atualizar_servicos_func(
+        datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos
+    )
+    
+    # Formatar para o formato de opções do dropdown
+    options_servicos = [{"label": servico, "value": servico} for servico in lista_servicos]
+    
+    # Adicionar opção "TODAS" no início
+    options_servicos.insert(0, {"label": "TODAS", "value": "TODAS"})  
+
+    return options_servicos
 
 # GRÁFICO DE PIZZA GERAL
 @callback(
@@ -955,17 +1176,18 @@ def atualizar_veiculos(modelos_selecionados):
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
 def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure(), "", ""
     total_retrabalho, total_correcao_primeira, labels, values = home_service_veiculos.sintese_geral_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     fig = grafico_pizza_sintese_geral(labels, values)
-    return fig, total_retrabalho, total_correcao_primeira,
+    return fig, total_retrabalho, total_correcao_primeira
 
 # GRÁFICO DE RETRABALHOS POR VEÍCULOS
 @callback(
@@ -975,12 +1197,13 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
 def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     # Valida input
+    lista_veiculos = [lista_veiculos]
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure()
     df = home_service_veiculos.evolucao_retrabalho_por_veiculo_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
@@ -995,11 +1218,12 @@ def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(datas, min_dias, lista
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
 def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure()
@@ -1008,7 +1232,7 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     # Exibe o gráfico
     return fig
 
-# GRAFICO DA QUANTIDADE DE OSs, INDICADORES DE : PROBLEMAS DIFERENTES, MECANICOS DIFERENTES, OS DIFERENTES
+# GRAFICO DA QUANTIDADE DE OSs, INDICADORES DE : PROBLEMAS DIFERENTES, MECANICOS DIFERENTES, OS DIFERENTES, OS/PROBL, RANKING OS/PROBL
 @callback(
     [Output('graph-evolucao-os-mes-veiculo', 'figure'),
      Output("indicador-problemas-diferentes", "children"),
@@ -1022,11 +1246,12 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
 def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return go.Figure(), "", "", "", "", "", ""
@@ -1043,13 +1268,18 @@ def plota_grafico_evolucao_quantidade_os_por_mes(datas, min_dias, lista_oficinas
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
 )
-def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, equipamentos):
+def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
+    equipamentos = [equipamentos]
     # Valida input
-    if not datas or not equipamentos:
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
         return go.Figure()
+    
     data_inicio_str = datas[0]
     data_fim_str = datas[1]
 
@@ -1061,51 +1291,84 @@ def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, equipamentos):
     # Garante que equipamentos seja uma lista
     if isinstance(equipamentos, str):
         equipamentos = [equipamentos]
-    df_veiculos, df_media_geral = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, min_dias, equipamentos)
-    fig = grafico_tabela_pecas(df_veiculos, df_media_geral)
+    df_veiculos, df_media_geral, df_media_modelo = home_service_veiculos.pecas_trocadas_por_mes_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos)
+    fig = grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo)
     return fig
 
-# TABELA DE PEÇAS, INDICADORES DE: VALORES DE PECAS, VALOR DE PECAS/MES, RANKING DO VALOR DE PECAS
+# TABELA DE PEÇAS, INDICADORES DE: VALORES DE PECAS, VALOR DE PECAS/MES, RANKING DO VALOR DE PECAS, TOTAL DE PEÇAS
 @callback(
    [Output("tabela-pecas-substituidas", "rowData"),
     Output("indicador-pecas-totais", "children"),
     Output("indicador-pecas-mes", "children"),
     Output("indicador-ranking-pecas", "children"),
+    Output("indicador-qtd-pecas", "children"),
     ],
     #Input("graph-pecas-trocadas-por-mes", "clickData"),
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
     
 )
-def atualiza_tabela_pecas(datas, min_dias, lista_veiculos):
+def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
-    if not input_valido3(datas, min_dias, lista_veiculos):
-        return [], 0, 0, 0
-    df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_veiculos)
-    return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+        return [], " ", " ", " ", " "
+    df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
+    return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total
 
-# TABELA DE DESCRIÇÃO DE SERVIÇOS
+# TABELA DE DESCRIÇÃO DE SERVIÇOS E INDICADO DE VALOR DE RETRABALHO
 @callback(
-    Output("tabela-descricao-de-servico", "rowData"),
+    [Output("tabela-descricao-de-servico", "rowData"),
+     Output("indicador-valor-geral-retrabalho", "children"),],
+
     [
         Input("input-intervalo-datas-por-veiculo", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
-    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
+    
 )
 def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
+    lista_veiculo = [lista_veiculo]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
-        return []
-    df_dict = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
-    return df_dict
+        return [], " "
+
+    df_dict, valor_retrabalho = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
+    return df_dict, valor_retrabalho
+
+#INDICADOR RANKING DE VALOR DE PEÇAS POR MODELO
+@callback(
+    [Output("indicador-ranking-valor-pecas-modelo", "children")],
+    [
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
+        Input("input-select-veiculos", "value"),
+    ],
+)
+def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
+
+    if not input_valido3(datas, min_dias, lista_veiculos):
+        return [""]
+    
+    indicador_ranking_pecas_modelos = home_service_veiculos.tabela_ranking_pecas_fun(
+        datas, min_dias, lista_oficinas, lista_secoes, lista_os, lista_veiculos
+    )
+    
+    return [indicador_ranking_pecas_modelos]
 
 # RANKING DOS RETRABALHOS DOS VEÍCULOS. INDICADORES DE: POSIÇÃO DE RELAÇÃO RETRABALHO, CORREÇÃO DE PRIMEIRA 
 @callback(
@@ -1118,67 +1381,15 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
         Input("input-select-dias-geral-retrabalho", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
         Input("input-select-veiculos", "value"),
     ],
+    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
 )
 def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return "", "", "", ""
     rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo = home_service_veiculos.ranking_retrabalho_veiculos_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     return rk_retrabalho_geral, rk_correcao_primeira_geral, rk_retrabalho_modelo, rk_correcao_primeira_modelo
-
-# TABELA DE DESCRIÇÃO SUBSTITUIÇÃO DE PECAS POR DESCRIÇÃO E INPUT DE DESCRIÇÃO
-@callback(
-    [
-        Output("tabela-pecas-substituidas-por-descricao", "rowData"),
-        Output("descricao_servico_unicas_lista", "options"),
-    ],
-    [
-        Input("input-intervalo-datas-por-veiculo", "value"),
-        Input("input-select-dias-geral-retrabalho", "value"),
-        Input("input-select-veiculos", "value"),
-    ],
-)
-def atualiza_tabela_pecas_por_descricao(datas, min_dias, lista_veiculos):
-    # Valida input
-    if not input_valido3(datas, min_dias, lista_veiculos):
-        return [], []
-    
-    # Obtém os dados necessários
-    df_detalhes_dict, _, _, descricao_servico_unicas_lista = home_service_veiculos.tabela_pecas_por_descricao_fun(
-        datas, min_dias, lista_veiculos
-    )
-    
-    # Configura a lista de opções para o dropdown
-    options = [{"label": desc, "value": desc} for desc in descricao_servico_unicas_lista]
-    
-    return df_detalhes_dict, options
-
-# PECAS DETALHADAS DA DESCRIÇÃO
-@callback(
-    Output("tabela-pecas-substituidas-por-descricao-especifica", "rowData"),
-    [
-        Input("input-intervalo-datas-por-veiculo", "value"),
-        Input("input-select-dias-geral-retrabalho", "value"),
-        Input("input-select-veiculos", "value"),
-        Input("descricao_servico_unicas_lista", "value"),
-    ],
-)
-def atualizar_veiculos(datas, min_dias, lista_veiculos, descricoes_selecionadas):
-    if not descricoes_selecionadas:
-        return []  # Retorna uma lista vazia corretamente
-    # Chama a função para obter os dados da consulta SQL
-    df = home_service_veiculos.atualizar_pecas_fun(datas, min_dias, lista_veiculos, descricoes_selecionadas)
- 
-    # Se não houver dados, retorna uma lista vazia corretamente
-    if df.empty:
-        return []
- 
-    # Converte o DataFrame para uma lista de dicionários
-    row_data = df.to_dict("records")
- 
-    return row_data 
-
- 
