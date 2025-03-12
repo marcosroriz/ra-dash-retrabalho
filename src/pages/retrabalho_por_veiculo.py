@@ -7,9 +7,11 @@
 # IMPORTS ####################################################################
 ##############################################################################
 # Bibliotecas básicas
-from datetime import date
+from datetime import datetime
 import numpy as np
 import pandas as pd
+import time
+
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
@@ -92,6 +94,7 @@ def gera_labels_inputs_veiculos(campo):
         ],
     )
     def atualiza_labels_inputs(min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+        lista_veiculos = [lista_veiculos]
         labels_antes = [
             # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
             dmc.Badge("Filtro", color="gray", variant="outline"),
@@ -1030,7 +1033,31 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("pecas-substituidas-por-os-filtros"),
+                            dbc.Col(gera_labels_inputs_veiculos("pecas-substituidas-por-os-filtro"), width=True),
+                            dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar-pecas",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel-tabela-pecas"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
                         ]
                     ),
                     width=True,
@@ -1075,7 +1102,31 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("tabela-de-pecas-por-descricao-filtros"),
+                            dbc.Col(gera_labels_inputs_veiculos("tabela-de-pecas-por-descricao-filtros"), width=True),
+                            dbc.Col(
+                            html.Div(
+                                    [
+                                        html.Button(
+                                            "Exportar para Excel",
+                                            id="btn-exportar-descricao-retrabalho",
+                                            n_clicks=0,
+                                            style={
+                                                "background-color": "#007bff",  # Azul
+                                                "color": "white",
+                                                "border": "none",
+                                                "padding": "10px 20px",
+                                                "border-radius": "8px",
+                                                "cursor": "pointer",
+                                                "font-size": "16px",
+                                                "font-weight": "bold",
+                                            },
+                                        ),
+                                        dcc.Download(id="download-excel-tabela-retrabalho-por-descrição-servico"),
+                                    ],
+                                    style={"text-align": "right"},
+                                ),
+                                width="auto",
+                            ),
                         ]
                     ),
                     width=True,
@@ -1322,6 +1373,34 @@ def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_o
     df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
     return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total
 
+# DOWLOAD DA TABELA PEÇAS
+@callback(
+    Output("download-excel-tabela-pecas", "data"),
+    [
+        Input("btn-exportar-pecas", "n_clicks"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
+        Input("input-select-veiculos", "value"),
+    ],
+    prevent_initial_call=True
+)
+def dowload_excel_tabela_peças(n_clicks, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
+    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+        return dash.no_update
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+        return dash.no_update
+    
+    date_now = datetime.now().strftime('%d-%m-%Y')
+    timestamp = int(time.time())
+    df_detalhes_dict, _, _, _, _ = home_service_veiculos.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
+    df = pd.DataFrame(df_detalhes_dict)
+    excel_data = gerar_excel(df=df)
+    return dcc.send_bytes(excel_data, f"tabela-peças-os-{date_now}-{timestamp}.xlsx")
+
 # TABELA DE DESCRIÇÃO DE SERVIÇOS E INDICADO DE VALOR DE RETRABALHO
 @callback(
     [Output("tabela-descricao-de-servico", "rowData"),
@@ -1337,7 +1416,7 @@ def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_o
     ],
     
 )
-def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
+def atualiza_tabela_retrabalho_por_descrição_serviço(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
     lista_veiculo = [lista_veiculo]
     # Valida input
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
@@ -1345,6 +1424,34 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
 
     df_dict, valor_retrabalho = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo)
     return df_dict, valor_retrabalho
+
+# DOWLOAD DA TABELA RETRABALHO POR DESCRIÇÃO DE SERVIÇO
+@callback(
+    Output("download-excel-tabela-retrabalho-por-descrição-servico", "data"),
+    [
+        Input("btn-exportar-descricao-retrabalho", "n_clicks"),
+        Input("input-intervalo-datas-por-veiculo", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral-veiculos", "value"),
+        Input("input-select-veiculos", "value"),
+    ],
+    prevent_initial_call=True
+)
+def dowload_excel_tabela_retrabalho_por_descrição_servico(n_clicks, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+    lista_veiculos = [lista_veiculos]
+    if not n_clicks or n_clicks <= 0: 
+        return dash.no_update
+    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+        return dash.no_update
+    
+    date_now = datetime.now().strftime('%d-%m-%Y')
+    timestamp = int(time.time())
+    df_dict, _ = home_service_veiculos.tabela_top_os_geral_retrabalho_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
+    df = pd.DataFrame(df_dict)
+    excel_data = gerar_excel(df=df)
+    return dcc.send_bytes(excel_data, f"tabela-retrabalho-por-descrição-serviço-{date_now}-{timestamp}.xlsx")
 
 #INDICADOR RANKING DE VALOR DE PEÇAS POR MODELO
 @callback(
