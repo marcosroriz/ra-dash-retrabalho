@@ -1,12 +1,13 @@
 import random
 from dash import dcc, html, Input, Output, callback
+import dash_mantine_components as dmc
 import plotly.graph_objects as go
 from datetime import datetime
 import pandas as pd
 import dash
 
 from modules.trips.trips_service import TripsService
-from modules.trips.functions import generate_timeline
+from modules.trips.graficos import generate_timeline
 
 
 db = TripsService()
@@ -67,6 +68,7 @@ layout = html.Div([
         html.H2("Timeline de Eventos", style={'textAlign': 'center', 'marginTop': '20px', 'color': '#333'}),
         style={'marginBottom': '20px'}
     ),
+    dmc.Space(h=10),
     
     # Gráfico centralizado
     html.Div(

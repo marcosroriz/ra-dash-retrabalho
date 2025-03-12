@@ -8,17 +8,13 @@
 ##############################################################################
 # Bibliotecas básicas
 from datetime import date
-import math
-import numpy as np
 import pandas as pd
-import os
-import re
 
 # Importar bibliotecas do dash básicas e plotly
-import dash
-from dash import Dash, html, dcc, callback, Input, Output, State
-import plotly.express as px
+from dash import html, dcc, callback, Input, Output
 import plotly.graph_objects as go
+import plotly.express as px
+import dash
 
 # Importar bibliotecas do bootstrap e ag-grid
 import dash_bootstrap_components as dbc
@@ -29,11 +25,12 @@ import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
+from modules.entities_utils import gerar_excel
+from modules.colaborador.tabelas import *
 import locale_utils
 
 # Banco de Dados
 from db import PostgresSingleton
-from modules.colaborador.tabelas import *
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -45,7 +42,7 @@ pgEngine = pgDB.get_engine()
 from modules.colaborador.colaborador_service import ColaboradorService
 from modules.colaborador.graficos import *
 
-colab = ColaboradorService()
+colab = ColaboradorService(pgEngine)
 
 
 ##############################################################################
@@ -259,6 +256,8 @@ def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, 
         Output("indicador-rank-os", "children"),
         Output("indicador-nota-colaborador", "children"),
         Output("indicador-rank-posicao-nota", "children"),
+        Output("indicador-gasto-total-colaborador", "children"),
+        Output("indicador-gasto-retrabalho-total-colaborador", "children")#indicador-gasto-retrabalho-total-colaborador
         
     ],
     [
@@ -279,7 +278,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     if datas is None or not datas or None in datas or min_dias is None:
         return False
     if not id_colaborador or not datas or any(d is None for d in datas) or not isinstance(min_dias, int) or min_dias < 1:
-        return '', '', '', '','', '', '', ''
+        return '', '', '', '','', '', '', '', '',''
     
     
     # Obtém análise estatística
@@ -293,6 +292,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
@@ -333,6 +334,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
         )
     
     df_rank_os = colab.indcador_rank_total_os(
@@ -344,6 +347,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
@@ -371,6 +376,8 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
         )
     nota_media = f"{df_nota_media['nota_media_colaborador'].iloc[0] if not df_nota_media['nota_media_colaborador'].iloc[0]  is None else 0}"
     
@@ -389,11 +396,21 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
             'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
+            'Nenhuma OS realizada no período selecionado.',
         )
 
     rank_nota_posicao = f"{df_nota_posicao['rank_colaborador'].iloc[0]}"
+
+    df_gasto = colab.gasto_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina  
+    )
+    gasto_colaborador = f"{df_gasto['TOTAL_GASTO'].iloc[0]}"
+    gasto_retrabalho = f"{df_gasto['TOTAL_GASTO_RETRABALHO'].iloc[0]}"
     
-    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao
+    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao, gasto_colaborador, gasto_retrabalho
 
 
 
@@ -403,20 +420,21 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
         Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
     ],
 )
-def computa_retrabalho_mecanico(id_colaborador, datas, min_dias):
+def computa_retrabalho_mecanico(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
 
     if (id_colaborador is None) or (datas is None or not datas or None in datas) or (min_dias is None or min_dias < 1):
         return dados_vazios
 
     # Obtem os dados de retrabalho
-    df_os_mecanico = colab.obtem_dados_os_mecanico(id_colaborador)
+    df_os_mecanico = colab.obtem_dados_os_mecanico(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina)
 
-    # Filtrar as datas
-    inicio = pd.to_datetime(datas[0])
-    fim = pd.to_datetime(datas[1])
 
     return {"df_os_mecanico": df_os_mecanico.to_dict("records"), "vazio": False}
 
@@ -506,7 +524,7 @@ def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_seca
     fig.update_traces(
         texttemplate="%{y} (%{customdata:.1f}%)",
         customdata=df_agg_servico_top10["PERC_TOTAL_OS"],  # Add percentage data
-        textposition="inside",
+        textposition="auto",
     )
     fig.update_layout(xaxis_title="")
     return fig
@@ -596,7 +614,7 @@ def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos
         datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
         lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
         lista_oficina=lista_oficina
-    )
+    ).to_dict("records")
     
 @callback(
     Output("graph-evolucao-nota-por-mes", "figure"), 
@@ -629,7 +647,71 @@ def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
 
     fig = generate_grafico_evolucao_nota(df_os_analise)
     return fig
+
+@callback(
+    Output("graph-evolucao-gasto-colaborador", "figure"), 
+    [
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+    running=[(Output("loading-overlay", "visible"), True, False)],
+)
+def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    '''plota grafico de evolução de retrabalho por ano'''
     
+    # Validação dos inputs
+    if (id_colaborador is None) or (datas is None) or (min_dias is None):
+        return go.Figure()
+    
+    # Obtém análise estatística
+    df_os_analise = colab.evolucao_gasto_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    if df_os_analise.empty:
+        return go.Figure()
+
+    fig = generate_grafico_evolucao_gasto(df_os_analise)
+    return fig
+
+
+    
+    # Callback para atualizar o link de download quando o botão for clicado
+@callback(
+    Output("download-excel", "data")
+    ,
+    [
+        Input("btn-exportar", "n_clicks"),
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+    prevent_initial_call=True
+)
+def atualizar_download(n_clicks, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+        return dash.no_update
+    
+    date_now = datetime.now().strftime('%d-%m-%Y')
+    
+    df = colab.dados_tabela_do_colaborador(
+        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
+        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina
+    )
+    excel_data = gerar_excel(df=df)
+    return dcc.send_bytes(excel_data, f"tabela_os_retrabalho{date_now}.xlsx")
+
 
 
 ##############################################################################
@@ -762,41 +844,41 @@ layout = dbc.Container(
                                                     dcc.Dropdown(
                                                         id="input-select-secao-colaborador",
                                                         options=[
-                                                            {"label": "TODAS", "value": "TODAS"},
-                                                            {
-                                                                "label": "BORRACHARIA",
-                                                                "value": "MANUTENCAO BORRACHARIA",
-                                                            },
+                                                            # {"label": "TODAS", "value": "TODAS"},
+                                                            # {
+                                                            #     "label": "BORRACHARIA",
+                                                            #     "value": "MANUTENCAO BORRACHARIA",
+                                                            # },
                                                             {
                                                                 "label": "ELETRICA",
                                                                 "value": "MANUTENCAO ELETRICA",
                                                             },
-                                                            {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            {
-                                                                "label": "LANTERNAGEM",
-                                                                "value": "MANUTENCAO LANTERNAGEM",
-                                                            },
-                                                            {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
+                                                            # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
+                                                            # {
+                                                            #     "label": "LANTERNAGEM",
+                                                            #     "value": "MANUTENCAO LANTERNAGEM",
+                                                            # },
+                                                            # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
                                                             {
                                                                 "label": "MECANICA",
                                                                 "value": "MANUTENCAO MECANICA",
                                                             },
-                                                            {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            {
-                                                                "label": "SERVIÇOS DE TERCEIROS",
-                                                                "value": "SERVIÇOS DE TERCEIROS",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE ALINHAMENTO",
-                                                                "value": "SETOR DE ALINHAMENTO",
-                                                            },
-                                                            {
-                                                                "label": "SETOR DE POLIMENTO",
-                                                                "value": "SETOR DE POLIMENTO",
-                                                            },
+                                                            # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
+                                                            # {
+                                                            #     "label": "SERVIÇOS DE TERCEIROS",
+                                                            #     "value": "SERVIÇOS DE TERCEIROS",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE ALINHAMENTO",
+                                                            #     "value": "SETOR DE ALINHAMENTO",
+                                                            # },
+                                                            # {
+                                                            #     "label": "SETOR DE POLIMENTO",
+                                                            #     "value": "SETOR DE POLIMENTO",
+                                                            # },
                                                         ],
                                                         multi=True,
-                                                        value=["TODAS"],
+                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],
@@ -1133,6 +1215,56 @@ layout = dbc.Container(
                     md=4,
                     style={"margin-bottom": "20px"},
                 ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-gasto-total-colaborador", order=2),
+                                        DashIconify(
+                                            icon="mdi:wrench",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",  # Centralize conteúdo no card
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Gasto total do colaborador"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=4,
+                    style={"margin-bottom": "20px"},
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-gasto-retrabalho-total-colaborador", order=2),
+                                        DashIconify(
+                                            icon="mdi:wrench",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",  # Centralize conteúdo no card
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Gasto total de Retrabalho do colaborador"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=4,
+                    style={"margin-bottom": "20px"},
+                ),
             ],
             justify="center",
         ),
@@ -1186,6 +1318,28 @@ layout = dbc.Container(
         html.Hr(),
         dbc.Row(
             [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução das Métricas: Media de gasto por mês",
+                                className="align-self-center"
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("colaborador-grafico-evolucao-gasto"),
+                        ]
+                    ),width=True
+                    
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-gasto-colaborador"),
+        dbc.Row(dmc.Space(h=20)),
+        html.Hr(),
+        dbc.Row(
+            [
                 # Gráfico de Pizza
                 dbc.Col(dbc.Row([html.H4("Atuação Geral"),dmc.Space(h=5), gera_labels_inputs("colaborador-grafico-atuacao-geral"), dcc.Graph(id="graph-barra-atuacao-geral")]), md=4),
                 # Indicadores
@@ -1205,7 +1359,37 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("tabela-colaborador-os"),
+                            dbc.Row(
+                                [
+                                    dbc.Col(gera_labels_inputs("tabela-colaborador-os"), width=True),
+                                    dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                justify="between",  # Deixa os itens espaçados
+                            ),
                         ]
                     ),
                     width=True,
@@ -1223,9 +1407,9 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
+            # style={"height": 400, "resize": "vertical", "overflow": "hidden"}, #-> permite resize
         ),
-        dmc.Space(h=40),
-        
+        dmc.Space(h=10),
     ]
 )
 

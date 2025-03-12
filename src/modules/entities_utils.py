@@ -2,6 +2,8 @@
 # coding: utf-8
 
 import pandas as pd
+import io
+
 
 # Funções utilitárias para obtenção das principais entidades do sistema
 
@@ -64,4 +66,9 @@ def get_modelos(dbEngine):
         dbEngine,
     )
 
-
+def gerar_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name="Dados")
+    output.seek(0)
+    return output.getvalue()
