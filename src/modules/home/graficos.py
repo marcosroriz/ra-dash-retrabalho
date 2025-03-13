@@ -52,7 +52,7 @@ def gerar_grafico_pizza_sinteze_geral(df, labels, values):
     # Remove o espaçamento em torno do gráfico
     fig.update_layout(
         margin=dict(t=40, b=0),  # Remove as margens
-        height=320,  # Ajuste conforme necessário
+        height=420,  # Ajuste conforme necessário
         legend=dict(
             orientation="h",  # Legenda horizontal
             yanchor="top",  # Ancora no topo
@@ -112,9 +112,7 @@ def gerar_grafico_retrabalho_por_modelo(df):
     bar_chart.update_traces(
         text=[
             f"{perc_teve_prob_e_retrab:.0f}%<br>({teve_prob_e_retrab:.0f})"
-            for teve_prob_e_retrab, perc_teve_prob_e_retrab in zip(
-                df["TEVE_PROBLEMA_E_RETRABALHO"], df["PERC_TEVE_PROBLEMA_E_RETRABALHO"]
-            )
+            for teve_prob_e_retrab, perc_teve_prob_e_retrab in zip(df["TEVE_PROBLEMA_E_RETRABALHO"], df["PERC_TEVE_PROBLEMA_E_RETRABALHO"])
         ],
         selector=dict(name="PERC_TEVE_PROBLEMA_E_RETRABALHO"),
     )
@@ -125,15 +123,85 @@ def gerar_grafico_retrabalho_por_modelo(df):
     # Ajustar a margem inferior para evitar corte de rótulos
     bar_chart.update_layout(
         yaxis=dict(range=[0, 118]),
-        margin=dict(t=10, b=200),
-        height=500,  # Adjust the upper limit as needed
     )
+
+    if len(df) > 5:
+        bar_chart.update_layout(
+            margin=dict(t=10, b=200),
+            height=500,
+        )
 
     # Separador numérico
     bar_chart.update_layout(separators=",.")
 
     # Retorna o gráfico
     return bar_chart
+
+
+def gerar_grafico_evolucao_retrabalho_por_modelo_por_mes(df):
+    """Gera o gráfico de linhas referentes a evolução do retrabalho por modelo"""
+
+    # Gera o gráfico
+    fig = px.line(
+        df,
+        x="year_month_dt",
+        y="PERC",
+        color="DESCRICAO DO MODELO",
+        facet_col="CATEGORIA",
+        facet_col_spacing=0.05,  # Espaçamento entre os gráficos
+        labels={"DESCRICAO DO MODELO": "Modelo", "year_month_dt": "Ano-Mês", "PERC": "%"},
+        markers=True,
+    )
+
+    # Coloca % no eixo y
+    fig.update_yaxes(tickformat=".0f%")
+
+    # Renomeia o eixo y
+    fig.update_layout(
+        yaxis=dict(
+            title="% Retrabalho",
+        ),
+        yaxis2=dict(
+            title="% Correção de Primeira",
+            overlaying="y",
+            side="right",
+            anchor="x",
+        ),
+        margin=dict(b=100),
+    )
+
+    # Titulo
+    fig.update_layout(
+        height=500,  # Ajuste conforme necessário
+        annotations=[
+            dict(
+                text="Retrabalho por modelo (% das OS)",
+                x=0.25,  # Posição X para o primeiro plot
+                y=1.05,  # Posição Y (em cima do plot)
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+            dict(
+                text="Correção de primeira por modelo (% das OS)",
+                x=0.75,  # Posição X para o segundo plot
+                y=1.05,  # Posição Y (em cima do plot)
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+        ],
+    )
+
+    # Gera ticks todo mês
+    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
+
+    # Aumenta o espaçamento do titulo
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
+
+    return fig
 
 
 def gerar_grafico_evolucao_retrabalho_por_oficina_por_mes(df):

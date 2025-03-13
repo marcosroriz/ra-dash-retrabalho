@@ -25,14 +25,13 @@ import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
-import tema
 import locale_utils
 
 # Banco de Dados
 from db import PostgresSingleton
 
 # Imports gerais
-from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, get_secoes
+from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, get_secoes, get_modelos
 
 # Imports específicos
 from modules.home.home_service import HomeService
@@ -48,6 +47,11 @@ pgEngine = pgDB.get_engine()
 
 # Cria o serviço
 home_service = HomeService(pgEngine)
+
+# Modelos de veículos
+df_modelos_veiculos = get_modelos(pgEngine)
+lista_todos_modelos_veiculos = df_modelos_veiculos.to_dict(orient="records")
+lista_todos_modelos_veiculos.insert(0, {"MODELO": "TODOS"})
 
 # Obtem a lista de Oficinas
 df_oficinas = get_oficinas(pgEngine)
@@ -78,8 +82,11 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 
 
 # Função para validar o input
-def input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     if datas is None or not datas or None in datas or min_dias is None:
+        return False
+
+    if lista_modelos is None or not lista_modelos or None in lista_modelos:
         return False
 
     if lista_oficinas is None or not lista_oficinas or None in lista_oficinas:
@@ -94,22 +101,30 @@ def input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
     return True
 
 
-# Corrige o input para garantir que "TODAS" não seja selecionado junto com outras opções
-def corrige_input(lista):
+# Corrige o input para garantir que o termo para todas ("TODAS") não seja selecionado junto com outras opções
+def corrige_input(lista, termo_all="TODAS"):
     # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
     if not lista:
-        return ["TODAS"]
+        return [termo_all]
 
     # Caso 2: Se "TODAS" foi selecionado após outras opções, reseta para "TODAS"
-    if len(lista) > 1 and "TODAS" in lista[1:]:
-        return ["TODAS"]
+    if len(lista) > 1 and termo_all in lista[1:]:
+        return [termo_all]
 
     # Caso 3: Se alguma opção foi selecionada após "TODAS", remove "TODAS"
-    if "TODAS" in lista and len(lista) > 1:
-        return [value for value in lista if value != "TODAS"]
+    if termo_all in lista and len(lista) > 1:
+        return [value for value in lista if value != termo_all]
 
     # Por fim, se não caiu em nenhum caso, retorna o valor original
     return lista
+
+
+@callback(
+    Output("input-select-modelo-veiculos-visao-geral", "value"),
+    Input("input-select-modelo-veiculos-visao-geral", "value"),
+)
+def corrige_input_modelos(lista_modelos):
+    return corrige_input(lista_modelos, "TODOS")
 
 
 @callback(
@@ -170,18 +185,19 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
     [
         Input("input-intervalo-datas-geral", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
 )
-def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
 
     # Obtem os dados
-    df = home_service.get_sintese_geral(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_sintese_geral(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     # Prepara os dados para o gráfico
     labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
@@ -202,21 +218,48 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_sec
     [
         Input("input-intervalo-datas-geral", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
 )
-def plota_grafico_por_modelo(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def plota_grafico_por_modelo(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
 
     # Obtem os dados
-    df = home_service.get_retrabalho_por_modelo(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_retrabalho_por_modelo(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     # Gera o gráfico
     fig = home_graficos.gerar_grafico_retrabalho_por_modelo(df)
+
+    return fig
+
+
+# Callback para o grafico de evolução do retrabalho por modelo
+@callback(
+    Output("graph-evolucao-retrabalho-por-modelo-por-mes", "figure"),
+    [
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+)
+def plota_grafico_evolucao_retrabalho_por_modelo_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    # Valida input
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+        return go.Figure()
+
+    # Obtem os dados
+    df = home_service.get_evolucao_retrabalho_por_modelo_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
+
+    # Gera o gráfico
+    fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_modelo_por_mes(df)
 
     return fig
 
@@ -227,20 +270,19 @@ def plota_grafico_por_modelo(datas, min_dias, lista_oficinas, lista_secaos, list
     [
         Input("input-intervalo-datas-geral", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
 )
-def plota_grafico_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def plota_grafico_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
 
     # Obtem os dados
-    df = home_service.get_evolucao_retrabalho_por_oficina_por_mes(
-        datas, min_dias, lista_oficinas, lista_secaos, lista_os
-    )
+    df = home_service.get_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     # Gera o gráfico
     fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_oficina_por_mes(df)
@@ -249,28 +291,28 @@ def plota_grafico_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista
 
 
 # Callbacks para o grafico de evolução do retrabalho por seção
-@callback(
-    Output("graph-evolucao-retrabalho-por-secao-por-mes", "figure"),
-    [
-        Input("input-intervalo-datas-geral", "value"),
-        Input("input-select-dias-geral-retrabalho", "value"),
-        Input("input-select-oficina-visao-geral", "value"),
-        Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
-    ],
-)
-def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
-    # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
-        return go.Figure()
+# @callback(
+#     Output("graph-evolucao-retrabalho-por-secao-por-mes", "figure"),
+#     [
+#         Input("input-intervalo-datas-geral", "value"),
+#         Input("input-select-dias-geral-retrabalho", "value"),
+#         Input("input-select-oficina-visao-geral", "value"),
+#         Input("input-select-secao-visao-geral", "value"),
+#         Input("input-select-ordens-servico-visao-geral", "value"),
+#     ],
+# )
+# def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+#     # Valida input
+#     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+#         return go.Figure()
 
-    # Obtem os dados
-    df = home_service.get_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+#     # Obtem os dados
+#     df = home_service.get_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
 
-    # Gera o gráfico
-    fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_secao_por_mes(df)
+#     # Gera o gráfico
+#     fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_secao_por_mes(df)
 
-    return fig
+#     return fig
 
 
 # Callbacks para o grafico de evolução do retrabalho por nota
@@ -279,18 +321,19 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_o
     [
         Input("input-intervalo-datas-geral", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
 )
-def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
 
     # Obtem os dados
-    df = home_service.get_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     # Gera o gráfico
     fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_nota_por_mes(df)
@@ -298,24 +341,25 @@ def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_of
     return fig
 
 
-# Callbacks para o grafico de evolução do retrabalho por nota
+# Callbacks para o grafico de evolução do retrabalho por custo
 @callback(
     Output("graph-evolucao-retrabalho-por-custo-por-mes", "figure"),
     [
         Input("input-intervalo-datas-geral", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
 )
-def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def plota_grafico_evolucao_retrabalho_por_custo_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
 
     # Obtem os dados
-    df = home_service.get_evolucao_retrabalho_por_custo_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_evolucao_retrabalho_por_custo_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     # Gera o gráfico
     fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_custo_por_mes(df)
@@ -333,19 +377,20 @@ def plota_grafico_evolucao_retrabalho_por_nota_por_mes(datas, min_dias, lista_of
     [
         Input("input-intervalo-datas-geral", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
     running=[(Output("loading-overlay-guia-geral", "visible"), True, False)],
 )
-def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return []
 
     # Obtem os dados
-    df = home_service.get_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_top_os_geral_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     return df.to_dict("records")
 
@@ -355,18 +400,19 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_oficinas, lis
     [
         Input("input-intervalo-datas-geral", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
 )
-def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return []
 
     # Obtem dados
-    df = home_service.get_top_os_colaboradores(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_top_os_colaboradores(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     return df.to_dict("records")
 
@@ -376,18 +422,19 @@ def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_of
     [
         Input("input-intervalo-datas-geral", "value"),
         Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
 )
-def atualiza_tabela_top_veiculos_geral_retrabalho(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+def atualiza_tabela_top_veiculos_geral_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return []
 
     # Obtem dados
-    df = home_service.get_top_veiculos(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    df = home_service.get_top_veiculos(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     return df.to_dict("records")
 
@@ -404,17 +451,27 @@ def gera_labels_inputs(campo):
             Output(component_id=f"{campo}-labels", component_property="children"),
         ],
         [
+            Input("input-intervalo-datas-geral", "value"),
             Input("input-select-dias-geral-retrabalho", "value"),
-            Input(component_id="input-select-oficina-visao-geral", component_property="value"),
-            Input(component_id="input-select-secao-visao-geral", component_property="value"),
-            Input(component_id="input-select-ordens-servico-visao-geral", component_property="value"),
+            Input("input-select-oficina-visao-geral", "value"),
+            Input("input-select-secao-visao-geral", "value"),
+            Input("input-select-ordens-servico-visao-geral", "value"),
         ],
     )
-    def atualiza_labels_inputs(min_dias, lista_oficinas, lista_secaos, lista_os):
+    def atualiza_labels_inputs(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
         labels_antes = [
             # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
             dmc.Badge("Filtro", color="gray", variant="outline"),
         ]
+
+        datas_label = []
+        if not (datas is None or not datas) and datas[0] is not None and datas[1] is not None:
+            # Formata as datas
+            data_inicio_str = pd.to_datetime(datas[0]).strftime("%d/%m/%Y")
+            data_fim_str = pd.to_datetime(datas[1]).strftime("%d/%m/%Y")
+
+            datas_label = [dmc.Badge(f"{data_inicio_str} a {data_fim_str}", variant="outline")]
+
         min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
         lista_oficinas_labels = []
         lista_secaos_labels = []
@@ -438,18 +495,10 @@ def gera_labels_inputs(campo):
             for os in lista_os:
                 lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
 
-        return [
-            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels)
-        ]
+        return [dmc.Group(labels_antes + datas_label + min_dias_label + lista_oficinas_labels + lista_os_labels)]
 
     # Cria o componente
     return dmc.Group(id=f"{campo}-labels", children=[])
-
-
-##############################################################################
-# Registro da página #########################################################
-##############################################################################
-dash.register_page(__name__, name="Visão Geral", path="/", icon="mdi:bus-alert")
 
 
 ##############################################################################
@@ -474,6 +523,7 @@ layout = dbc.Container(
             },
             zIndex=10,
         ),
+        # Cabeçalho
         dbc.Row(
             [
                 dbc.Col(
@@ -552,13 +602,38 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
+                                                    dbc.Label("Modelos de Veículos"),
+                                                    dcc.Dropdown(
+                                                        id="input-select-modelo-veiculos-visao-geral",
+                                                        options=[
+                                                            {
+                                                                "label": os["MODELO"],
+                                                                "value": os["MODELO"],
+                                                            }
+                                                            for os in lista_todos_modelos_veiculos
+                                                        ],
+                                                        multi=True,
+                                                        value=["TODOS"],
+                                                        placeholder="Selecione um ou mais modelos...",
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            ),
+                                        ],
+                                        body=True,
+                                    ),
+                                    md=12,
+                                ),
+                                dmc.Space(h=10),
+                                dbc.Col(
+                                    dbc.Card(
+                                        [
+                                            html.Div(
+                                                [
                                                     dbc.Label("Oficinas"),
                                                     dcc.Dropdown(
                                                         id="input-select-oficina-visao-geral",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_oficinas
-                                                        ],
+                                                        options=[{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_oficinas],
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione uma ou mais oficinas...",
@@ -634,10 +709,7 @@ layout = dbc.Container(
                                                     dbc.Label("Ordens de Serviço"),
                                                     dcc.Dropdown(
                                                         id="input-select-ordens-servico-visao-geral",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_os
-                                                        ],
+                                                        options=[{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_os],
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione uma ou mais ordens de serviço...",
@@ -703,6 +775,28 @@ layout = dbc.Container(
         ),
         dcc.Graph(id="graph-visao-geral-por-modelo"),
         dmc.Space(h=40),
+        # Grafico de Evolução do Retrabalho por Modelo
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-settings-20-filled", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução do retrabalho por modelo / mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-evolucao-por-modelo"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-retrabalho-por-modelo-por-mes"),
+        dmc.Space(h=40),
         # Graficos de Evolução do Retrabalho por Garagem e Seção
         dbc.Row(
             [
@@ -725,28 +819,28 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-evolucao-retrabalho-por-garagem-por-mes"),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                # dbc.Col(html.H4("Evolução do retrabalho por seção / mês", className="align-self-center"), width=True),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Evolução do retrabalho por seção / mês",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-evolucao-por-secao"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes"),
+        # dmc.Space(h=40),
+        # dbc.Row(
+        #     [
+        #         dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
+        #         # dbc.Col(html.H4("Evolução do retrabalho por seção / mês", className="align-self-center"), width=True),
+        #         dbc.Col(
+        #             dbc.Row(
+        #                 [
+        #                     html.H4(
+        #                         "Evolução do retrabalho por seção / mês",
+        #                         className="align-self-center",
+        #                     ),
+        #                     dmc.Space(h=5),
+        #                     gera_labels_inputs("visao-geral-evolucao-por-secao"),
+        #                 ]
+        #             ),
+        #             width=True,
+        #         ),
+        #     ],
+        #     align="center",
+        # ),
+        # dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes"),
         dmc.Space(h=40),
         dbc.Row(
             [
@@ -900,3 +994,9 @@ layout = dbc.Container(
         dmc.Space(h=40),
     ]
 )
+
+
+##############################################################################
+# Registro da página #########################################################
+##############################################################################
+dash.register_page(__name__, name="Visão Geral", path="/", icon="mdi:bus-alert")
