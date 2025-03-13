@@ -80,6 +80,10 @@ lista_todas_os = df_lista_os.to_dict(orient="records")
 # Callbacks para os inputs ###################################################
 ##############################################################################
 
+# Função para formatar valores em R$
+# Outra possibilidade é usar locale, porém podemos rodar em um ambiente sem locale pt_BR
+def formata_moeda(valor):
+    return "{:,.2f}".format(valor).replace(',', 'X').replace('.', ',').replace('X', '.')
 
 # Função para validar o input
 def input_valido_tela_os(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
@@ -247,20 +251,21 @@ def computa_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
     # Obtem os dados de custo
     df_custo_raw = os_service.obtem_dados_os_custo_sql(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
 
-    # Agrupa as peças da mesma OS
-    df_custo_agg = df_custo_raw.groupby("NUMERO DA OS")["VALOR"].sum().reset_index()
+    # Obtem os dados de custo agregados por OS
+    df_custo_por_os_raw = df_custo_raw[["NUMERO DA OS", "VALOR"]].drop_duplicates()
+    df_custo_por_os_agg = df_custo_por_os_raw.groupby("NUMERO DA OS")["VALOR"].sum().reset_index()
 
     # Faz o merge
-    df_os_custo_agg = df_os.merge(df_custo_agg, on="NUMERO DA OS", how="left")
+    df_os_custo_agg = df_os.merge(df_custo_por_os_agg, on="NUMERO DA OS", how="left")
 
     # Obtem dados dos colaboradores
-    df_colaborador = os_service.obtem_dados_colaboradores_pandas(df_os, df_llm_raw, df_custo_agg)
+    df_colaborador = os_service.obtem_dados_colaboradores_pandas(df_os, df_llm_raw, df_custo_por_os_agg)
 
     return {
         "df_os": df_os.to_dict("records"),
         "df_os_llm": df_os_llm.to_dict("records"),
         "df_custo_raw": df_custo_raw.to_dict("records"),
-        "df_custo_agg": df_custo_agg.to_dict("records"),
+        "df_custo_por_os_agg": df_custo_por_os_agg.to_dict("records"),
         "df_os_custo_agg": df_os_custo_agg.to_dict("records"),
         "df_colaborador": df_colaborador.to_dict("records"),
         "vazio": df_os.empty,
@@ -456,8 +461,8 @@ def atualiza_indicadores_os_custos(store_payload):
     custo_retrabalho = round(float(df_os_custo_agg_distinct_retrabalho["VALOR"].sum()), 2)
     perc_custo_retrabalho = round(100 * (custo_retrabalho / custo_total), 2)
 
-    custo_total_str = "R$ " + str(custo_total)
-    custo_retrabalho_str = "R$ " + str(custo_retrabalho)
+    custo_total_str = "R$ " + formata_moeda(custo_total)
+    custo_retrabalho_str = "R$ " + formata_moeda(custo_retrabalho)
     perc_custo_retrabalho_str = str(perc_custo_retrabalho) + "%"
 
     return [custo_total_str, custo_retrabalho_str, perc_custo_retrabalho_str]
@@ -528,7 +533,6 @@ def update_tabela_mecanicos_retrabalho(store_payload):
     # Ordena por PERC_RETRABALHO
     df_colaborador = df_colaborador.sort_values(by="PERC_RETRABALHO", ascending=False)
 
-    print(df_colaborador)
     # Retorna tabela
     return df_colaborador.to_dict("records")
 

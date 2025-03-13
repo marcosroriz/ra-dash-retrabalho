@@ -208,9 +208,9 @@ class OSService:
             od."NUMERO DA OS" = od_fix."NUMERO DA OS" and od."DESCRICAO DO SERVICO" = od_fix."DESCRICAO DO SERVICO"
         WHERE
             od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND (
-                od."COLABORADOR QUE EXECUTOU O SERVICO" = '3561'
-            )
+            --AND (
+            --    od."COLABORADOR QUE EXECUTOU O SERVICO" = '3561'
+            --)
             --and (
             --	od."CODIGO DO VEICULO" = '50714'
             --	or 
@@ -221,8 +221,11 @@ class OSService:
 	    ORDER BY
 		    od."DATA DA ABERTURA DA OS" 
         """
-        print(query)
         df_os_query = pd.read_sql_query(query, self.dbEngine)
+        print(query)
+        print("shape", df_os_query.shape)
+
+        print(df_os_query[["NUMERO DA OS"]].drop_duplicates().shape)
 
         # Tratamento de datas
         df_os_query["DATA INICIO SERVICO"] = pd.to_datetime(df_os_query["DATA INICIO SERVIÇO"])
@@ -291,7 +294,7 @@ class OSService:
             *
         FROM 
             os_dados main
-        LEFT JOIN
+        JOIN
             view_pecas_desconsiderando_combustivel pg
         ON
             main."NUMERO DA OS" = pg."OS"

@@ -6,6 +6,21 @@ import pandas as pd
 # Funções utilitárias para obtenção das principais entidades do sistema
 
 
+def get_linhas(dbEngine):
+    # Linhas
+    return pd.read_sql(
+        """
+        SELECT 
+            DISTINCT "linhanumero" AS "LABEL"
+        FROM 
+            rmtc_linha_info
+        ORDER BY
+            "linhanumero"
+        """,
+        dbEngine,
+    )
+
+
 def get_oficinas(dbEngine):
     # Oficinas
     return pd.read_sql(
@@ -52,6 +67,7 @@ def get_lista_os(dbEngine):
         dbEngine,
     )
 
+
 def get_modelos(dbEngine):
     # Lista de OS
     return pd.read_sql(
@@ -63,5 +79,3 @@ def get_modelos(dbEngine):
         """,
         dbEngine,
     )
-
-
