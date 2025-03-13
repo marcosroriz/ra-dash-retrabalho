@@ -4,21 +4,10 @@ import numpy as np
 import pandas as pd
 
 # Importar bibliotecas do dash básicas e plotly
-import dash
-from dash import Dash, html, dcc, callback, Input, Output, State
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.subplots as sp
-
-
-# Importar bibliotecas do bootstrap e ag-grid
-import dash_bootstrap_components as dbc
-import dash_ag_grid as dag
-
-# Dash componentes Mantine e icones
-import dash_mantine_components as dmc
-from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
 import tema
@@ -200,7 +189,7 @@ def grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas):
     return fig
 
 
-def grafico_tabela_pecas(df_veiculos, df_media_geral):
+def grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo):
     # Cria o gráfico de linhas
     fig = go.Figure()
 
@@ -225,32 +214,51 @@ def grafico_tabela_pecas(df_veiculos, df_media_geral):
         )
 
     # Adiciona a linha para a média geral
-    fig.add_trace(
-        go.Scatter(
-            x=df_media_geral["year_month_dt"],
-            y=df_media_geral["media_geral"],
-            mode="lines",
-            name="Média Geral",
-            line=dict(color="orange", dash="dot", width=2),
-            hovertemplate=(
-                "<br>"
-                "<b>Média Geral</b><br>"
-                "<b>Mês:</b> %{x|%Y-%m}<br>"
-                "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
-            ),
+    if not df_media_geral.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=df_media_geral["year_month_dt"],
+                y=df_media_geral["media_geral"],
+                mode="lines",
+                name="Média Geral",
+                line=dict(color="orange", dash="dot", width=2),
+                hovertemplate=(
+                    "<b>Média Geral</b><br>"
+                    "<b>Mês:</b> %{x|%Y-%m}<br>"
+                    "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
+                ),
+            )
         )
-    )
+
+    # Adiciona a linha para a média por modelo (com verificação)
+    if not df_media_modelo.empty and "MODELO" in df_media_modelo.columns:
+        for modelo in df_media_modelo["MODELO"].unique():
+            df_modelo = df_media_modelo[df_media_modelo["MODELO"] == modelo]
+            fig.add_trace(
+                go.Scatter(
+                    x=df_modelo["year_month_dt"],
+                    y=df_modelo["media_modelo"],
+                    mode="lines",
+                    name=f"Média {modelo}",
+                    line=dict(dash="dash", width=2),
+                    hovertemplate=(
+                        "<b>Modelo:</b> %{text}<br>"
+                        "<b>Mês:</b> %{x|%Y-%m}<br>"
+                        "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
+                    ),
+                    text=df_modelo["MODELO"]
+                )
+            )
 
     # Layout melhorado
     fig.update_layout(
         xaxis_title="Mês",
         yaxis_title="Valor (R$)",
-        hovermode="x unified",  # Exibir todos os valores ao passar o mouse
-        template="plotly_white"  # Tema mais moderno
+        hovermode="x unified",
+        template="plotly_white"
     )
 
     return fig
-
 
 def gerar_grafico_evolucao_retrabalho_por_veiculo_por_mes(df):
         # Gera o gráfico

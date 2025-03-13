@@ -205,6 +205,8 @@ class HomeService:
             {"PERC_RETRABALHO": "RETRABALHO", "PERC_CORRECAO_PRIMEIRA": "CORRECAO_PRIMEIRA"}
         )
 
+        print(df_combinado.head())
+
         return df_combinado
 
     def get_evolucao_retrabalho_por_secao_por_mes(self, datas, min_dias, lista_oficinas, lista_secaos, lista_os):

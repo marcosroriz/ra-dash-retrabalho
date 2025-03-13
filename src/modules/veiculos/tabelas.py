@@ -22,7 +22,7 @@ tbl_top_os_geral_retrabalho = [
     },
     {
         "field": "QUANTIDADE DE PECAS",
-        "headerName": "PEÇAS TROCADAS/OS",
+        "headerName": "PEÇAS TROCADAS",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
@@ -59,13 +59,29 @@ tbl_top_os_geral_retrabalho = [
     #     "maxWidth": 160,
     #     "type": ["numericColumn"],
     # },
+    # {
+    #     "field": "QUANTIDADE DE COLABORADORES",
+    #     "headerName": "COLABORADORES",
+    #     "wrapHeaderText": True,
+    #     "autoHeaderHeight": True,
+    #     "maxWidth": 160,
+    #     "filter": "agNumberColumnFilter",
+    #     "type": ["numericColumn"],
+    # },
+]
+
+#Tabela ranking de peças por modelo
+tbl_ranking_por_modelo = [
+    {"field": "POSICAO", "headerName": "POSIÇÃO", "minWidth": 200, "valueFormatter": {"function": "params.value + 'º'"},},
+    {"field": "VEICULO", "headerName": "VEÍCULO", "minWidth": 250},
+    {"field": "MODELO", "headerName": "MODELO", "minWidth": 550},
     {
-        "field": "QUANTIDADE DE COLABORADORES",
-        "headerName": "COLABORADORES",
+        "field": "VALOR",
+        "headerName": "VALOR GASTO",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
-        "maxWidth": 160,
         "filter": "agNumberColumnFilter",
+        "minWidth": 290,
         "type": ["numericColumn"],
     },
 ]
