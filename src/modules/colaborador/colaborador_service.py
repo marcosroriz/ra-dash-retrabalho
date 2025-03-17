@@ -3,7 +3,6 @@ import numpy as np
 import re
 
 
-from db import PostgresSingleton
 from ..sql_utils import *
 
 class ColaboradorService:
@@ -13,16 +12,39 @@ class ColaboradorService:
     def get_mecanicos(self)->pd.DataFrame:
         '''Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados'''
         try:
-            df_mecanicos_todos = pd.read_sql(
+            df_mecanicos = pd.read_sql(
                 """
-               SELECT * FROM colaboradores_frotas_os
+                SELECT * FROM colaboradores_frotas_os
                 """,
                 self.pgEngine,
             )
-            df_mecanicos_todos["nome_colaborador"] = df_mecanicos_todos["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)) 
+
+            # Ajusta espaços no nome do colaborador
+            df_mecanicos["LABEL_COLABORADOR"] = df_mecanicos["nome_colaborador"].apply(
+                lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)
+            )
+
+            # Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados
+            df_mecanicos_todos = pd.read_sql(
+                """
+                SELECT DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO" 
+                FROM os_dados od 
+                """,
+                self.pgEngine,
+            )
+
+            # Converte cod_colaborador para int
+            df_mecanicos_todos["cod_colaborador"] = df_mecanicos_todos["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+
+            # Faz merge dos dados dos mecânicos da RA com os dados de todos os mecânicos
+            df_mecanicos_todos = df_mecanicos_todos.merge(df_mecanicos, how="left", on="cod_colaborador")
+
+            # Adiciona o campo não informados para os colaboradores que não estão na RA
+            df_mecanicos_todos["LABEL_COLABORADOR"] = df_mecanicos_todos["LABEL_COLABORADOR"].fillna("Não Informado")
+
             # Adiciona o campo "cod_colaborador" para o campo LABEL
             df_mecanicos_todos["LABEL_COLABORADOR"] = (
-                df_mecanicos_todos["nome_colaborador"] + " (" + df_mecanicos_todos["cod_colaborador"].astype(str) + ")"
+                df_mecanicos_todos["LABEL_COLABORADOR"] + " (" + df_mecanicos_todos["cod_colaborador"].astype(str) + ")"
             )
 
             # Ordena os colaboradores
@@ -303,7 +325,7 @@ class ColaboradorService:
             "TOTAL_OS" DESC;
         """
         # Executa a query
-        print(query)
+        
         
         df = pd.read_sql(query, self.pgEngine)
         df['nota_media_colaborador'] = df['nota_media_colaborador'].replace(np.nan, 0)
@@ -439,7 +461,7 @@ class ColaboradorService:
         ORDER BY
             "TOTAL_OS" DESC;
         """
-        print(query)
+        
         
         # Executa a query
         df = pd.read_sql(query, self.pgEngine)
