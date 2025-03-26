@@ -39,12 +39,13 @@ from db import PostgresSingleton
 
 # Import de arquivos
 from modules.entities_utils import *
-from modules.veiculos.tabelas import *
+from modules.combustivel.tabela import *
 from modules.sql_utils import *
 from modules.veiculos.inputs import *
 from modules.veiculos.graficos import *
 from modules.veiculos.veiculo_service import *
 from modules.veiculos.helps import HelpsVeiculos
+from modules.combustivel.combustivel_service import CombustivelService
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -53,8 +54,10 @@ from modules.veiculos.helps import HelpsVeiculos
 pgDB = PostgresSingleton.get_instance()
 pgEngine = pgDB.get_engine()
 
+
 # Cria o serviço
-home_service_veiculos = VeiculoService(pgEngine)
+# home_service_veiculos = VeiculoService(pgEngine)
+combus = CombustivelService(pgEngine)
 
 # Colaboradores / Mecânicos
 df_mecanicos = get_mecanicos(pgEngine)
@@ -65,8 +68,8 @@ lista_todas_os = df_lista_os.to_dict(orient="records")
 lista_todas_os.insert(0, {"LABEL": "TODAS"})
 
 df_lista_modelos = get_modelos(pgEngine)
-lista_todos_modelos = [{"MODELO": "TODOS"}]
-lista_todos_modelos.insert(0, {"LABEL": "TODOS", "MODELO": "TODOS"})
+lista_todos_modelos = df_lista_modelos.to_dict(orient="records")
+lista_todos_modelos.insert(0, {"MODELO": "TODOS"})
 
 
 def gera_labels_inputs_veiculos(campo):
@@ -124,6 +127,33 @@ def gera_labels_inputs_veiculos(campo):
 
     # Cria o componente
     return dmc.Group(id=f"{campo}-labels", children=[])
+
+@callback(
+    [
+        Output("input-select-modelos-combustivel", "options"),
+        Output("input-select-modelos-combustivel", "value"),
+    ],
+    [
+        Input("input-intervalo-datas-combustivel", "value")
+    ],
+)
+def corrige_input_modelo(datas):
+    # Vamos pegar as OS possíveis para as seções selecionadas
+    df_lista_os_secao = combus.df_lista_combustivel_modelo(datas)
+
+
+    # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
+    lista_modelos_possiveis = df_lista_os_secao.to_dict(orient="records")
+    lista_modelos_possiveis.insert(0, {"LABEL": "TODAS"})
+
+    lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_modelos_possiveis]
+
+    # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
+    if "TODAS" not in lista_modelos:
+        df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_modelos)]
+        lista_modelos = df_lista_os_atual["LABEL"].tolist()
+
+    return lista_options, corrige_input(lista_modelos)
 
 ##############################################################################
 # Registro da página #########################################################
@@ -184,7 +214,7 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Data"),
                                                     dmc.DatePicker(
-                                                        id="input-intervalo-datas-por-veiculo",
+                                                        id="input-intervalo-datas-combustivel",
                                                         allowSingleDateInRange=True,
                                                         type="range",
                                                         minDate=date(2024, 8, 1),
@@ -479,7 +509,7 @@ layout = dbc.Container(
         dag.AgGrid(
             enableEnterpriseModules=True,
             id="tabela-descricao-de-servico",
-            columnDefs=tbl_top_os_geral_retrabalho,
+            columnDefs=tbl_dados_das_linhas,
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="autoSize",
@@ -503,9 +533,9 @@ layout = dbc.Container(
 @callback(
     [
         Output("input-linha-selecionada", "options"),
-        Output("input-sentido-selecionado", "value"),
+        Output("input-linha-selecionada", "value"),
     ],
-    Input("input-select-modelos", "value")
+    Input("input-linha-selecionada", "value")
 )
 def atualizar_veiculos(modelos_selecionados):
     if modelos_selecionados is None:
