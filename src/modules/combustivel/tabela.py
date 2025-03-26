@@ -1,10 +1,10 @@
 tbl_dados_das_linhas = [
-    {"field": "DESCRICAO DO SERVICO", "headerName": "DATA", "minWidth": 300},
+    {"field": "DESCRICAO DO SERVICO", "headerName": "DIA", "minWidth": 300},
     {"field": "TOTAL_OS", "headerName": "VEÍCULO", "minWidth": 200},
     {"field": "PERC_RETRABALHO", "headerName": "LINHA", "minWidth": 200, "valueFormatter": {"function": "params.value + '%'"},},
     {
         "field": "PERC_CORRECAO_PRIMEIRA",
-        "headerName": "NÃO ENTENDI",
+        "headerName": "SENTIDO",
         "filter": "agNumberColumnFilter",
         "maxWidth": 230,
         "valueFormatter": {"function": "params.value + '%'"},
@@ -21,7 +21,7 @@ tbl_dados_das_linhas = [
     },
     {
         "field": "VALOR_",
-        "headerName": "MÉDIA",
+        "headerName": "MÉDIA VEICULO",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
@@ -31,7 +31,7 @@ tbl_dados_das_linhas = [
     },
     {
         "field": "TOTAL_GASTO_RETRABALHO_",
-        "headerName": "DIFERENÇA KM/L - MÉDIA",
+        "headerName": "DIFERENÇA KM/L - MÉDIA VEICULO",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",
@@ -41,7 +41,17 @@ tbl_dados_das_linhas = [
     },
     {
         "field": "TOTAL_GASTO_RETRABALHO_",
-        "headerName": "NÃO ENTENDI",
+        "headerName": "MEDIA LINHA",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "filter": "agNumberColumnFilter",
+        "maxWidth": 160,
+        "type": ["numericColumn"],
+        "valueFormatter": {"function": "'R$' + Number(params.value).toFixed(2).toLocaleString()"},
+    },
+    {
+        "field": "TOTAL_GASTO_RETRABALHO_",
+        "headerName": "DIFERENÇA KM/L - MÉDIA LINHA",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "filter": "agNumberColumnFilter",

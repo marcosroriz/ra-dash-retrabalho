@@ -62,14 +62,12 @@ combus = CombustivelService(pgEngine)
 # Colaboradores / Mecânicos
 df_mecanicos = get_mecanicos(pgEngine)
 
-# Obtem a lista de OS
-df_lista_os = get_lista_os(pgEngine)
-lista_todas_os = df_lista_os.to_dict(orient="records")
-lista_todas_os.insert(0, {"LABEL": "TODAS"})
 
-df_lista_modelos = get_modelos(pgEngine)
-lista_todos_modelos = df_lista_modelos.to_dict(orient="records")
-lista_todos_modelos.insert(0, {"MODELO": "TODOS"})
+# df_lista_modelos = get_modelos(pgEngine)
+# lista_todos_modelos = df_lista_modelos.to_dict(orient="records")
+# lista_todos_modelos.insert(0, {"MODELO": "TODOS"})
+
+# print(df_lista_modelos)
 
 
 def gera_labels_inputs_veiculos(campo):
@@ -131,29 +129,51 @@ def gera_labels_inputs_veiculos(campo):
 @callback(
     [
         Output("input-select-modelos-combustivel", "options"),
-        Output("input-select-modelos-combustivel", "value"),
     ],
     [
-        Input("input-intervalo-datas-combustivel", "value")
+        Input("input-intervalo-datas-combustivel", "value"),
     ],
 )
 def corrige_input_modelo(datas):
     # Vamos pegar as OS possíveis para as seções selecionadas
-    df_lista_os_secao = combus.df_lista_combustivel_modelo(datas)
-
+    df_lista_modelo = combus.df_lista_combustivel_modelo(datas)
 
     # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
-    lista_modelos_possiveis = df_lista_os_secao.to_dict(orient="records")
+    lista_modelos_possiveis = df_lista_modelo.to_dict(orient="records")
+    lista_modelos_possiveis.insert(0, {"LABEL": "TODOS"})
+
+    lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_modelos_possiveis]
+
+    return [lista_options]
+
+
+@callback(
+    [
+        Output("input-select-linhas-combustivel", "options"),
+        Output("input-select-linhas-combustivel", "value"),
+    ],
+    [
+        Input("input-intervalo-datas-combustivel", "value"),
+        Input("input-select-linhas-combustivel", "value"),
+        Input("input-select-modelos-combustivel", "value")
+    ],
+)
+def corrige_input_linha(datas, lista_linhas, lista_modelos):
+    # Vamos pegar as OS possíveis para as seções selecionadas
+    df_lista_linhas = combus.df_lista_linha_rmtc(datas, lista_modelos)
+
+    # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
+    lista_modelos_possiveis = df_lista_linhas.to_dict(orient="records")
     lista_modelos_possiveis.insert(0, {"LABEL": "TODAS"})
 
     lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_modelos_possiveis]
 
     # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
-    if "TODAS" not in lista_modelos:
-        df_lista_os_atual = df_lista_os_secao[df_lista_os_secao["LABEL"].isin(lista_modelos)]
-        lista_modelos = df_lista_os_atual["LABEL"].tolist()
+    if "TODAS" not in lista_linhas:
+        df_lista_os_atual = df_lista_linhas[df_lista_linhas["LABEL"].isin(lista_linhas)]
+        lista_linhas = df_lista_os_atual["LABEL"].tolist()
 
-    return lista_options, corrige_input(lista_modelos)
+    return lista_options, corrige_input(lista_linhas)
 
 ##############################################################################
 # Registro da página #########################################################
@@ -236,14 +256,7 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Modelos"),
                                                     dcc.Dropdown(
-                                                        id="input-select-modelos",
-                                                        options=[
-                                                            {
-                                                                "label": os["MODELO"], 
-                                                                "value": os["MODELO"]
-                                                            }
-                                                            for os in lista_todos_modelos
-                                                        ],
+                                                        id="input-select-modelos-combustivel",
                                                         #multi=True,
                                                         value="TODOS", #ANTES ERA ["TODAS"], AGORA COMO É UMA VARIAVEL SÓ NO DROP, ENTÃO SE CONSIDERA APENAS UMA STRIN.
                                                         placeholder="Selecione um ou mais modelos...",
@@ -264,9 +277,10 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Linha"),
                                                     dcc.Dropdown(
-                                                        id="input-select-veiculos",
-                                                        multi=False,
-                                                        placeholder="Selecione um ou mais veículos...",
+                                                        id="input-select-linhas-combustivel",
+                                                        multi=True,
+                                                        value=["TODAS"],
+                                                        placeholder="Selecione uma ou mais linhas...",
                                                     )
                                                 ],
                                                 className="dash-bootstrap",
