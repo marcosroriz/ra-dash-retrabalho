@@ -175,6 +175,25 @@ def corrige_input_linha(datas, lista_linhas, lista_modelos):
 
     return lista_options, corrige_input(lista_linhas)
 
+@callback(
+    Output("tabela-combustivel", "rowData"), 
+    [
+        Input("input-intervalo-datas-combustivel", "value"),
+        Input("input-select-modelos-combustivel", "value"),
+        Input("input-select-linhas-combustivel", "value"),
+        Input("input-select-sentido-da-linha", "value"),
+        Input("input-select-dia", "value"),
+    ],
+)
+def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia):
+    
+    if(datas is None):
+        return []
+    
+    return combus.df_tabela_combustivel(
+        datas, lista_modelo, lista_linhas, sentido_linha, dia
+    ).to_dict("records")
+
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
@@ -329,14 +348,14 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Dias"),
                                                     dcc.Checklist(
-                                                        id="input-select-secao-visao-geral",
+                                                        id="input-select-dia",
                                                         options=[
                                                             {"label": "Sabado", "value": "SABADO"},
                                                             {"label": "Domingo", "value": "DOMINGO"},
                                                             {"label": "Feriado", "value": "FERIADO"},
-                                                            {"label": "Todos", "value": "TODAS"},
+                                                            {"label": "Todos", "value": "TODOS"},
                                                         ],
-                                                        value=["TODAS"],
+                                                        value=["TODOS"],
                                                         inputStyle={"margin-right": "6px"},
                                                         labelStyle={
                                                             "display": "inline-block",
@@ -522,7 +541,7 @@ layout = dbc.Container(
         dmc.Space(h=20),
         dag.AgGrid(
             enableEnterpriseModules=True,
-            id="tabela-descricao-de-servico",
+            id="tabela-combustivel",
             columnDefs=tbl_dados_das_linhas,
             rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
@@ -543,29 +562,29 @@ layout = dbc.Container(
 # CALLBACKS ##################################################################
 ##############################################################################
 
-# VEÍCULOS DO MODELO SELECIONADO
-@callback(
-    [
-        Output("input-linha-selecionada", "options"),
-        Output("input-linha-selecionada", "value"),
-    ],
-    Input("input-linha-selecionada", "value")
-)
-def atualizar_veiculos(modelos_selecionados):
-    if modelos_selecionados is None:
-        return [], []  # Retorna uma lista vazia de opções e sem valor padrão
-    lista_todos_veiculos = home_service_veiculos.atualizar_veiculos_func([modelos_selecionados])
-    # Formatar corretamente para o Dropdown
-    options = [
-        {"label": f'{veiculo["VEICULO"]} ({veiculo["MODELO"]})', "value": veiculo["VEICULO"]}
-        for veiculo in lista_todos_veiculos
-    ]
+# # VEÍCULOS DO MODELO SELECIONADO
+# @callback(
+#     [
+#         Output("input-linha-selecionada", "options"),
+#         Output("input-linha-selecionada", "value"),
+#     ],
+#     Input("input-linha-selecionada", "value")
+# )
+# def atualizar_veiculos(modelos_selecionados):
+#     if modelos_selecionados is None:
+#         return [], []  # Retorna uma lista vazia de opções e sem valor padrão
+#     lista_todos_veiculos = home_service_veiculos.atualizar_veiculos_func([modelos_selecionados])
+#     # Formatar corretamente para o Dropdown
+#     options = [
+#         {"label": f'{veiculo["VEICULO"]} ({veiculo["MODELO"]})', "value": veiculo["VEICULO"]}
+#         for veiculo in lista_todos_veiculos
+#     ]
     
-    #DESCOMENTAR CASO USE A OPÇÃO MULTIPLA DO DROPDOWN
-    # Selecionar o segundo item como padrão, se existir
-    #value = [options[1]["value"]] if len(options) > 1 else []
+#     #DESCOMENTAR CASO USE A OPÇÃO MULTIPLA DO DROPDOWN
+#     # Selecionar o segundo item como padrão, se existir
+#     #value = [options[1]["value"]] if len(options) > 1 else []
 
-    #COMENTAR CASO USE A OPÇÃO MULTIPLA DO DROPDOWN
-    # Selecionar o segundo item como padrão, se existir
-    value = options[1]["value"] if len(options) > 1 else None  # None para evitar erro
-    return options, value
+#     #COMENTAR CASO USE A OPÇÃO MULTIPLA DO DROPDOWN
+#     # Selecionar o segundo item como padrão, se existir
+#     value = options[1]["value"] if len(options) > 1 else None  # None para evitar erro
+#     return options, value
