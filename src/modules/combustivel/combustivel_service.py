@@ -1,5 +1,6 @@
 import pandas as pd
 import holidays
+import plotly.express as px
 
 from ..sql_utils import *
 
@@ -10,9 +11,9 @@ class CombustivelService:
     def df_lista_combustivel_modelo(self, datas):
         '''Retorna uma lista das OSs'''
         
-        data_inicio_str = datas[0]
-        data_fim = pd.to_datetime(datas[1])
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
+        # data_inicio_str = datas[0]
+        # data_fim = pd.to_datetime(datas[1])
+        # data_fim_str = data_fim.strftime("%Y-%m-%d")
         
         df_lista_combus = pd.read_sql(
             f"""
@@ -20,7 +21,7 @@ class CombustivelService:
             vec_model as "LABEL"
             from
                 rmtc_viagens_analise rva
-            where dia between '{data_inicio_str}' AND '{data_fim_str}'
+            where dia = '{datas}'
             order by
                 vec_model
             """,
@@ -33,9 +34,9 @@ class CombustivelService:
     def df_lista_linha_rmtc(self, datas, lista_modelo):
         '''Retorna uma lista das OSs'''
         
-        data_inicio_str = datas[0]
-        data_fim = pd.to_datetime(datas[1])
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
+        # data_inicio_str = datas[0]
+        # data_fim = pd.to_datetime(datas[1])
+        # data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         subquery_modelo = subquery_modelos_combustivel(lista_modelo)
         
@@ -46,7 +47,7 @@ class CombustivelService:
             from 
                 rmtc_viagens_analise rva 
             where 
-                encontrou_numero_linha is not null and dia between '{data_inicio_str}' and '{data_fim_str}'
+                encontrou_numero_linha is not null and dia = '{datas}'
                 {subquery_modelo}
             """,
             self.pgEngine,
@@ -100,24 +101,26 @@ class CombustivelService:
         else:
             raise ValueError("O parâmetro 'dia' deve ser 'sabado', 'domingo', 'feriado' ou 'todos'.")
 
-    
     def df_tabela_combustivel(self, datas, lista_modelo, lista_linhas, sentido_linha, dia):
-        data_inicio_str = datas[0]
-        data_fim = pd.to_datetime(datas[1])
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
+        # data_inicio_str = datas[0]
+        # data_fim = pd.to_datetime(datas[1])
+        # data_fim_str = data_fim.strftime("%Y-%m-%d")
 
+        data_selecionada = datas
+        print(data_selecionada)
         subquery_modelo = subquery_modelos_combustivel(lista_modelo)
         subquery_linhas = subquery_linha_combustivel(lista_linhas)
         subquery_sentido = subquery_sentido_combustivel(sentido_linha)
         
-        df_lista_combus = pd.read_sql(
-            f"""
+
+        query = f"""
             WITH consumo_km_linha AS (
                 SELECT 
                     encontrou_numero_linha,
                     SUM("total_comb_l") / NULLIF(SUM("tamanho_linha_km_sobreposicao"), 0) AS "CONSUMO_POR_KM_LINHA"
                 FROM rmtc_viagens_analise rva
-                WHERE dia BETWEEN '{data_inicio_str}' and '{data_fim_str}' -- FILTRAGEM PELA data !!!
+                WHERE
+                dia = '{data_selecionada}'
                 GROUP BY encontrou_numero_linha
             ),
             --TABELA DE MÉDIA KM_VEICULO
@@ -126,7 +129,7 @@ class CombustivelService:
                     vec_num_id,
                     SUM("total_comb_l") / NULLIF(SUM("tamanho_linha_km_sobreposicao"), 0) AS "CONSUMO_POR_KM_VEICULO"
                 FROM rmtc_viagens_analise rva
-                WHERE dia BETWEEN '{data_inicio_str}' and '{data_fim_str}' -- FILTRAGEM PELA data !!!
+                WHERE dia = '{data_selecionada}' -- FILTRAGEM PELA data !!!
                 GROUP BY vec_num_id
             ),
             geral as (
@@ -138,7 +141,7 @@ class CombustivelService:
                 SUM(rva."total_comb_l") / NULLIF(SUM(rva."tamanho_linha_km_sobreposicao"), 0) AS "CONSUMO_POR_KM"
             FROM rmtc_viagens_analise rva
             WHERE 
-                    rva.dia BETWEEN '{data_inicio_str}' and '{data_fim_str}' -- FILTRAGEM PELA data !!!
+                    rva.dia = '{data_selecionada}' -- FILTRAGEM PELA data !!!
                     AND encontrou_numero_linha is not null
                     {subquery_linhas}
                     {subquery_modelo}
@@ -160,9 +163,47 @@ class CombustivelService:
             --BUSCAR O CONSUMO DA VEICULO GERAL SOMENTE FITLRANDO A DATA
             LEFT JOIN consmo_km_veiculo ckv
                 ON gl.vec_num_id = ckv.vec_num_id
-            """,
-            self.pgEngine,
-        )
+            """
+
+        df_lista_combus = pd.read_sql(query, self.pgEngine, )
+        
+        if df_lista_combus.empty:
+            return pd.DataFrame()  # Retorna um DataFrame vazio
+
         df_final_combustivel = self.filtrar_dias_especiais(df_lista_combus, dia[0].lower()).fillna(0).round(2)
         df_final_combustivel['dia'] = pd.to_datetime(df_final_combustivel['dia']).dt.strftime('%Y-%m-%d')
         return df_final_combustivel
+
+    def grafico_combustivel(self, datas, lista_modelo, lista_linhas, sentido_linha, dia):
+        # data_inicio_str = datas[0]
+        # data_fim = pd.to_datetime(datas[1])
+        # data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        subquery_modelo = subquery_modelos_combustivel(lista_modelo)
+        subquery_linhas = subquery_linha_combustivel(lista_linhas)
+        subquery_sentido = subquery_sentido_combustivel(sentido_linha)
+        
+        df = pd.read_sql(
+            f"""
+            --QUERY GRÁFICO v2
+            SELECT TO_CHAR(dia, 'DD/MM/YYYY') AS "DIA_BR",
+                vec_model as "MODELO", 
+                km_por_litro as "KILOMETRO_POR_LTIRO",
+                encontrou_timestamp_inicio as "TIME"
+            FROM rmtc_viagens_analise rva
+            WHERE dia = '{datas}'
+                    {subquery_linhas}
+                    {subquery_modelo}
+                    {subquery_sentido}
+            --QUERY GRÁFICO v2
+            """,
+            self.pgEngine,
+        )
+        df["TIME"] = pd.to_datetime(df["TIME"])
+
+        df = df.sort_values(by="TIME")
+
+        fig = px.line(df, x="TIME", y="KILOMETRO_POR_LTIRO", color="MODELO",
+                    title="Consumo KM/L ao Longo do Tempo por Modelo")
+
+        return fig

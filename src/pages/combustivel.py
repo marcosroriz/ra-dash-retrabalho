@@ -114,7 +114,7 @@ def gera_labels_inputs_veiculos(campo):
         Output("input-select-modelos-combustivel", "options"),
     ],
     [
-        Input("input-intervalo-datas-combustivel", "value"),
+        Input("input-intervalo-datas-combustivel", "date"),
     ],
 )
 def corrige_input_modelo(datas):
@@ -136,7 +136,7 @@ def corrige_input_modelo(datas):
         Output("input-select-linhas-combustivel", "value"),
     ],
     [
-        Input("input-intervalo-datas-combustivel", "value"),
+        Input("input-intervalo-datas-combustivel", "date"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value")
     ],
@@ -161,7 +161,7 @@ def corrige_input_linha(datas, lista_linhas, lista_modelos):
 @callback(
     Output("tabela-combustivel", "rowData"), 
     [
-        Input("input-intervalo-datas-combustivel", "value"),
+        Input("input-intervalo-datas-combustivel", "date"),
         Input("input-select-modelos-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-sentido-da-linha", "value"),
@@ -177,6 +177,23 @@ def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_li
         datas, lista_modelo, lista_linhas, sentido_linha, dia
     ).to_dict("records")
 
+@callback(
+    Output("graph-combustivel", "figure"), 
+    [
+        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-select-modelos-combustivel", "value"),
+        Input("input-select-linhas-combustivel", "value"),
+        Input("input-select-sentido-da-linha", "value"),
+        Input("input-select-dia", "value"),
+    ],
+)
+def grafico_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia):
+    if(datas is None):
+        return []
+
+    grafico = combus.grafico_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
+
+    return grafico
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
@@ -234,15 +251,22 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
-                                                    dbc.Label("Data"),
-                                                    dmc.DatePicker(
+                                                    dbc.Label("Data",    style={"display": "block", "margin-bottom": "10px"} ), # Adiciona espaço abaixo do Label),),
+                                                    dcc.DatePickerSingle(
                                                         id="input-intervalo-datas-combustivel",
-                                                        allowSingleDateInRange=True,
-                                                        type="range",
-                                                        minDate=date(2024, 8, 1),
-                                                        maxDate=date.today(),
-                                                        value=[date(2024, 8, 1), date.today()],
+                                                        min_date_allowed=date(2024, 12, 29),  # Data mínima permitida
+                                                        max_date_allowed=date.today(),        # Data máxima permitida
+                                                        initial_visible_month=date(2024, 12, 29),  # Mês visível por padrão
+                                                        date=date(2024, 12, 29),              # Data inicial
+                                                        display_format="DD/MM/YYYY",          # Formato de exibição
                                                     ),
+                                                    # dcc.DatePickerSingle(
+                                                    #     id='input-intervalo-datas-combustivel',
+                                                    #     min_date_allowed=date(2024, 12, 29),
+                                                    #     max_date_allowed=date.today(),
+                                                    #     initial_visible_month=date(2024, 12, 29),
+                                                    #     date=date(2024, 12, 29)
+                                                    # ),
                                                 ],
                                                 className="dash-bootstrap",
                                             ),
@@ -475,7 +499,7 @@ layout = dbc.Container(
             ],
             align="center",
         ),
-        dcc.Graph(id="graph-pecas-trocadas-por-mes"), #Trocar ID aqui quando o grafico estiver pronto
+        dcc.Graph(id="graph-combustivel"), #Trocar ID aqui quando o grafico estiver pronto
         dmc.Space(h=40),   
         dbc.Row(
             [
