@@ -25,6 +25,7 @@ import plotly.subplots as sp
 # Importar bibliotecas do bootstrap e ag-grid
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
+from dash import callback_context
 
 # Dash componentes Mantine e icones
 import dash_mantine_components as dmc
@@ -96,7 +97,7 @@ def gera_labels_inputs_veiculos(campo):
         # Gera badges para cada filtro
         lista_modelo_labels = gerar_badges(lista_modelo, "Todos os modelos")
         lista_linhas_labels = gerar_badges(lista_linhas, "Todas as linhas")
-        lista_sentido_labels = gerar_badges(sentido_linha, "Ida e volta", "OS: ")
+        lista_sentido_labels = gerar_badges(sentido_linha, "Ida e volta", "SENTIDO: ")
         lista_dia_labels = gerar_badges(dia, "Todos os dias", "DIA: ")
 
         return [
@@ -197,6 +198,45 @@ def grafico_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_l
     grafico, numero_viagens, num_veiculos_diff, num_modelo_diff = combus.grafico_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
 
     return grafico, numero_viagens, num_veiculos_diff, num_modelo_diff
+
+
+
+# DOWLOAD DA TABELA PEÇAS
+@callback(
+    Output("download-excel-tabela-combustivel-1", "data"),
+    [
+        Input("btn-exportar-comb", "n_clicks"),
+        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-select-modelos-combustivel", "value"),
+        Input("input-select-linhas-combustivel", "value"),
+        Input("input-select-sentido-da-linha", "value"),
+        Input("input-select-dia", "value"),
+    ],
+    prevent_initial_call=True
+)
+def dowload_excel_tabela_peças(n_clicks, datas, lista_modelo, lista_linhas, sentido_linha, dia):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:  
+        return dash.no_update  # Evita execução desnecessária
+    
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if triggered_id != "btn-exportar-comb":
+        return dash.no_update  # Ignora mudanças nos outros inputs
+
+    if not n_clicks or n_clicks <= 0: 
+        return dash.no_update
+    
+    if(datas is None):
+        return []
+    date_now = datetime.now().strftime('%d-%m-%Y')
+    timestamp = int(time.time())
+    df = combus.df_tabela_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
+    excel_data = gerar_excel(df=df)
+    return dcc.send_bytes(excel_data, f"tabela-peças-os-{date_now}-{timestamp}.xlsx")
+
+
+
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
@@ -521,7 +561,7 @@ layout = dbc.Container(
                                             [
                                                 html.Button(
                                                     "Exportar para Excel",
-                                                    id="btn-exportar-pecas",
+                                                    id="btn-exportar-comb",
                                                     n_clicks=0,
                                                     style={
                                                         "background-color": "#007bff",  # Azul
@@ -534,7 +574,7 @@ layout = dbc.Container(
                                                         "font-weight": "bold",
                                                     },
                                                 ),
-                                                dcc.Download(id="download-excel-tabela-pecas"),
+                                                dcc.Download(id="download-excel-tabela-combustivel-1"),
                                             ],
                                             style={"text-align": "right"},
                                         ),
