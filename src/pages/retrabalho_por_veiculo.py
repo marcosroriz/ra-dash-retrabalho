@@ -25,6 +25,7 @@ import plotly.subplots as sp
 # Importar bibliotecas do bootstrap e ag-grid
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
+from dash import callback_context
 
 # Dash componentes Mantine e icones
 import dash_mantine_components as dmc
@@ -1389,8 +1390,18 @@ def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_o
 )
 def dowload_excel_tabela_peças(n_clicks, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     lista_veiculos = [lista_veiculos]
-    if not n_clicks or n_clicks <= 0: # Garantir que ao iniciar ou carregar a page, o arquivo não seja baixado
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:  
+        return dash.no_update  # Evita execução desnecessária
+    
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if triggered_id != "btn-exportar-pecas":
+        return dash.no_update  # Ignora mudanças nos outros inputs
+
+    if not n_clicks or n_clicks <= 0:
         return dash.no_update
+    
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return dash.no_update
     
@@ -1447,8 +1458,18 @@ def atualiza_tabela_retrabalho_por_descrição_serviço(datas, min_dias, lista_o
 )
 def dowload_excel_tabela_retrabalho_por_descrição_servico(n_clicks, datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     lista_veiculos = [lista_veiculos]
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:  
+        return dash.no_update  # Evita execução desnecessária
+    
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if triggered_id != "btn-exportar-descricao-retrabalho":
+        return dash.no_update  # Ignora mudanças nos outros inputs
+
     if not n_clicks or n_clicks <= 0: 
         return dash.no_update
+    
     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
         return dash.no_update
     
