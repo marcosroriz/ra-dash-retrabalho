@@ -71,60 +71,43 @@ df_mecanicos = get_mecanicos(pgEngine)
 
 
 def gera_labels_inputs_veiculos(campo):
-    # Cria o callback
+    """Gera labels de filtros baseados nos inputs do usuário para veículos."""
+
     @callback(
+        Output(f"{campo}-labels", "children"),
         [
-            Output(component_id=f"{campo}-labels", component_property="children"),
-        ],
-        [
-            Input("input-select-dias-geral-retrabalho", "value"),
-            Input(component_id="input-select-oficina-visao-geral", component_property="value"),
-            Input(component_id="input-select-secao-visao-geral", component_property="value"),
-            Input(component_id="input-select-ordens-servico-visao-geral-veiculos", component_property="value"),
-            Input(component_id="input-select-veiculos", component_property="value"),
+            Input("input-select-modelos-combustivel", "value"),
+            Input("input-select-linhas-combustivel", "value"),
+            Input("input-select-sentido-da-linha", "value"),
+            Input("input-select-dia", "value"),
         ],
     )
-    def atualiza_labels_inputs(min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-        lista_veiculos = [lista_veiculos]
-        labels_antes = [
-            # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
-            dmc.Badge("Filtro", color="gray", variant="outline"),
-        ]
-        min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
-        lista_oficinas_labels = []
-        lista_secaos_labels = []
-        lista_os_labels = []
-        lista_veiculos_labels = []
+    def atualiza_labels_inputs(lista_modelo, lista_linhas, sentido_linha, dia):
+        """Atualiza os labels de acordo com os filtros selecionados."""
 
-        if lista_oficinas is None or not lista_oficinas or "TODAS" in lista_oficinas:
-            lista_oficinas_labels.append(dmc.Badge("Todas as oficinas", variant="outline"))
-        else:
-            for oficina in lista_oficinas:
-                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+        labels_iniciais = [dmc.Badge("Filtro", color="gray", variant="outline")]
 
-        if lista_secaos is None or not lista_secaos or "TODAS" in lista_secaos:
-            lista_secaos_labels.append(dmc.Badge("Todas as seções", variant="outline"))
-        else:
-            for secao in lista_secaos:
-                lista_secaos_labels.append(dmc.Badge(secao, variant="dot"))
+        def gerar_badges(lista, texto_todos, prefixo=""):
+            """Gera badges com base na lista de filtros."""
+            if not lista or "TODOS" in lista:
+                return [dmc.Badge(texto_todos, variant="outline")]
+            return [dmc.Badge(f"{prefixo}{item}", variant="dot") for item in lista]
 
-        if lista_os is None or not lista_os or "TODAS" in lista_os:
-            lista_os_labels.append(dmc.Badge("Todas as ordens de serviço", variant="outline"))
-        else:
-            for os in lista_os:
-                lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
-            
-        if lista_veiculos is None or not lista_veiculos or "TODAS" in lista_veiculos:
-            lista_veiculos_labels.append(dmc.Badge("Todas os veículos", variant="outline"))
-        else:
-            for os in lista_veiculos:
-                lista_veiculos_labels.append(dmc.Badge(f"VEICULO: {os}", variant="dot"))
+        # Gera badges para cada filtro
+        lista_modelo_labels = gerar_badges(lista_modelo, "Todos os modelos")
+        lista_linhas_labels = gerar_badges(lista_linhas, "Todas as linhas")
+        lista_sentido_labels = gerar_badges(sentido_linha, "Ida e volta", "OS: ")
+        lista_dia_labels = gerar_badges(dia, "Todos os dias", "DIA: ")
+
         return [
-            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels + lista_veiculos_labels)
+            dmc.Group(
+                labels_iniciais + lista_modelo_labels +
+                lista_linhas_labels + lista_sentido_labels + lista_dia_labels
+            )
         ]
 
-    # Cria o componente
     return dmc.Group(id=f"{campo}-labels", children=[])
+
 
 @callback(
     [
@@ -505,7 +488,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            #dbc.Col(gera_labels_inputs_veiculos("pecas-substituidas-por-os-filtro"), width=True), Colocar aqui depois os filtros selecionados
+                            dbc.Col(gera_labels_inputs_veiculos("input-geral-combustivel-1"), width=True),
                             dbc.Col(
                                         html.Div(
                                             [

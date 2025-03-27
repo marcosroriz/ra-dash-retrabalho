@@ -139,6 +139,7 @@ class CombustivelService:
             FROM rmtc_viagens_analise rva
             WHERE 
                     rva.dia BETWEEN '{data_inicio_str}' and '{data_fim_str}' -- FILTRAGEM PELA data !!!
+                    AND encontrou_numero_linha is not null
                     {subquery_linhas}
                     {subquery_modelo}
                     {subquery_sentido}
@@ -164,5 +165,4 @@ class CombustivelService:
         )
         df_final_combustivel = self.filtrar_dias_especiais(df_lista_combus, dia[0].lower()).fillna(0).round(2)
         df_final_combustivel['dia'] = pd.to_datetime(df_final_combustivel['dia']).dt.strftime('%Y-%m-%d')
-        df_final_combustivel = df_final_combustivel.sort_values(by='dia', ascending=False)
         return df_final_combustivel

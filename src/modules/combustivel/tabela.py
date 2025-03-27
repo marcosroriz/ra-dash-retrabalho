@@ -1,7 +1,7 @@
 tbl_dados_das_linhas = [
     {"field": "dia", "headerName": "DIA", "minWidth": 300},
     {"field": "vec_num_id", "headerName": "VEÍCULO", "minWidth": 200},
-    {"field": "encontrou_numero_linha", "headerName": "LINHA", "minWidth": 200},
+    {"field": "encontrou_numero_linha", "headerName": "LINHA", "minWidth": 200, "type": ["text"]},
     {
         "field": "encontrou_sentido_linha",
         "headerName": "SENTIDO",
