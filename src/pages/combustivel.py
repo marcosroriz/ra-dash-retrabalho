@@ -91,7 +91,7 @@ def gera_labels_inputs_veiculos(campo):
             """Gera badges com base na lista de filtros."""
             if not lista or "TODOS" in lista:
                 return [dmc.Badge(texto_todos, variant="outline")]
-            return [dmc.Badge(f"{prefixo}{item}", variant="dot") for item in lista]
+            return [dmc.Badge(f"{prefixo}{item}", variant="dot") for item in [lista]]
 
         # Gera badges para cada filtro
         lista_modelo_labels = gerar_badges(lista_modelo, "Todos os modelos")
