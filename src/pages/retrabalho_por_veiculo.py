@@ -138,7 +138,7 @@ def gera_labels_inputs_veiculos(campo):
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Retrabalho por veículo", path="/retrabalho-por-veiculo", icon="mdi:bus-alert")
+dash.register_page(__name__, name="Veículo", path="/retrabalho-por-veiculo", icon="mdi:bus-alert")
 
 ##############################################################################
 # Layout #####################################################################

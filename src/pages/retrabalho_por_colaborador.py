@@ -60,7 +60,7 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 # Registro da página #########################################################
 ##############################################################################
 dash.register_page(
-    __name__, name="Retrabalho por Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline"
+    __name__, name="Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline"
 )
 
 ##############################################################################
@@ -682,7 +682,7 @@ def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, l
 
 
     
-    # Callback para atualizar o link de download quando o botão for clicado
+# Callback para atualizar o link de download quando o botão for clicado
 @callback(
     Output("download-excel", "data")
     ,
