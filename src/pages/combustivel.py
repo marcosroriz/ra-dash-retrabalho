@@ -178,7 +178,10 @@ def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_li
     ).to_dict("records")
 
 @callback(
-    Output("graph-combustivel", "figure"), 
+    [Output("graph-combustivel", "figure"),
+     Output("indicador-quantidade-de-viagens", "children"),
+     Output("indicador-quantidade-de-veiculos-diferentes", "children"),
+     Output("indicador-quantidade-de-modelos-diferentes", "children"),], 
     [
         Input("input-intervalo-datas-combustivel", "date"),
         Input("input-select-modelos-combustivel", "value"),
@@ -191,9 +194,9 @@ def grafico_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_l
     if(datas is None):
         return []
 
-    grafico = combus.grafico_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
+    grafico, numero_viagens, num_veiculos_diff, num_modelo_diff = combus.grafico_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
 
-    return grafico
+    return grafico, numero_viagens, num_veiculos_diff, num_modelo_diff
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
@@ -455,7 +458,7 @@ layout = dbc.Container(
                                     dbc.CardBody(
                                         dmc.Group(
                                             [
-                                                dmc.Title(id="indicador-quantidade-de-veiculos", order=2),
+                                                dmc.Title(id="indicador-quantidade-de-modelos-diferentes", order=2),
                                                 DashIconify(
                                                     icon="mdi:car-multiple",
                                                     width=48,
@@ -467,7 +470,7 @@ layout = dbc.Container(
                                             mb="xs",
                                         ),
                                     ),
-                                    dbc.CardFooter("Quantidade de veículos"),
+                                    dbc.CardFooter("Quantidade de modelos diferentes"),
                                 ],
                                 class_name="card-box-shadow",
                             ),

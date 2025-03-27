@@ -107,7 +107,6 @@ class CombustivelService:
         # data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         data_selecionada = datas
-        print(data_selecionada)
         subquery_modelo = subquery_modelos_combustivel(lista_modelo)
         subquery_linhas = subquery_linha_combustivel(lista_linhas)
         subquery_sentido = subquery_sentido_combustivel(sentido_linha)
@@ -188,6 +187,7 @@ class CombustivelService:
             --QUERY GRÁFICO v2
             SELECT TO_CHAR(dia, 'DD/MM/YYYY') AS "DIA_BR",
                 vec_model as "MODELO", 
+                vec_num_id as "NUMERO_VEICULO",
                 km_por_litro as "KILOMETRO_POR_LTIRO",
                 encontrou_timestamp_inicio as "TIME"
             FROM rmtc_viagens_analise rva
@@ -200,10 +200,12 @@ class CombustivelService:
             self.pgEngine,
         )
         df["TIME"] = pd.to_datetime(df["TIME"])
-
+        numero_viagens = len(df)
+        num_veiculos_diff = df['NUMERO_VEICULO'].nunique()
+        num_modelo_diff = df['MODELO'].nunique()
         df = df.sort_values(by="TIME")
 
         fig = px.line(df, x="TIME", y="KILOMETRO_POR_LTIRO", color="MODELO",
                     title="Consumo KM/L ao Longo do Tempo por Modelo")
 
-        return fig
+        return fig, numero_viagens, num_veiculos_diff, num_modelo_diff
