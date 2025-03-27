@@ -7,6 +7,7 @@
 # IMPORTS ####################################################################
 ##############################################################################
 # Bibliotecas básicas
+import datetime 
 from datetime import date
 import pandas as pd
 
@@ -31,8 +32,7 @@ import locale_utils
 from db import PostgresSingleton
 
 # Imports gerais
-from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, get_secoes, get_modelos
-
+from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, get_secoes, get_modelos, gerar_excel
 # Imports específicos
 from modules.home.home_service import HomeService
 import modules.home.graficos as home_graficos
@@ -395,6 +395,34 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_modelos, list
     return df.to_dict("records")
 
 
+# Callback para atualizar o link de download quando o botão for clicado
+@callback(
+    Output("download-excel-tipo-os", "data"),
+    [
+        Input("btn-exportar-tipo-os", "n_clicks"),
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+    prevent_initial_call=True
+)
+def download_excel_tabela_top_os(n_clicks, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+        return dash.no_update
+
+    date_now = date.today().strftime('%d-%m-%Y')
+    
+    # Obtem os dados
+    df = home_service.get_top_os_geral_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
+
+    excel_data = gerar_excel(df=df)
+    return dcc.send_bytes(excel_data, f"tabela_tipo_os_{date_now}.xlsx")
+
+
+
 @callback(
     Output("tabela-top-os-colaborador-geral", "rowData"),
     [
@@ -418,6 +446,32 @@ def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_mo
 
 
 @callback(
+    Output("download-excel-tabela-colaborador", "data"),
+    [
+        Input("btn-exportar-tabela-colaborador", "n_clicks"),
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+    prevent_initial_call=True
+)
+def download_excel_tabela_colaborador(n_clicks, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+        return dash.no_update
+
+    date_now = date.today().strftime('%d-%m-%Y')
+    
+    # Obtem os dados
+    df = home_service.get_top_os_colaboradores(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
+
+    excel_data = gerar_excel(df=df)
+    return dcc.send_bytes(excel_data, f"tabela_colaboradores_{date_now}.xlsx")
+
+
+@callback(
     Output("tabela-top-veiculos-geral", "rowData"),
     [
         Input("input-intervalo-datas-geral", "value"),
@@ -438,6 +492,31 @@ def atualiza_tabela_top_veiculos_geral_retrabalho(datas, min_dias, lista_modelos
 
     return df.to_dict("records")
 
+
+@callback(
+    Output("download-excel-tabela-veiculo", "data"),
+    [
+        Input("btn-exportar-tabela-veiculo", "n_clicks"),
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+    prevent_initial_call=True
+)
+def download_excel_tabela_colaborador(n_clicks, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+        return dash.no_update
+
+    date_now = date.today().strftime('%d-%m-%Y')
+    
+    # Obtem os dados
+    df = home_service.get_top_veiculos(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
+
+    excel_data = gerar_excel(df=df)
+    return dcc.send_bytes(excel_data, f"tabela_veiculo_{date_now}.xlsx")
 
 ##############################################################################
 ### Callbacks para os labels #################################################
@@ -888,7 +967,6 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="fluent:line-horizontal-4-search-16-filled", width=45), width="auto"),
-                # dbc.Col(html.H4("Detalhamento por tipo de OS (serviço)", className="align-self-center"), width=True),
                 dbc.Col(
                     dbc.Row(
                         [
@@ -897,7 +975,37 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-tabela-tipo-os"),
+                            dbc.Row(
+                                [
+                                    dbc.Col(gera_labels_inputs("visao-geral-tabela-tipo-os"), width=True),
+                                    dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar-tipo-os",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel-tipo-os"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                justify="between",  # Deixa os itens espaçados
+                            ),
                         ]
                     ),
                     width=True,
@@ -924,10 +1032,6 @@ layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
-                # dbc.Col(
-                #     html.H4("Detalhamento por colaborador das OSs escolhidas", className="align-self-center"),
-                #     width=True,
-                # ),
                 dbc.Col(
                     dbc.Row(
                         [
@@ -936,7 +1040,37 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-tabela-colaborador-os"),
+                            dbc.Row(
+                                [
+                                    dbc.Col(gera_labels_inputs("visao-geral-tabela-colaborador-os"), width=True),
+                                    dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar-tabela-colaborador",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel-tabela-colaborador"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                justify="between",  # Deixa os itens espaçados
+                            ),
                         ]
                     ),
                     width=True,
@@ -970,7 +1104,37 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-tabela-veiculo"),
+                            dbc.Row(
+                                [
+                                    dbc.Col(gera_labels_inputs("visao-geral-tabela-veiculo"), width=True),
+                                    dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar-tabela-veiculo",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel-tabela-veiculo"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                justify="between",  # Deixa os itens espaçados
+                            ),
                         ]
                     ),
                     width=True,
