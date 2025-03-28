@@ -19,6 +19,7 @@ import dash
 # Importar bibliotecas do bootstrap e ag-grid
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
+from dash import callback_context
 
 # Dash componentes Mantine e icones
 import dash_mantine_components as dmc
@@ -699,7 +700,16 @@ def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, l
     prevent_initial_call=True
 )
 def atualizar_download(n_clicks, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:  
+        return dash.no_update  # Evita execução desnecessária
+    
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    if triggered_id != "btn-exportar":
+        return dash.no_update  # Ignora mudanças nos outros inputs
+
+    if not n_clicks or n_clicks <= 0: 
         return dash.no_update
     
     date_now = datetime.now().strftime('%d-%m-%Y')

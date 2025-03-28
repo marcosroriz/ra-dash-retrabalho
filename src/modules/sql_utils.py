@@ -66,3 +66,24 @@ def subquery_modelos_pecas(lista_modelos, prefix=""):
         return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODOS":
     query = f"""AND {prefix}"MODELO" IN ({', '.join([f"'{x}'" for x in lista_modelos])})"""
     return query
+
+def subquery_modelos_combustivel(lista_modelos, prefix=""):
+    #query = ""
+    if not lista_modelos or "TODOS" in lista_modelos:
+        return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODOS":
+    query = f"""AND {prefix} vec_model IN ({', '.join([f"'{x}'" for x in [lista_modelos]])})"""
+    return query
+
+def subquery_linha_combustivel(lista_linhas, prefix=""):
+    #query = ""
+    if not lista_linhas or "TODAS" in lista_linhas:
+        return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODOS":
+    query = f"""AND {prefix} encontrou_numero_linha IN ({', '.join([f"'{x}'" for x in lista_linhas])})"""
+    return query
+
+def subquery_sentido_combustivel(sentido_linha, prefix=""):
+    #query = ""
+    if not sentido_linha or "IDA_VOLTA" in sentido_linha:
+        return ""  # Não adiciona a cláusula IN se a lista estiver vazia ou for "TODOS":
+    query = f"""AND {prefix} encontrou_numero_linha IN ({', '.join([f"'{x}'" for x in sentido_linha])})"""
+    return query
