@@ -115,10 +115,12 @@ def gera_labels_inputs_veiculos(campo):
         Output("input-select-modelos-combustivel", "options"),
     ],
     [
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
     ],
 )
 def corrige_input_modelo(datas):
+    if datas is None or not datas or None in datas:
+        return [[]]
     # Vamos pegar as OS possíveis para as seções selecionadas
     df_lista_modelo = combus.df_lista_combustivel_modelo(datas)
 
@@ -137,12 +139,14 @@ def corrige_input_modelo(datas):
         Output("input-select-linhas-combustivel", "value"),
     ],
     [
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value")
     ],
 )
 def corrige_input_linha(datas, lista_linhas, lista_modelos):
+    if datas is None or not datas or None in datas:
+        return [], []
     # Vamos pegar as OS possíveis para as seções selecionadas
     df_lista_linhas = combus.df_lista_linha_rmtc(datas, lista_modelos)
 
@@ -162,7 +166,7 @@ def corrige_input_linha(datas, lista_linhas, lista_modelos):
 @callback(
     Output("tabela-combustivel", "rowData"), 
     [
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-sentido-da-linha", "value"),
@@ -171,7 +175,7 @@ def corrige_input_linha(datas, lista_linhas, lista_modelos):
 )
 def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia):
     
-    if(datas is None):
+    if datas is None or not datas or None in datas:
         return []
     
     return combus.df_tabela_combustivel(
@@ -184,7 +188,7 @@ def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_li
      Output("indicador-quantidade-de-veiculos-diferentes", "children"),
      Output("indicador-quantidade-de-modelos-diferentes", "children"),], 
     [
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-sentido-da-linha", "value"),
@@ -192,10 +196,11 @@ def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_li
     ],
 )
 def grafico_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia):
-    if(datas is None):
-        return []
+    if datas is None or not datas or None in datas:
+        return go.Figure(), None, None, None
 
-    grafico, numero_viagens, num_veiculos_diff, num_modelo_diff = combus.grafico_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
+    grafico = combus.grafico_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
+    numero_viagens, num_veiculos_diff, num_modelo_diff = combus.viagens_veiculos_modelos_diff(datas, lista_modelo, lista_linhas, sentido_linha, dia)
 
     return grafico, numero_viagens, num_veiculos_diff, num_modelo_diff
 
@@ -206,7 +211,7 @@ def grafico_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_l
     Output("download-excel-tabela-combustivel-1", "data"),
     [
         Input("btn-exportar-comb", "n_clicks"),
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-sentido-da-linha", "value"),
@@ -227,7 +232,7 @@ def dowload_excel_tabela_peças(n_clicks, datas, lista_modelo, lista_linhas, sen
     if not n_clicks or n_clicks <= 0: 
         return dash.no_update
     
-    if(datas is None):
+    if datas is None or not datas or None in datas:
         return []
     date_now = datetime.now().strftime('%d-%m-%Y')
     timestamp = int(time.time())
@@ -294,22 +299,16 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
-                                                    dbc.Label("Data",    style={"display": "block", "margin-bottom": "10px"} ), # Adiciona espaço abaixo do Label),),
-                                                    dcc.DatePickerSingle(
+                                                    dbc.Label("Data"),
+                                                    dmc.DatePicker(
                                                         id="input-intervalo-datas-combustivel",
-                                                        min_date_allowed=date(2024, 12, 29),  # Data mínima permitida
-                                                        max_date_allowed=date.today(),        # Data máxima permitida
-                                                        initial_visible_month=date(2024, 12, 29),  # Mês visível por padrão
-                                                        date=date(2024, 12, 29),              # Data inicial
-                                                        display_format="DD/MM/YYYY",          # Formato de exibição
+                                                        allowSingleDateInRange=True,
+                                                        type="range",
+                                                        minDate=date(2024, 12, 29),
+                                                        maxDate=date.today(),
+                                                        value=[date(2024, 12, 29), date.today()],
                                                     ),
-                                                    # dcc.DatePickerSingle(
-                                                    #     id='input-intervalo-datas-combustivel',
-                                                    #     min_date_allowed=date(2024, 12, 29),
-                                                    #     max_date_allowed=date.today(),
-                                                    #     initial_visible_month=date(2024, 12, 29),
-                                                    #     date=date(2024, 12, 29)
-                                                    # ),
+                                                    
                                                 ],
                                                 className="dash-bootstrap",
                                             ),
