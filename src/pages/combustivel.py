@@ -149,18 +149,29 @@ def corrige_input_linha(datas, lista_linhas, lista_modelos):
     # Vamos pegar as OS possíveis para as seções selecionadas
     df_lista_linhas = combus.df_lista_linha_rmtc(datas, lista_modelos)
 
+    # Ordenar a lista por número (considerando que os LABELs são números representados como strings)
+    df_lista_linhas = df_lista_linhas.sort_values(by="LABEL", key=lambda col: pd.to_numeric(col, errors='coerce'))
+
     # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
     lista_modelos_possiveis = df_lista_linhas.to_dict(orient="records")
     lista_modelos_possiveis.insert(0, {"LABEL": "TODAS"})
 
     lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_modelos_possiveis]
 
-    # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
-    if "TODAS" not in lista_linhas:
-        df_lista_os_atual = df_lista_linhas[df_lista_linhas["LABEL"].isin(lista_linhas)]
-        lista_linhas = df_lista_os_atual["LABEL"].tolist()
+    # Caso o usuário tenha selecionado alguma linha que não seja "TODAS"
+    if lista_linhas:
+        if "TODAS" in lista_linhas and len(lista_linhas) > 1:
+            lista_linhas.remove("TODAS")
 
-    return lista_options, corrige_input(lista_linhas)
+        # Permitir seleção de apenas uma linha por vez, exceto quando for "TODAS"
+        if len(lista_linhas) > 1:
+            lista_linhas = [lista_linhas[-1]]  # Pega a última linha selecionada
+
+    # Se nada for selecionado, manter "TODAS"
+    if not lista_linhas:
+        lista_linhas = ["TODAS"]
+
+    return lista_options, lista_linhas
 
 @callback(
     Output("tabela-combustivel", "rowData"), 
