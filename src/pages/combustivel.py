@@ -11,6 +11,9 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import time
+from sqlalchemy import text
+import dash_leaflet as dl
+import json
 
 
 # Importar bibliotecas do dash básicas e plotly
@@ -601,9 +604,30 @@ layout = dbc.Container(
             },
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
-        dmc.Space(h=40),
+        dmc.Space(h=40),   
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:map", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Mapa da Linha",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            dbc.Col(gera_labels_inputs_veiculos("input-geral-mapa-linha"), width=True),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
+        html.Div(id="mapa-linha-onibus"),
         dmc.Space(h=60),
-
     ]
 )
 
@@ -612,6 +636,121 @@ layout = dbc.Container(
 # CALLBACKS ##################################################################
 ##############################################################################
 
+@callback(
+    Output("mapa-linha-onibus", "children"),
+    [Input("input-select-linhas-combustivel", "value"), 
+     Input("input-intervalo-datas-combustivel", "date")]
+)
+def mostrar_mapa(numero_linha, data_filtro):
+    if not numero_linha or numero_linha == "TODAS":
+        return dl.Map(
+            children=[
+                dl.TileLayer(),
+            ],
+            style={'width': '100%', 'height': '500px'},
+            center=[-16.6869, -49.2648],
+            zoom=12,
+        )
+
+    if isinstance(numero_linha, list):
+        numero_linha = numero_linha[0]  
+
+    query = """
+    (
+        SELECT geojsondata, sentido
+        FROM rmtc_kml
+        WHERE numero = :numero AND sentido = 'IDA'
+        ORDER BY diahorario DESC
+        LIMIT 1
+    )
+    UNION ALL
+    (
+        SELECT geojsondata, sentido
+        FROM rmtc_kml
+        WHERE numero = :numero AND sentido = 'VOLTA'
+        ORDER BY diahorario DESC
+        LIMIT 1
+    );
+    """
+
+    with pgEngine.connect() as connection:
+        result = connection.execute(
+            text(query), 
+            {"numero": numero_linha}
+        ).fetchall()
+
+    if not result:
+        return dl.Map(
+            children=[
+                dl.TileLayer(),
+            ],
+            style={'width': '100%', 'height': '500px'},
+            center=[-16.6869, -49.2648],
+            zoom=12,
+        )
+
+    map_layers = [dl.TileLayer()]
+    legend_items = []
+
+    colors = {
+        "IDA": "blue",
+        "VOLTA": "red"
+    }
+
+    for row in result:
+        geojsondata = json.loads(row[0])
+        sentido = row[1]
+
+        # Pega o nome da linha do arquivo KML (se disponível)
+        nome_linha = geojsondata['features'][0]['properties'].get('name', 'Linha Desconhecida')
+
+        # Pega as coordenadas do GeoJSON para desenhar a linha no mapa
+        coordinates = geojsondata['features'][0]['geometry']['coordinates']
+        lat_lon_pairs = [(coord[1], coord[0]) for coord in coordinates]
+
+        # Escolher cor com base no sentido
+        color = colors.get(sentido, "black")
+
+        # Adicionar a linha no mapa
+        map_layers.append(dl.Polyline(positions=lat_lon_pairs, color=color, weight=4))
+
+        # Adicionar nome na legenda com a cor correspondente
+        legend_items.append(
+            html.Li([
+                html.Span(style={"display": "inline-block", "width": "20px", "height": "10px", "backgroundColor": color, "marginRight": "8px"}),
+                f"{nome_linha} ({sentido})"
+            ])
+        )
+
+    # Renderiza o mapa com os traçados plotados
+    return html.Div([
+        dl.Map(
+            children=map_layers,
+            style={'width': '100%', 'height': '500px'},
+            center=lat_lon_pairs[len(lat_lon_pairs) // 2],
+            zoom=12,
+            id="mapa-renderizado"
+        ),
+        html.Div(
+            children=[
+                html.H5("Legenda:"),
+                html.Ul(legend_items, style={"listStyleType": "none", "padding": "0"})
+            ],
+            style={
+                "position": "absolute",
+                "top": "20px",
+                "right": "20px",
+                "padding": "10px",
+                "background-color": "white",
+                "border-radius": "5px",
+                "box-shadow": "0 0 5px rgba(0,0,0,0.5)",
+                "z-index": "1000",
+                "width": "300px"  # Aumentei a largura da legenda
+            }
+        )
+    ], style={"position": "relative"})
+
+    
 # # VEÍCULOS DO MODELO SELECIONADO
 # @callback(
 #     [
