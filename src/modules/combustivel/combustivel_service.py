@@ -184,28 +184,36 @@ class CombustivelService:
         
         query = f"""
             --QUERY GRÁFICO v3
-            SELECT 
-                TO_CHAR(dia, 'DD/MM/YYYY') AS "DIA_BR",
-                vec_model as "MODELO",
-                AVG(km_por_litro) AS "KILOMETRO_POR_LTIRO"-- MÉDIA DA MÉDIA
-            FROM rmtc_viagens_analise rva
+            SELECT
+            encontrou_timestamp_inicio,
+            km_por_litro,
+            vec_model,
+            TO_CHAR(encontrou_timestamp_inicio::timestamp, 'HH24:MI:SS') AS hora_inicio_viagem -- Extrai só o horário de cada viagem
+                FROM rmtc_viagens_analise rva
             WHERE dia between '{data_inicio_str}' AND '{data_fim_str}'
                     {subquery_linhas}
                     {subquery_modelo}
                     {subquery_sentido}
-            GROUP BY dia, vec_model
             --QUERY GRÁFICO v3
             """
         df = pd.read_sql(query, self.pgEngine,)
         print(query)
         #df["DIA_BR"] = pd.to_datetime(df["DIA_BR"])
-        df["DIA_BR"] = pd.to_datetime(df["DIA_BR"], dayfirst=True)
+        df["hora_inicio_viagem"] = pd.to_datetime(df["hora_inicio_viagem"], format='%H:%M:%S')
 
         print(df)
-        df = df.sort_values(by="DIA_BR")
+        df = df.sort_values(by="hora_inicio_viagem")
+        substituicoes = {
+            "IVECO/MASCA GRAN VIA U": "IVECO/MASCA",
+            "MB OF 1721 L59 E6 MPOLO TORINO U": "MB OF 1721 MPOLO TORINO U",
+            "VW 17230 APACHE VIP-SC ": "VW 17230 APACHE VIP-SC"
+        }
 
-        fig = px.line(df, x="DIA_BR", y="KILOMETRO_POR_LTIRO", color="MODELO",
+        df["vec_model"] = df["vec_model"].replace(substituicoes)
+
+        fig = px.line(df, x="hora_inicio_viagem", y="km_por_litro", color="vec_model",
                     title="Consumo KM/L ao Longo do Tempo por Modelo")
+        fig.update_layout(yaxis=dict(range=[-10, 10]))
 
         return fig
 
