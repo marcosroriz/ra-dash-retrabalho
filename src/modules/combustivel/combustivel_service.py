@@ -205,6 +205,7 @@ class CombustivelService:
         df = df.sort_values(by="hora_inicio_viagem")
         substituicoes = {
             "IVECO/MASCA GRAN VIA U": "IVECO/MASCA",
+            "IVECO/MASCA ": "IVECO/MASCA",
             "MB OF 1721 L59 E6 MPOLO TORINO U": "MB OF 1721 MPOLO TORINO U",
             "VW 17230 APACHE VIP-SC ": "VW 17230 APACHE VIP-SC"
         }
