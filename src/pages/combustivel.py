@@ -11,6 +11,9 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import time
+from sqlalchemy import text
+import dash_leaflet as dl
+import json
 
 
 # Importar bibliotecas do dash básicas e plotly
@@ -115,10 +118,12 @@ def gera_labels_inputs_veiculos(campo):
         Output("input-select-modelos-combustivel", "options"),
     ],
     [
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
     ],
 )
 def corrige_input_modelo(datas):
+    if datas is None or not datas or None in datas:
+        return [[]]
     # Vamos pegar as OS possíveis para as seções selecionadas
     df_lista_modelo = combus.df_lista_combustivel_modelo(datas)
 
@@ -137,14 +142,19 @@ def corrige_input_modelo(datas):
         Output("input-select-linhas-combustivel", "value"),
     ],
     [
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value")
     ],
 )
 def corrige_input_linha(datas, lista_linhas, lista_modelos):
+    if datas is None or not datas or None in datas:
+        return [], []
     # Vamos pegar as OS possíveis para as seções selecionadas
     df_lista_linhas = combus.df_lista_linha_rmtc(datas, lista_modelos)
+
+    # Ordenar a lista por número (considerando que os LABELs são números representados como strings)
+    df_lista_linhas = df_lista_linhas.sort_values(by="LABEL", key=lambda col: pd.to_numeric(col, errors='coerce'))
 
     # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
     lista_modelos_possiveis = df_lista_linhas.to_dict(orient="records")
@@ -152,17 +162,25 @@ def corrige_input_linha(datas, lista_linhas, lista_modelos):
 
     lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_modelos_possiveis]
 
-    # OK, algor vamos remover as OS que não são possíveis para as seções selecionadas
-    if "TODAS" not in lista_linhas:
-        df_lista_os_atual = df_lista_linhas[df_lista_linhas["LABEL"].isin(lista_linhas)]
-        lista_linhas = df_lista_os_atual["LABEL"].tolist()
+    # Caso o usuário tenha selecionado alguma linha que não seja "TODAS"
+    if lista_linhas:
+        if "TODAS" in lista_linhas and len(lista_linhas) > 1:
+            lista_linhas.remove("TODAS")
 
-    return lista_options, corrige_input(lista_linhas)
+        # Permitir seleção de apenas uma linha por vez, exceto quando for "TODAS"
+        if len(lista_linhas) > 1:
+            lista_linhas = [lista_linhas[-1]]  # Pega a última linha selecionada
+
+    # Se nada for selecionado, manter "TODAS"
+    if not lista_linhas:
+        lista_linhas = ["TODAS"]
+
+    return lista_options, lista_linhas
 
 @callback(
     Output("tabela-combustivel", "rowData"), 
     [
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-sentido-da-linha", "value"),
@@ -171,7 +189,7 @@ def corrige_input_linha(datas, lista_linhas, lista_modelos):
 )
 def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia):
     
-    if(datas is None):
+    if datas is None or not datas or None in datas:
         return []
     
     return combus.df_tabela_combustivel(
@@ -184,7 +202,7 @@ def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_li
      Output("indicador-quantidade-de-veiculos-diferentes", "children"),
      Output("indicador-quantidade-de-modelos-diferentes", "children"),], 
     [
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-sentido-da-linha", "value"),
@@ -192,10 +210,11 @@ def tabela_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_li
     ],
 )
 def grafico_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia):
-    if(datas is None):
-        return []
+    if datas is None or not datas or None in datas:
+        return go.Figure(), None, None, None
 
-    grafico, numero_viagens, num_veiculos_diff, num_modelo_diff = combus.grafico_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
+    grafico = combus.grafico_combustivel(datas, lista_modelo, lista_linhas, sentido_linha, dia)
+    numero_viagens, num_veiculos_diff, num_modelo_diff = combus.viagens_veiculos_modelos_diff(datas, lista_modelo, lista_linhas, sentido_linha, dia)
 
     return grafico, numero_viagens, num_veiculos_diff, num_modelo_diff
 
@@ -206,7 +225,7 @@ def grafico_visao_geral_combustivel(datas, lista_modelo, lista_linhas, sentido_l
     Output("download-excel-tabela-combustivel-1", "data"),
     [
         Input("btn-exportar-comb", "n_clicks"),
-        Input("input-intervalo-datas-combustivel", "date"),
+        Input("input-intervalo-datas-combustivel", "value"),
         Input("input-select-modelos-combustivel", "value"),
         Input("input-select-linhas-combustivel", "value"),
         Input("input-select-sentido-da-linha", "value"),
@@ -227,7 +246,7 @@ def dowload_excel_tabela_peças(n_clicks, datas, lista_modelo, lista_linhas, sen
     if not n_clicks or n_clicks <= 0: 
         return dash.no_update
     
-    if(datas is None):
+    if datas is None or not datas or None in datas:
         return []
     date_now = datetime.now().strftime('%d-%m-%Y')
     timestamp = int(time.time())
@@ -294,22 +313,16 @@ layout = dbc.Container(
                                         [
                                             html.Div(
                                                 [
-                                                    dbc.Label("Data",    style={"display": "block", "margin-bottom": "10px"} ), # Adiciona espaço abaixo do Label),),
-                                                    dcc.DatePickerSingle(
+                                                    dbc.Label("Data"),
+                                                    dmc.DatePicker(
                                                         id="input-intervalo-datas-combustivel",
-                                                        min_date_allowed=date(2024, 12, 29),  # Data mínima permitida
-                                                        max_date_allowed=date.today(),        # Data máxima permitida
-                                                        initial_visible_month=date(2024, 12, 29),  # Mês visível por padrão
-                                                        date=date(2024, 12, 29),              # Data inicial
-                                                        display_format="DD/MM/YYYY",          # Formato de exibição
+                                                        allowSingleDateInRange=True,
+                                                        type="range",
+                                                        minDate=date(2024, 12, 29),
+                                                        maxDate=date.today(),
+                                                        value=[date(2024, 12, 29), date.today()],
                                                     ),
-                                                    # dcc.DatePickerSingle(
-                                                    #     id='input-intervalo-datas-combustivel',
-                                                    #     min_date_allowed=date(2024, 12, 29),
-                                                    #     max_date_allowed=date.today(),
-                                                    #     initial_visible_month=date(2024, 12, 29),
-                                                    #     date=date(2024, 12, 29)
-                                                    # ),
+                                                    
                                                 ],
                                                 className="dash-bootstrap",
                                             ),
@@ -601,9 +614,30 @@ layout = dbc.Container(
             },
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
         ),
-        dmc.Space(h=40),
+        dmc.Space(h=40),   
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:map", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Mapa da Linha",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            dbc.Col(gera_labels_inputs_veiculos("input-geral-mapa-linha"), width=True),
+                        ]
+                    ),
+                    width=True,
+                ),
+                
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
+        html.Div(id="mapa-linha-onibus"),
         dmc.Space(h=60),
-
     ]
 )
 
@@ -612,6 +646,121 @@ layout = dbc.Container(
 # CALLBACKS ##################################################################
 ##############################################################################
 
+@callback(
+    Output("mapa-linha-onibus", "children"),
+    [Input("input-select-linhas-combustivel", "value"), 
+     Input("input-intervalo-datas-combustivel", "date")]
+)
+def mostrar_mapa(numero_linha, data_filtro):
+    if not numero_linha or numero_linha == "TODAS":
+        return dl.Map(
+            children=[
+                dl.TileLayer(),
+            ],
+            style={'width': '100%', 'height': '500px'},
+            center=[-16.6869, -49.2648],
+            zoom=12,
+        )
+
+    if isinstance(numero_linha, list):
+        numero_linha = numero_linha[0]  
+
+    query = """
+    (
+        SELECT geojsondata, sentido
+        FROM rmtc_kml
+        WHERE numero = :numero AND sentido = 'IDA'
+        ORDER BY diahorario DESC
+        LIMIT 1
+    )
+    UNION ALL
+    (
+        SELECT geojsondata, sentido
+        FROM rmtc_kml
+        WHERE numero = :numero AND sentido = 'VOLTA'
+        ORDER BY diahorario DESC
+        LIMIT 1
+    );
+    """
+
+    with pgEngine.connect() as connection:
+        result = connection.execute(
+            text(query), 
+            {"numero": numero_linha}
+        ).fetchall()
+
+    if not result:
+        return dl.Map(
+            children=[
+                dl.TileLayer(),
+            ],
+            style={'width': '100%', 'height': '500px'},
+            center=[-16.6869, -49.2648],
+            zoom=12,
+        )
+
+    map_layers = [dl.TileLayer()]
+    legend_items = []
+
+    colors = {
+        "IDA": "blue",
+        "VOLTA": "red"
+    }
+
+    for row in result:
+        geojsondata = json.loads(row[0])
+        sentido = row[1]
+
+        # Pega o nome da linha do arquivo KML (se disponível)
+        nome_linha = geojsondata['features'][0]['properties'].get('name', 'Linha Desconhecida')
+
+        # Pega as coordenadas do GeoJSON para desenhar a linha no mapa
+        coordinates = geojsondata['features'][0]['geometry']['coordinates']
+        lat_lon_pairs = [(coord[1], coord[0]) for coord in coordinates]
+
+        # Escolher cor com base no sentido
+        color = colors.get(sentido, "black")
+
+        # Adicionar a linha no mapa
+        map_layers.append(dl.Polyline(positions=lat_lon_pairs, color=color, weight=4))
+
+        # Adicionar nome na legenda com a cor correspondente
+        legend_items.append(
+            html.Li([
+                html.Span(style={"display": "inline-block", "width": "20px", "height": "10px", "backgroundColor": color, "marginRight": "8px"}),
+                f"{nome_linha} ({sentido})"
+            ])
+        )
+
+    # Renderiza o mapa com os traçados plotados
+    return html.Div([
+        dl.Map(
+            children=map_layers,
+            style={'width': '100%', 'height': '500px'},
+            center=lat_lon_pairs[len(lat_lon_pairs) // 2],
+            zoom=12,
+            id="mapa-renderizado"
+        ),
+        html.Div(
+            children=[
+                html.H5("Legenda:"),
+                html.Ul(legend_items, style={"listStyleType": "none", "padding": "0"})
+            ],
+            style={
+                "position": "absolute",
+                "top": "20px",
+                "right": "20px",
+                "padding": "10px",
+                "background-color": "white",
+                "border-radius": "5px",
+                "box-shadow": "0 0 5px rgba(0,0,0,0.5)",
+                "z-index": "1000",
+                "width": "300px"  # Aumentei a largura da legenda
+            }
+        )
+    ], style={"position": "relative"})
+
+    
 # # VEÍCULOS DO MODELO SELECIONADO
 # @callback(
 #     [

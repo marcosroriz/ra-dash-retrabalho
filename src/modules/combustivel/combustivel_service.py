@@ -11,9 +11,9 @@ class CombustivelService:
     def df_lista_combustivel_modelo(self, datas):
         '''Retorna uma lista das OSs'''
         
-        # data_inicio_str = datas[0]
-        # data_fim = pd.to_datetime(datas[1])
-        # data_fim_str = data_fim.strftime("%Y-%m-%d")
+        data_inicio_str = datas[0]
+        data_fim = pd.to_datetime(datas[1])
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
         
         df_lista_combus = pd.read_sql(
             f"""
@@ -21,7 +21,7 @@ class CombustivelService:
             vec_model as "LABEL"
             from
                 rmtc_viagens_analise rva
-            where dia = '{datas}'
+            where dia between '{data_inicio_str}' AND '{data_fim_str}'
             order by
                 vec_model
             """,
@@ -34,9 +34,9 @@ class CombustivelService:
     def df_lista_linha_rmtc(self, datas, lista_modelo):
         '''Retorna uma lista das OSs'''
         
-        # data_inicio_str = datas[0]
-        # data_fim = pd.to_datetime(datas[1])
-        # data_fim_str = data_fim.strftime("%Y-%m-%d")
+        data_inicio_str = datas[0]
+        data_fim = pd.to_datetime(datas[1])
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         subquery_modelo = subquery_modelos_combustivel(lista_modelo)
         
@@ -47,7 +47,7 @@ class CombustivelService:
             from 
                 rmtc_viagens_analise rva 
             where 
-                encontrou_numero_linha is not null and dia = '{datas}'
+                encontrou_numero_linha is not null and dia between '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_modelo}
             """,
             self.pgEngine,
@@ -102,11 +102,11 @@ class CombustivelService:
             raise ValueError("O parâmetro 'dia' deve ser 'sabado', 'domingo', 'feriado' ou 'todos'.")
 
     def df_tabela_combustivel(self, datas, lista_modelo, lista_linhas, sentido_linha, dia):
-        # data_inicio_str = datas[0]
-        # data_fim = pd.to_datetime(datas[1])
-        # data_fim_str = data_fim.strftime("%Y-%m-%d")
+        data_inicio_str = datas[0]
+        data_fim = pd.to_datetime(datas[1])
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
 
-        data_selecionada = datas
+        # data_selecionada = datas
         subquery_modelo = subquery_modelos_combustivel(lista_modelo)
         subquery_linhas = subquery_linha_combustivel(lista_linhas)
         subquery_sentido = subquery_sentido_combustivel(sentido_linha)
@@ -119,7 +119,7 @@ class CombustivelService:
                     SUM("total_comb_l") / NULLIF(SUM("tamanho_linha_km_sobreposicao"), 0) AS "CONSUMO_POR_KM_LINHA"
                 FROM rmtc_viagens_analise rva
                 WHERE
-                dia = '{data_selecionada}'
+                dia between '{data_inicio_str}' AND '{data_fim_str}'
                 GROUP BY encontrou_numero_linha
             ),
             --TABELA DE MÉDIA KM_VEICULO
@@ -128,7 +128,7 @@ class CombustivelService:
                     vec_num_id,
                     SUM("total_comb_l") / NULLIF(SUM("tamanho_linha_km_sobreposicao"), 0) AS "CONSUMO_POR_KM_VEICULO"
                 FROM rmtc_viagens_analise rva
-                WHERE dia = '{data_selecionada}' -- FILTRAGEM PELA data !!!
+                WHERE dia between '{data_inicio_str}' AND '{data_fim_str}' -- FILTRAGEM PELA data !!!
                 GROUP BY vec_num_id
             ),
             geral as (
@@ -140,7 +140,7 @@ class CombustivelService:
                 SUM(rva."total_comb_l") / NULLIF(SUM(rva."tamanho_linha_km_sobreposicao"), 0) AS "CONSUMO_POR_KM"
             FROM rmtc_viagens_analise rva
             WHERE 
-                    rva.dia = '{data_selecionada}' -- FILTRAGEM PELA data !!!
+                    rva.dia between '{data_inicio_str}' AND '{data_fim_str}' -- FILTRAGEM PELA data !!!
                     AND encontrou_numero_linha is not null
                     {subquery_linhas}
                     {subquery_modelo}
@@ -174,38 +174,77 @@ class CombustivelService:
         return df_final_combustivel
 
     def grafico_combustivel(self, datas, lista_modelo, lista_linhas, sentido_linha, dia):
-        # data_inicio_str = datas[0]
-        # data_fim = pd.to_datetime(datas[1])
-        # data_fim_str = data_fim.strftime("%Y-%m-%d")
+        data_inicio_str = datas[0]
+        data_fim = pd.to_datetime(datas[1])
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         subquery_modelo = subquery_modelos_combustivel(lista_modelo)
         subquery_linhas = subquery_linha_combustivel(lista_linhas)
         subquery_sentido = subquery_sentido_combustivel(sentido_linha)
         
-        df = pd.read_sql(
-            f"""
-            --QUERY GRÁFICO v2
-            SELECT TO_CHAR(dia, 'DD/MM/YYYY') AS "DIA_BR",
-                vec_model as "MODELO", 
-                vec_num_id as "NUMERO_VEICULO",
-                km_por_litro as "KILOMETRO_POR_LTIRO",
-                encontrou_timestamp_inicio as "TIME"
-            FROM rmtc_viagens_analise rva
-            WHERE dia = '{datas}'
+        query = f"""
+            --QUERY GRÁFICO v3
+            SELECT
+            encontrou_timestamp_inicio,
+            km_por_litro,
+            vec_model,
+            TO_CHAR(encontrou_timestamp_inicio::timestamp, 'HH24:MI:SS') AS hora_inicio_viagem -- Extrai só o horário de cada viagem
+                FROM rmtc_viagens_analise rva
+            WHERE dia between '{data_inicio_str}' AND '{data_fim_str}'
                     {subquery_linhas}
                     {subquery_modelo}
                     {subquery_sentido}
-            --QUERY GRÁFICO v2
+            --QUERY GRÁFICO v3
+            """
+        df = pd.read_sql(query, self.pgEngine,)
+        print(query)
+        #df["DIA_BR"] = pd.to_datetime(df["DIA_BR"])
+        df["hora_inicio_viagem"] = pd.to_datetime(df["hora_inicio_viagem"], format='%H:%M:%S')
+
+        print(df)
+        df = df.sort_values(by="hora_inicio_viagem")
+        substituicoes = {
+            "IVECO/MASCA GRAN VIA U": "IVECO/MASCA",
+            "IVECO/MASCA ": "IVECO/MASCA",
+            "MB OF 1721 L59 E6 MPOLO TORINO U": "MB OF 1721 MPOLO TORINO U",
+            "VW 17230 APACHE VIP-SC ": "VW 17230 APACHE VIP-SC"
+        }
+
+        df["vec_model"] = df["vec_model"].replace(substituicoes)
+
+        fig = px.line(df, x="hora_inicio_viagem", y="km_por_litro", color="vec_model",
+                    title="Consumo KM/L ao Longo do Tempo por Modelo")
+        fig.update_layout(yaxis=dict(range=[-10, 10]))
+
+        return fig
+
+    def viagens_veiculos_modelos_diff(self, datas, lista_modelo, lista_linhas, sentido_linha, dia):
+        data_inicio_str = datas[0]
+        data_fim = pd.to_datetime(datas[1])
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        subquery_modelo = subquery_modelos_combustivel(lista_modelo)
+        subquery_linhas = subquery_linha_combustivel(lista_linhas)
+        subquery_sentido = subquery_sentido_combustivel(sentido_linha)
+
+        df = pd.read_sql(
+            f"""
+            -- QUERY CARDS
+            SELECT 
+                COUNT(DISTINCT vec_num_id) AS total_veiculos_distintos,
+                COUNT(DISTINCT vec_model) AS total_modelos_distintos,
+                COUNT(*) AS numero_viagens
+            FROM rmtc_viagens_analise rva
+            WHERE dia BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_linhas}
+                {subquery_modelo}
+                {subquery_sentido}
             """,
             self.pgEngine,
         )
-        df["TIME"] = pd.to_datetime(df["TIME"])
-        numero_viagens = len(df)
-        num_veiculos_diff = df['NUMERO_VEICULO'].nunique()
-        num_modelo_diff = df['MODELO'].nunique()
-        df = df.sort_values(by="TIME")
 
-        fig = px.line(df, x="TIME", y="KILOMETRO_POR_LTIRO", color="MODELO",
-                    title="Consumo KM/L ao Longo do Tempo por Modelo")
+        numero_viagens = df["numero_viagens"].iloc[0]
+        num_veiculos_diff = df["total_veiculos_distintos"].iloc[0]
+        num_modelo_diff = df["total_modelos_distintos"].iloc[0]
 
-        return fig, numero_viagens, num_veiculos_diff, num_modelo_diff
+        return numero_viagens, num_veiculos_diff, num_modelo_diff
