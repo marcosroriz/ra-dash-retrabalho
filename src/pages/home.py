@@ -291,28 +291,29 @@ def plota_grafico_evolucao_retrabalho_por_oficina_por_mes(datas, min_dias, lista
 
 
 # Callbacks para o grafico de evolução do retrabalho por seção
-# @callback(
-#     Output("graph-evolucao-retrabalho-por-secao-por-mes", "figure"),
-#     [
-#         Input("input-intervalo-datas-geral", "value"),
-#         Input("input-select-dias-geral-retrabalho", "value"),
-#         Input("input-select-oficina-visao-geral", "value"),
-#         Input("input-select-secao-visao-geral", "value"),
-#         Input("input-select-ordens-servico-visao-geral", "value"),
-#     ],
-# )
-# def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
-#     # Valida input
-#     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
-#         return go.Figure()
+@callback(
+    Output("graph-evolucao-retrabalho-por-secao-por-mes", "figure"),
+    [
+        Input("input-intervalo-datas-geral", "value"),
+        Input("input-select-dias-geral-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-visao-geral", "value"),
+        Input("input-select-oficina-visao-geral", "value"),
+        Input("input-select-secao-visao-geral", "value"),
+        Input("input-select-ordens-servico-visao-geral", "value"),
+    ],
+)
+def plota_grafico_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    # Valida input
+    if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+        return go.Figure()
 
-#     # Obtem os dados
-#     df = home_service.get_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os)
+    # Obtem os dados
+    df = home_service.get_evolucao_retrabalho_por_secao_por_mes(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
-#     # Gera o gráfico
-#     fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_secao_por_mes(df)
+    # Gera o gráfico
+    fig = home_graficos.gerar_grafico_evolucao_retrabalho_por_secao_por_mes(df)
 
-#     return fig
+    return fig
 
 
 # Callbacks para o grafico de evolução do retrabalho por nota
@@ -734,38 +735,18 @@ layout = dbc.Container(
                                                     dcc.Dropdown(
                                                         id="input-select-secao-visao-geral",
                                                         options=[
+                                                            {"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes
                                                             # {"label": "TODAS", "value": "TODAS"},
-                                                            # {
-                                                            #     "label": "BORRACHARIA",
-                                                            #     "value": "MANUTENCAO BORRACHARIA",
-                                                            # },
-                                                            {
-                                                                "label": "ELETRICA",
-                                                                "value": "MANUTENCAO ELETRICA",
-                                                            },
+                                                            # {"label": "BORRACHARIA", "value": "MANUTENCAO BORRACHARIA" },
+                                                            # {"label": "ELETRICA", "value": "MANUTENCAO ELETRICA"},
                                                             # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            # {
-                                                            #     "label": "LANTERNAGEM",
-                                                            #     "value": "MANUTENCAO LANTERNAGEM",
-                                                            # },
+                                                            # {"label": "LANTERNAGEM", "value": "MANUTENCAO LANTERNAGEM"},
                                                             # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
-                                                            {
-                                                                "label": "MECANICA",
-                                                                "value": "MANUTENCAO MECANICA",
-                                                            },
+                                                            # {"label": "MECANICA", "value": "MANUTENCAO MECANICA"},
                                                             # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            # {
-                                                            #     "label": "SERVIÇOS DE TERCEIROS",
-                                                            #     "value": "SERVIÇOS DE TERCEIROS",
-                                                            # },
-                                                            # {
-                                                            #     "label": "SETOR DE ALINHAMENTO",
-                                                            #     "value": "SETOR DE ALINHAMENTO",
-                                                            # },
-                                                            # {
-                                                            #     "label": "SETOR DE POLIMENTO",
-                                                            #     "value": "SETOR DE POLIMENTO",
-                                                            # },
+                                                            # {"label": "SERVIÇOS DE TERCEIROS", "value": "SERVIÇOS DE TERCEIROS"},
+                                                            # {"label": "SETOR DE ALINHAMENTO", "value": "SETOR DE ALINHAMENTO"},
+                                                            # {"label": "SETOR DE POLIMENTO", "value": "SETOR DE POLIMENTO"},
                                                         ],
                                                         multi=True,
                                                         value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
@@ -898,28 +879,28 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-evolucao-retrabalho-por-garagem-por-mes"),
-        # dmc.Space(h=40),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-        #         # dbc.Col(html.H4("Evolução do retrabalho por seção / mês", className="align-self-center"), width=True),
-        #         dbc.Col(
-        #             dbc.Row(
-        #                 [
-        #                     html.H4(
-        #                         "Evolução do retrabalho por seção / mês",
-        #                         className="align-self-center",
-        #                     ),
-        #                     dmc.Space(h=5),
-        #                     gera_labels_inputs("visao-geral-evolucao-por-secao"),
-        #                 ]
-        #             ),
-        #             width=True,
-        #         ),
-        #     ],
-        #     align="center",
-        # ),
-        # dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes"),
+        dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
+                # dbc.Col(html.H4("Evolução do retrabalho por seção / mês", className="align-self-center"), width=True),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Evolução do retrabalho por seção / mês",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("visao-geral-evolucao-por-secao"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes"),
         dmc.Space(h=40),
         dbc.Row(
             [
