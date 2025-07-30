@@ -26,7 +26,7 @@ import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
-from modules.entities_utils import gerar_excel
+from modules.entities_utils import gerar_excel, get_secoes
 from modules.colaborador.tabelas import *
 import locale_utils
 
@@ -53,10 +53,16 @@ colab = ColaboradorService(pgEngine)
 # Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados
 df_mecanicos_todos = colab.get_mecanicos()
 
-#Obtem lista das os
+# Obtem lista das os
 df_lista_os = colab.df_lista_os()
 lista_todas_os = df_lista_os.to_dict(orient="records")
 lista_todas_os.insert(0, {"LABEL": "TODAS"})
+
+# Obtem a lista de Seções
+df_secoes = get_secoes(pgEngine)
+lista_todas_secoes = df_secoes.to_dict(orient="records")
+lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
+
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
@@ -274,7 +280,9 @@ def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, 
 )
 def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     
+    # Seta um valor padrão para o id_colaborador
     id_colaborador = 3295 if id_colaborador is None else id_colaborador
+
     # Validação dos inputs
     if datas is None or not datas or None in datas or min_dias is None:
         return False
@@ -854,41 +862,21 @@ layout = dbc.Container(
                                                     dcc.Dropdown(
                                                         id="input-select-secao-colaborador",
                                                         options=[
+                                                            {"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes
                                                             # {"label": "TODAS", "value": "TODAS"},
-                                                            # {
-                                                            #     "label": "BORRACHARIA",
-                                                            #     "value": "MANUTENCAO BORRACHARIA",
-                                                            # },
-                                                            {
-                                                                "label": "ELETRICA",
-                                                                "value": "MANUTENCAO ELETRICA",
-                                                            },
+                                                            # {"label": "BORRACHARIA", "value": "MANUTENCAO BORRACHARIA" },
+                                                            # {"label": "ELETRICA", "value": "MANUTENCAO ELETRICA"},
                                                             # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            # {
-                                                            #     "label": "LANTERNAGEM",
-                                                            #     "value": "MANUTENCAO LANTERNAGEM",
-                                                            # },
+                                                            # {"label": "LANTERNAGEM", "value": "MANUTENCAO LANTERNAGEM"},
                                                             # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
-                                                            {
-                                                                "label": "MECANICA",
-                                                                "value": "MANUTENCAO MECANICA",
-                                                            },
+                                                            # {"label": "MECANICA", "value": "MANUTENCAO MECANICA"},
                                                             # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            # {
-                                                            #     "label": "SERVIÇOS DE TERCEIROS",
-                                                            #     "value": "SERVIÇOS DE TERCEIROS",
-                                                            # },
-                                                            # {
-                                                            #     "label": "SETOR DE ALINHAMENTO",
-                                                            #     "value": "SETOR DE ALINHAMENTO",
-                                                            # },
-                                                            # {
-                                                            #     "label": "SETOR DE POLIMENTO",
-                                                            #     "value": "SETOR DE POLIMENTO",
-                                                            # },
+                                                            # {"label": "SERVIÇOS DE TERCEIROS", "value": "SERVIÇOS DE TERCEIROS"},
+                                                            # {"label": "SETOR DE ALINHAMENTO", "value": "SETOR DE ALINHAMENTO"},
+                                                            # {"label": "SETOR DE POLIMENTO", "value": "SETOR DE POLIMENTO"},
                                                         ],
                                                         multi=True,
-                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
+                                                        value=["TODAS"],
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],
