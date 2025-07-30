@@ -66,23 +66,22 @@ lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(
-    __name__, name="Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline"
-)
+dash.register_page(__name__, name="Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline")
 
 ##############################################################################
 # CALLBACKS ##################################################################
-##############################################################################   
+##############################################################################
 
 ##############################################################################
 # Callbacks para os inputs ###################################################
 ##############################################################################
 
+
 # Função para validar o input
 def input_valido(id_colaborador, datas, min_dias, lista_oficinas, lista_secaos, lista_os):
     if id_colaborador is None or not id_colaborador or None in id_colaborador:
         return False
-    
+
     if datas is None or not datas or None in datas or min_dias is None:
         return False
 
@@ -115,6 +114,7 @@ def corrige_input(lista):
     # Por fim, se não caiu em nenhum caso, retorna o valor original
     return lista
 
+
 def gera_labels_inputs(campo):
     # Cria o callback
     @callback(
@@ -129,7 +129,7 @@ def gera_labels_inputs(campo):
             Input("input-select-oficina-colaborador", "value"),
         ],
     )
-    def atualiza_labels_inputs( min_dias, lista_secaos, lista_os, lista_modelo, lista_oficinas):
+    def atualiza_labels_inputs(min_dias, lista_secaos, lista_os, lista_modelo, lista_oficinas):
         labels_antes = [
             # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
             dmc.Badge("Filtro", color="gray", variant="outline"),
@@ -144,7 +144,7 @@ def gera_labels_inputs(campo):
         else:
             for oficina in lista_oficinas:
                 lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
-                
+
         if lista_modelo is None or not lista_modelo or "TODAS" in lista_modelo:
             lista_oficinas_labels.append(dmc.Badge("Todos os modelos", variant="outline"))
         else:
@@ -178,12 +178,14 @@ def gera_labels_inputs(campo):
 def corrige_input_oficina(lista_oficinas):
     return corrige_input(lista_oficinas)
 
+
 @callback(
     Output("input-select-secao-colaborador", "value"),
     Input("input-select-secao-colaborador", "value"),
 )
 def corrige_input_secao(lista_secaos):
     return corrige_input(lista_secaos)
+
 
 @callback(
     [
@@ -195,7 +197,7 @@ def corrige_input_secao(lista_secaos):
         Input("input-select-secao-colaborador", "value"),
         Input("input-lista-colaborador", "value"),
         Input("input-min-dias-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value")
+        Input("input-intervalo-datas-colaborador", "value"),
     ],
 )
 def corrige_input_ordem_servico(lista_os, lista_secaos, id_colaborador, min_dias, datas):
@@ -230,13 +232,12 @@ def corrige_input_ordem_servico(lista_os, lista_secaos, id_colaborador, min_dias
         Input("input-select-ordens-servico-colaborador", "value"),
         Input("input-lista-colaborador", "value"),
         Input("input-min-dias-colaborador", "value"),
-        Input("input-intervalo-datas-colaborador", "value")
+        Input("input-intervalo-datas-colaborador", "value"),
     ],
 )
 def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, min_dias, datas):
     # Vamos pegar as OS possíveis para as seções selecionadas
     df_lista_os_secao = colab.df_lista_os_colab_modelo(lista_secaos, lista_os, min_dias, id_colaborador, datas)
-
 
     # Essa rotina garante que, ao alterar a seleção de oficinas ou seções, a lista de ordens de serviço seja coerente
     lista_modelos_possiveis = df_lista_os_secao.to_dict(orient="records")
@@ -252,7 +253,6 @@ def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, 
     return lista_options, corrige_input(lista_modelos)
 
 
-
 @callback(
     [
         Output("indicador-total-os-trabalho", "children"),
@@ -264,8 +264,9 @@ def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, 
         Output("indicador-nota-colaborador", "children"),
         Output("indicador-rank-posicao-nota", "children"),
         Output("indicador-gasto-total-colaborador", "children"),
-        Output("indicador-gasto-retrabalho-total-colaborador", "children")#indicador-gasto-retrabalho-total-colaborador
-        
+        Output(
+            "indicador-gasto-retrabalho-total-colaborador", "children"
+        ),  # indicador-gasto-retrabalho-total-colaborador
     ],
     [
         Input("input-lista-colaborador", "value"),
@@ -279,42 +280,51 @@ def corrige_input_modelo(lista_modelos, lista_secaos, lista_os, id_colaborador, 
     running=[(Output("loading-overlay", "visible"), True, False)],
 )
 def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    
+
     # Seta um valor padrão para o id_colaborador
     id_colaborador = 3295 if id_colaborador is None else id_colaborador
 
     # Validação dos inputs
     if datas is None or not datas or None in datas or min_dias is None:
         return False
-    if not id_colaborador or not datas or any(d is None for d in datas) or not isinstance(min_dias, int) or min_dias < 1:
-        return '', '', '', '','', '', '', '', '',''
-    
-    
+    if (
+        not id_colaborador
+        or not datas
+        or any(d is None for d in datas)
+        or not isinstance(min_dias, int)
+        or min_dias < 1
+    ):
+        return "", "", "", "", "", "", "", "", "", ""
+
     # Obtém análise estatística
     df_os_analise = colab.obtem_estatistica_retrabalho_sql(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
 
     if df_os_analise.empty:
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
         )
 
     # Indicador 1: Total de OSs trabalhadas
     total_os = f"{df_os_analise['TOTAL_OS'].iloc[0]}"
     # Indicador 2: Quantidade de serviços únicos realizados
-    servicos_diferentes = df_os_analise['QTD_SERVICOS_DIFERENTES'].iloc[0]
+    servicos_diferentes = df_os_analise["QTD_SERVICOS_DIFERENTES"].iloc[0]
     quantidade_servicos = f"{servicos_diferentes}"
 
     # Indicadores de correção de primeira e retrabalho
@@ -326,101 +336,131 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     else:
         correcao_primeira = "Dados insuficientes para calcular correções de primeira"
         retrabalho = "Dados insuficientes para calcular retrabalho"
-        
+
     df_rank_servico = colab.indcador_rank_servico(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
-    
+
     if df_rank_servico.empty:
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
         )
-    
+
     df_rank_os = colab.indcador_rank_total_os(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
     if df_rank_os.empty:
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
         )
     # Indicadores Rank
     rank_servico = f"{df_rank_servico['rank_colaborador'].iloc[0]}"
     rank_os_absoluta = f"{df_rank_os['rank_colaborador'].iloc[0]}"
-    
+
     df_nota_media = colab.nota_media_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
-    
+
     if df_nota_media.empty:
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
         )
     nota_media = f"{df_nota_media['nota_media_colaborador'].iloc[0] if not df_nota_media['nota_media_colaborador'].iloc[0]  is None else 0}"
-    
+
     df_nota_posicao = colab.posicao_rank_nota_media(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
     if df_nota_posicao.empty:
         return (
             "Nenhuma OS realizada no período selecionado.",
             "Nenhuma OS realizada no período selecionado.",
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
-            'Nenhuma OS realizada no período selecionado.',
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
+            "Nenhuma OS realizada no período selecionado.",
         )
 
     rank_nota_posicao = f"{df_nota_posicao['rank_colaborador'].iloc[0]}"
 
     df_gasto = colab.gasto_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina  
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
     gasto_colaborador = f"{df_gasto['TOTAL_GASTO'].iloc[0]}"
     gasto_retrabalho = f"{df_gasto['TOTAL_GASTO_RETRABALHO'].iloc[0]}"
-    
-    return total_os, quantidade_servicos, correcao_primeira, retrabalho, rank_servico, rank_os_absoluta, nota_media, rank_nota_posicao, gasto_colaborador, gasto_retrabalho
 
+    return (
+        total_os,
+        quantidade_servicos,
+        correcao_primeira,
+        retrabalho,
+        rank_servico,
+        rank_os_absoluta,
+        nota_media,
+        rank_nota_posicao,
+        gasto_colaborador,
+        gasto_retrabalho,
+    )
 
 
 @callback(
@@ -442,13 +482,18 @@ def computa_retrabalho_mecanico(id_colaborador, datas, min_dias, lista_secaos, l
         return dados_vazios
 
     # Obtem os dados de retrabalho
-    df_os_mecanico = colab.obtem_dados_os_mecanico(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina)
-
+    df_os_mecanico = colab.obtem_dados_os_mecanico(
+        id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    )
 
     return {"df_os_mecanico": df_os_mecanico.to_dict("records"), "vazio": False}
 
 
-@callback(Output("graph-barra-atuacao-geral", "figure"), Input("store-dados-colaborador-retrabalho", "data"), running=[(Output("loading-overlay", "visible"), True, False)])
+@callback(
+    Output("graph-barra-atuacao-geral", "figure"),
+    Input("store-dados-colaborador-retrabalho", "data"),
+    running=[(Output("loading-overlay", "visible"), True, False)],
+)
 def computa_atuacao_mecanico_tipo_os(data):
     if data["vazio"]:
         return go.Figure()
@@ -494,7 +539,7 @@ def computa_atuacao_mecanico_tipo_os(data):
 
 
 @callback(
-    Output("graph-principais-os", "figure"), 
+    Output("graph-principais-os", "figure"),
     [
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
@@ -505,16 +550,22 @@ def computa_atuacao_mecanico_tipo_os(data):
         Input("input-select-oficina-colaborador", "value"),
     ],
 )
-def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+def computa_atuacao_mecanico_tipo_os(
+    id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+):
     if not id_colaborador:
         return go.Figure()
 
     # Obtem OS
     df_os_mecanico = colab.dados_grafico_top_10_do_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
-    ).sort_values('TOTAL_OS',ascending=False)
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
+    ).sort_values("TOTAL_OS", ascending=False)
 
     if df_os_mecanico.empty:
         return go.Figure()
@@ -538,8 +589,9 @@ def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_seca
     fig.update_layout(xaxis_title="")
     return fig
 
+
 @callback(
-    Output("graph-evolucao-retrabalho-por-mes", "figure"), 
+    Output("graph-evolucao-retrabalho-por-mes", "figure"),
     [
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
@@ -551,18 +603,22 @@ def computa_atuacao_mecanico_tipo_os(id_colaborador, datas, min_dias, lista_seca
     ],
 )
 def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    '''plota grafico de evolução de retrabalho por ano'''
-    
+    """plota grafico de evolução de retrabalho por ano"""
+
     dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
     # Validação dos inputs
     if (id_colaborador is None) or (datas is None) or (min_dias is None):
         return go.Figure()
-    
+
     # Obtém análise estatística
     df_os_analise = colab.obtem_estatistica_retrabalho_grafico(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
     if df_os_analise.empty:
         return go.Figure()
@@ -570,8 +626,9 @@ def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
     fig = generate_grafico_evolucao(df_os_analise)
     return fig
 
+
 @callback(
-    Output("graph-pizza-sintese-colaborador", "figure"), 
+    Output("graph-pizza-sintese-colaborador", "figure"),
     [
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
@@ -583,27 +640,32 @@ def grafico_retrabalho_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
     ],
 )
 def grafico_retrabalho_resumo(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    '''plota grafico de evolução de retrabalho por ano'''
+    """plota grafico de evolução de retrabalho por ano"""
     dados_vazios = {"df_os_mecanico": pd.DataFrame().to_dict("records"), "vazio": True}
     # Validação dos inputs
     if (id_colaborador is None) or (datas is None) or (min_dias is None):
         return go.Figure()
-    
+
     # Obtém análise estatística
     df_os_analise = colab.obtem_estatistica_retrabalho_grafico_resumo(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
 
     if df_os_analise.empty:
         return go.Figure()
-    
+
     fig = grafico_pizza_colaborador(df_os_analise)
     return fig
 
+
 @callback(
-    Output("tabela-top-os-colaborador", "rowData"), 
+    Output("tabela-top-os-colaborador", "rowData"),
     [
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
@@ -614,19 +676,26 @@ def grafico_retrabalho_resumo(id_colaborador, datas, min_dias, lista_secaos, lis
         Input("input-select-oficina-colaborador", "value"),
     ],
 )
-def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    
+def tabela_visao_geral_colaborador(
+    id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+):
+
     if (id_colaborador is None) or (datas is None) or (min_dias is None):
         return []
-    
+
     return colab.dados_tabela_do_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     ).to_dict("records")
-    
+
+
 @callback(
-    Output("graph-evolucao-nota-por-mes", "figure"), 
+    Output("graph-evolucao-nota-por-mes", "figure"),
     [
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
@@ -639,17 +708,21 @@ def tabela_visao_geral_colaborador(id_colaborador, datas, min_dias, lista_secaos
     running=[(Output("loading-overlay", "visible"), True, False)],
 )
 def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    '''plota grafico de evolução de retrabalho por ano'''
-    
+    """plota grafico de evolução de retrabalho por ano"""
+
     # Validação dos inputs
     if (id_colaborador is None) or (datas is None) or (min_dias is None):
         return go.Figure()
-    
+
     # Obtém análise estatística
     df_os_analise = colab.evolucao_nota_media_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
     if df_os_analise.empty:
         return go.Figure()
@@ -657,8 +730,9 @@ def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
     fig = generate_grafico_evolucao_nota(df_os_analise)
     return fig
 
+
 @callback(
-    Output("graph-evolucao-gasto-colaborador", "figure"), 
+    Output("graph-evolucao-gasto-colaborador", "figure"),
     [
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
@@ -671,17 +745,21 @@ def grafico_nota_media_mes(id_colaborador, datas, min_dias, lista_secaos, lista_
     running=[(Output("loading-overlay", "visible"), True, False)],
 )
 def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-    '''plota grafico de evolução de retrabalho por ano'''
-    
+    """plota grafico de evolução de retrabalho por ano"""
+
     # Validação dos inputs
     if (id_colaborador is None) or (datas is None) or (min_dias is None):
         return go.Figure()
-    
+
     # Obtém análise estatística
     df_os_analise = colab.evolucao_gasto_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
     if df_os_analise.empty:
         return go.Figure()
@@ -690,11 +768,9 @@ def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, l
     return fig
 
 
-    
 # Callback para atualizar o link de download quando o botão for clicado
 @callback(
-    Output("download-excel", "data")
-    ,
+    Output("download-excel", "data"),
     [
         Input("btn-exportar", "n_clicks"),
         Input("input-lista-colaborador", "value"),
@@ -705,37 +781,40 @@ def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, l
         Input("input-select-modelos-colaborador", "value"),
         Input("input-select-oficina-colaborador", "value"),
     ],
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
 def atualizar_download(n_clicks, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
     ctx = callback_context  # Obtém o contexto do callback
-    if not ctx.triggered:  
+    if not ctx.triggered:
         return dash.no_update  # Evita execução desnecessária
-    
+
     # Verifica se o callback foi acionado pelo botão de download
-    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
     if triggered_id != "btn-exportar":
         return dash.no_update  # Ignora mudanças nos outros inputs
 
-    if not n_clicks or n_clicks <= 0: 
+    if not n_clicks or n_clicks <= 0:
         return dash.no_update
-    
-    date_now = datetime.now().strftime('%d-%m-%Y')
-    
+
+    date_now = datetime.now().strftime("%d-%m-%Y")
+
     df = colab.dados_tabela_do_colaborador(
-        datas=datas, id_colaborador=id_colaborador, min_dias=min_dias, 
-        lista_secaos=lista_secaos, lista_os=lista_os, lista_modelo=lista_modelo,
-        lista_oficina=lista_oficina
+        datas=datas,
+        id_colaborador=id_colaborador,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
     )
     excel_data = gerar_excel(df=df)
     return dcc.send_bytes(excel_data, f"tabela_os_retrabalho{date_now}.xlsx")
 
 
-
 ##############################################################################
 layout = dbc.Container(
     [
-        # Loading 
+        # Loading
         dmc.LoadingOverlay(
             visible=True,
             id="loading-overlay",
@@ -804,7 +883,6 @@ layout = dbc.Container(
                                     ),
                                     md=6,
                                 ),
-                                
                                 dbc.Col(
                                     dbc.Card(
                                         [
@@ -852,7 +930,6 @@ layout = dbc.Container(
                                     ),
                                     md=6,
                                 ),
-                                
                                 dbc.Col(
                                     dbc.Card(
                                         [
@@ -862,7 +939,8 @@ layout = dbc.Container(
                                                     dcc.Dropdown(
                                                         id="input-select-secao-colaborador",
                                                         options=[
-                                                            {"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes
+                                                            {"label": sec["LABEL"], "value": sec["LABEL"]}
+                                                            for sec in lista_todas_secoes
                                                             # {"label": "TODAS", "value": "TODAS"},
                                                             # {"label": "BORRACHARIA", "value": "MANUTENCAO BORRACHARIA" },
                                                             # {"label": "ELETRICA", "value": "MANUTENCAO ELETRICA"},
@@ -931,7 +1009,6 @@ layout = dbc.Container(
                                                     dbc.Label("Modelo"),
                                                     dcc.Dropdown(
                                                         id="input-select-modelos-colaborador",
-
                                                         multi=True,
                                                         value=["TODAS"],
                                                         placeholder="Selecione um ou mais modelos...",
@@ -1004,271 +1081,270 @@ layout = dbc.Container(
         # Indicadores
         dbc.Row(
             [
-                html.H4("Indicadores", style={"text-align": "center", "margin-bottom": "20px", 'font-size': '45px'}),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-quantidade-servico", order=2),
-                                        DashIconify(
-                                            icon="mdi:bomb",
-                                            width=48,
-                                            color="black",
+                html.H4("Indicadores", style={"text-align": "center", "margin-bottom": "20px", "font-size": "45px"}),
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-quantidade-servico", order=2),
+                                                DashIconify(
+                                                    icon="mdi:bomb",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",  # Centralize conteúdo no card
+                                            mt="md",
+                                            mb="xs",
                                         ),
-                                    ],
-                                    justify="center",  # Centralize conteúdo no card
-                                    mt="md",
-                                    mb="xs",
-                                ),
+                                    ),
+                                    dbc.CardFooter("Total de tipo serviços"),
+                                ],
+                                class_name="card-box-shadow",
                             ),
-                            dbc.CardFooter("Total de tipo serviços"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},  # Adicione espaçamento inferior
+                            md=4,
+                            style={"margin-bottom": "20px"},  # Adicione espaçamento inferior
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-total-os-trabalho", order=2),
+                                                DashIconify(
+                                                    icon="material-symbols:order-play-outline",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Total de OSs executadas"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                            style={"margin-bottom": "20px"},
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-rank-servico", order=2),
+                                                DashIconify(
+                                                    icon="ion:analytics-sharp",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",  # Centralize conteúdo no card
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Rank de serviços diferentes"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                            style={"margin-bottom": "20px"},  # Adicione espaçamento inferior
+                        ),
+                    ],
+                    justify="center",  # Centralize a linha inteira
                 ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-total-os-trabalho", order=2),
-                                        DashIconify(
-                                            icon="material-symbols:order-play-outline",
-                                            width=48,
-                                            color="black",
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-rank-os", order=2),
+                                                DashIconify(
+                                                    icon="mdi:account-wrench",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",  # Centralize conteúdo no card
+                                            mt="md",
+                                            mb="xs",
                                         ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
+                                    ),
+                                    dbc.CardFooter("Rank de OSs absolutas"),
+                                ],
+                                class_name="card-box-shadow",
                             ),
-                            dbc.CardFooter("Total de OSs executadas"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},
+                            md=4,
+                            style={"margin-bottom": "20px"},  # Adicione espaçamento inferior
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-retrabalho", order=2),
+                                                DashIconify(
+                                                    icon="tabler:reorder",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("% das OS são retrabalho"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                            style={"margin-bottom": "20px"},
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-nota-colaborador", order=2),
+                                                DashIconify(
+                                                    icon="material-symbols-light:bar-chart-4-bars-rounded",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Nota do colaborador"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                            style={"margin-bottom": "20px"},
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-correcao-de-primeira", order=2),
+                                                DashIconify(
+                                                    icon="game-icons:time-bomb",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("OSs com correção de primeira"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                            style={"margin-bottom": "20px"},
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-rank-posicao-nota", order=2),
+                                                DashIconify(
+                                                    icon="mdi:account-wrench",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",  # Centralize conteúdo no card
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Posição da nota media"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                            style={"margin-bottom": "20px"},
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-gasto-total-colaborador", order=2),
+                                                DashIconify(
+                                                    icon="mdi:wrench",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",  # Centralize conteúdo no card
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Gasto total do colaborador"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                            style={"margin-bottom": "20px"},
+                        ),
+                        dbc.Col(
+                            dbc.Card(
+                                [
+                                    dbc.CardBody(
+                                        dmc.Group(
+                                            [
+                                                dmc.Title(id="indicador-gasto-retrabalho-total-colaborador", order=2),
+                                                DashIconify(
+                                                    icon="mdi:wrench",
+                                                    width=48,
+                                                    color="black",
+                                                ),
+                                            ],
+                                            justify="center",  # Centralize conteúdo no card
+                                            mt="md",
+                                            mb="xs",
+                                        ),
+                                    ),
+                                    dbc.CardFooter("Gasto total de Retrabalho do colaborador"),
+                                ],
+                                class_name="card-box-shadow",
+                            ),
+                            md=4,
+                            style={"margin-bottom": "20px"},
+                        ),
+                    ],
+                    justify="center",
                 ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-servico", order=2),
-                                        DashIconify(
-                                            icon="ion:analytics-sharp",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",  # Centralize conteúdo no card
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Rank de serviços diferentes"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},  # Adicione espaçamento inferior
-                )
             ],
-            justify="center",  # Centralize a linha inteira
+            style={"margin-top": "20px", "margin-bottom": "20px"},
         ),
-        
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-os", order=2),
-                                        DashIconify(
-                                            icon="mdi:account-wrench",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",  # Centralize conteúdo no card
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Rank de OSs absolutas"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},  # Adicione espaçamento inferior
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-retrabalho", order=2),
-                                        DashIconify(
-                                            icon="tabler:reorder",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("% das OS são retrabalho"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-nota-colaborador", order=2),
-                                        DashIconify(
-                                            icon="material-symbols-light:bar-chart-4-bars-rounded",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Nota do colaborador"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-correcao-de-primeira", order=2),
-                                        DashIconify(
-                                            icon="game-icons:time-bomb",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("OSs com correção de primeira"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-posicao-nota", order=2),
-                                        DashIconify(
-                                            icon="mdi:account-wrench",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",  # Centralize conteúdo no card
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Posição da nota media"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-gasto-total-colaborador", order=2),
-                                        DashIconify(
-                                            icon="mdi:wrench",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",  # Centralize conteúdo no card
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Gasto total do colaborador"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-gasto-retrabalho-total-colaborador", order=2),
-                                        DashIconify(
-                                            icon="mdi:wrench",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",  # Centralize conteúdo no card
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Gasto total de Retrabalho do colaborador"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=4,
-                    style={"margin-bottom": "20px"},
-                ),
-            ],
-            justify="center",
-        ),
-    ],
-    style={"margin-top": "20px", "margin-bottom": "20px"},
-    ),
         dmc.Space(h=40),
         html.Hr(),
         dbc.Row(
@@ -1279,12 +1355,13 @@ layout = dbc.Container(
                         [
                             html.H4(
                                 "Evolução das Métricas: Retrabalho e Correção de Primeira por mês",
-                                className="align-self-center"
+                                className="align-self-center",
                             ),
                             dmc.Space(h=5),
                             gera_labels_inputs("colaborador-grafico-evolucao-nota-os"),
                         ]
-                    ), width=True
+                    ),
+                    width=True,
                 ),
             ],
             align="center",
@@ -1298,15 +1375,12 @@ layout = dbc.Container(
                 dbc.Col(
                     dbc.Row(
                         [
-                            html.H4(
-                                "Evolução das Métricas: Nota media ",
-                                className="align-self-center"
-                            ),
+                            html.H4("Evolução das Métricas: Nota media ", className="align-self-center"),
                             dmc.Space(h=5),
                             gera_labels_inputs("colaborador-grafico-evolucao-retrabalho"),
                         ]
-                    ),width=True
-                    
+                    ),
+                    width=True,
                 ),
             ],
             align="center",
@@ -1320,15 +1394,12 @@ layout = dbc.Container(
                 dbc.Col(
                     dbc.Row(
                         [
-                            html.H4(
-                                "Evolução das Métricas: Media de gasto por mês",
-                                className="align-self-center"
-                            ),
+                            html.H4("Evolução das Métricas: Media de gasto por mês", className="align-self-center"),
                             dmc.Space(h=5),
                             gera_labels_inputs("colaborador-grafico-evolucao-gasto"),
                         ]
-                    ),width=True
-                    
+                    ),
+                    width=True,
                 ),
             ],
             align="center",
@@ -1339,9 +1410,29 @@ layout = dbc.Container(
         dbc.Row(
             [
                 # Gráfico de Pizza
-                dbc.Col(dbc.Row([html.H4("Atuação Geral"),dmc.Space(h=5), gera_labels_inputs("colaborador-grafico-atuacao-geral"), dcc.Graph(id="graph-barra-atuacao-geral")]), md=4),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4("Atuação Geral"),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("colaborador-grafico-atuacao-geral"),
+                            dcc.Graph(id="graph-barra-atuacao-geral"),
+                        ]
+                    ),
+                    md=4,
+                ),
                 # Indicadores
-                dbc.Col(dbc.Row([html.H4("Atuação OS (TOP 10)"), dmc.Space(h=5),gera_labels_inputs("colaborador-graficos-atuacao-os"), dcc.Graph(id="graph-principais-os")]), md=8),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4("Atuação OS (TOP 10)"),
+                            dmc.Space(h=5),
+                            gera_labels_inputs("colaborador-graficos-atuacao-os"),
+                            dcc.Graph(id="graph-principais-os"),
+                        ]
+                    ),
+                    md=8,
+                ),
             ],
             align="center",
         ),
@@ -1395,7 +1486,7 @@ layout = dbc.Container(
             ],
             align="center",
         ),
-        dmc.Space(h=20),    
+        dmc.Space(h=20),
         dag.AgGrid(
             id="tabela-top-os-colaborador",
             columnDefs=tbl_top_os_geral_retrabalho,
@@ -1410,4 +1501,3 @@ layout = dbc.Container(
         dmc.Space(h=10),
     ]
 )
-
