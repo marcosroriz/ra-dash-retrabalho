@@ -31,6 +31,8 @@ def get_oficinas(dbEngine):
             DISTINCT "DESCRICAO DA OFICINA" AS "LABEL"
         FROM 
             mat_view_retrabalho_10_dias mvrd 
+        ORDER BY 
+            "DESCRICAO DA OFICINA"
         """,
         dbEngine,
     )
@@ -44,6 +46,8 @@ def get_secoes(dbEngine):
             DISTINCT "DESCRICAO DA SECAO" AS "LABEL"
         FROM 
             mat_view_retrabalho_10_dias mvrd
+        ORDER BY 
+            "DESCRICAO DA SECAO"
         """,
         dbEngine,
     )
