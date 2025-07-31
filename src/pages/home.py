@@ -574,7 +574,7 @@ def gera_labels_inputs(campo):
             for os in lista_os:
                 lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
 
-        return [dmc.Group(labels_antes + datas_label + min_dias_label + lista_oficinas_labels + lista_os_labels)]
+        return [dmc.Group(labels_antes + datas_label + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels)]
 
     # Cria o componente
     return dmc.Group(id=f"{campo}-labels", children=[])
