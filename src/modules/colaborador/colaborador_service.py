@@ -468,7 +468,7 @@ class ColaboradorService:
 
         return df
     
-    def indcador_rank_servico(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    def indicador_rank_servico(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
         '''Obtem dados para rank de serviços diferentes'''
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
@@ -503,7 +503,6 @@ class ColaboradorService:
                 TABELA_RANK tr, TOTAL t
             where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             """
-        
         df_mecanicos = pd.read_sql(
             query,
             self.pgEngine
@@ -511,7 +510,7 @@ class ColaboradorService:
 
         return df_mecanicos
     
-    def indcador_rank_total_os(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    def indicador_rank_total_os(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
         '''Obtem dados para rank de total de OS'''
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])

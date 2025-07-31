@@ -8,10 +8,9 @@ tbl_top_os_geral_retrabalho = [
     {
         "field": "DESCRICAO DA OFICINA",
         "headerName": "OFICINA",
-        "pinned": "left",
         "minWidth": 200,
     },
-    {"field": "DESCRICAO DA SECAO", "pinned": "left", "headerName": "SEÇÃO", "minWidth": 200},
+    {"field": "DESCRICAO DA SECAO", "headerName": "SEÇÃO", "minWidth": 200},
     {"field": "DESCRICAO DO SERVICO", "pinned": "left","headerName": "SERVIÇO", "minWidth": 250},
     {
         "field": "TOTAL_OS",
