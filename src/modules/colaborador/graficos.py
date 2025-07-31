@@ -1,32 +1,40 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import plotly.graph_objs as go
+# Funções utilitárias para gerar os gráficos da OS por colaborador
+
+# Imports básicos
 from datetime import datetime
+
+# Imports gráficos
 import plotly.express as px
+import plotly.graph_objects as go
+
+# Imports do tema
 import tema
 
-
 def generate_timeline_retrabalho(mouth: list, percent_retrabalho: list):
-    '''Gera um grafico de linh contendo a evolução do retrabalho do colaborador '''
-    fig = go.Figure(data=[go.Scatter(x=mouth, y=percent_retrabalho)])    
+    """Gera um grafico de linh contendo a evolução do retrabalho do colaborador"""
+    fig = go.Figure(data=[go.Scatter(x=mouth, y=percent_retrabalho)])
     return fig
 
+
 def transform_year(year: str):
-    '''Retorna a data do começo ao final do ano escolhido '''
+    """Retorna a data do começo ao final do ano escolhido"""
     # Converte o ano para um inteiro
     year_int = int(year)
-    
+
     # Define a data de início do ano
     start_date = datetime(year_int, 1, 1)
-    
+
     # Define a data de término do ano
     end_date = datetime(year_int, 12, 31, 23, 59, 59)
 
     return start_date, end_date
 
+
 def generate_grafico_evolucao(dados):
-    '''Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês'''
+    """Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês"""
 
     # Funde (melt) colunas de retrabalho e correção
     df_combinado = dados.melt(
@@ -107,8 +115,9 @@ def generate_grafico_evolucao(dados):
 
     return fig
 
+
 def generate_grafico_evolucao_nota(dados):
-    '''Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês'''
+    """Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês"""
 
     # Gera o gráfico
     fig = px.line(
@@ -127,12 +136,11 @@ def generate_grafico_evolucao_nota(dados):
     # Aumenta o espaçamento do titulo
     fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
 
-
-
     return fig
 
+
 def grafico_pizza_colaborador(data):
-    '''Retorna o grafico de pizza geral'''
+    """Retorna o grafico de pizza geral"""
     if data.empty:
         return go.Figure()
     # Prepara os dados para o gráfico
@@ -142,7 +150,7 @@ def grafico_pizza_colaborador(data):
         data["TOTAL_CORRECAO_TARDIA"].values[0],
         data["TOTAL_RETRABALHO"].values[0],
     ]
-    
+
     # Gera o gráfico
     fig = go.Figure(
         data=[
@@ -175,24 +183,9 @@ def grafico_pizza_colaborador(data):
     # Retorna o gráfico
     return fig
 
-# Função para validar o input
-def input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
-    if datas is None or not datas or None in datas or min_dias is None:
-        return False
-
-    if lista_oficinas is None or not lista_oficinas or None in lista_oficinas:
-        return False
-
-    if lista_secaos is None or not lista_secaos or None in lista_secaos:
-        return False
-
-    if lista_os is None or not lista_os or None in lista_os:
-        return False
-
-    return True
 
 def generate_grafico_evolucao_gasto(dados):
-    '''Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês'''
+    """Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês"""
 
     # Gera o gráfico
     fig = px.line(
@@ -211,12 +204,11 @@ def generate_grafico_evolucao_gasto(dados):
     # Aumenta o espaçamento do titulo
     fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
 
-
-
     return fig
 
+
 def grafico_pizza_colaborador(data):
-    '''Retorna o grafico de pizza geral'''
+    """Retorna o grafico de pizza geral"""
     if data.empty:
         return go.Figure()
     # Prepara os dados para o gráfico
@@ -226,7 +218,7 @@ def grafico_pizza_colaborador(data):
         data["TOTAL_CORRECAO_TARDIA"].values[0],
         data["TOTAL_RETRABALHO"].values[0],
     ]
-    
+
     # Gera o gráfico
     fig = go.Figure(
         data=[
@@ -259,18 +251,53 @@ def grafico_pizza_colaborador(data):
     # Retorna o gráfico
     return fig
 
-# Função para validar o input
-def input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os):
-    if datas is None or not datas or None in datas or min_dias is None:
-        return False
 
-    if lista_oficinas is None or not lista_oficinas or None in lista_oficinas:
-        return False
+def gerar_grafico_pizza_atuacao_colaborador(df):
+    # Gera o Gráfico
+    fig = px.pie(
+        df,
+        values="QUANTIDADE",
+        names="DESCRICAO DO TIPO DA OS",
+        hole=0.2,
+    )
 
-    if lista_secaos is None or not lista_secaos or None in lista_secaos:
-        return False
+    # Update the chart to show percentages as labels
+    fig.update_traces(
+        textinfo="label+percent",
+        texttemplate="%{value}<br>%{percent:.2%}",
+    )
 
-    if lista_os is None or not lista_os or None in lista_os:
-        return False
+    fig.update_layout(
+        margin=dict(l=50, r=50, t=50, b=50),  # Remove todas as margens desnecessárias
+        legend=dict(
+            orientation="h",  # Horizontal orientation
+            y=0,  # Position the legend below the chart
+            x=0.5,  # Center align the legend
+            xanchor="center",
+        ),
+    )
 
-    return True
+    return fig
+
+
+def gerar_grafico_pizza_top_10_os_colaborador(df):
+    # Gera o Gráfico
+    fig = px.bar(
+        df,
+        x="DESCRICAO DO SERVICO",
+        y="TOTAL_OS",
+        text="TOTAL_OS",
+    )
+
+    fig.update_traces(
+        texttemplate="%{y} (%{customdata:.1f}%)",
+        customdata=df["PERC_TOTAL_OS"],
+        textposition="auto",
+    )
+
+    fig.update_layout(
+        xaxis_title="",
+        yaxis_title="Total de OS",
+    )
+
+    return fig
