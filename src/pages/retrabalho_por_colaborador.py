@@ -371,7 +371,7 @@ def calcular_indicadores(id_colaborador, datas, min_dias, lista_secaos, lista_os
     )
     if df_rank_os.empty:
         return resposta_padrao_vazia
-    
+
     # Indicadores Rank
     rank_servico = f"{df_rank_servico['rank_colaborador'].iloc[0]}"
     rank_os_absoluta = f"{df_rank_os['rank_colaborador'].iloc[0]}"
@@ -637,8 +637,12 @@ def tabela_visao_geral_colaborador(
         lista_oficina=lista_oficina,
     ).to_dict("records")
 
+
 @callback(
-    Output("tabela-detalhamento-os-colaborador", "rowData"),
+    [
+        Output("tabela-detalhamento-os-colaborador", "rowData"),
+        Output("input-lista-vec-detalhar-problema-colaborador", "options"),
+    ],
     [
         Input("input-lista-colaborador", "value"),
         Input("input-intervalo-datas-colaborador", "value"),
@@ -653,7 +657,7 @@ def tabela_detalhamento_os_colaborador(
     id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
 ):
     if (id_colaborador is None) or (datas is None) or (min_dias is None):
-        return []
+        return [], []
 
     df_os_detalhada_colaborador = colab_service.obtem_detalhamento_os_colaborador(
         datas=datas,
@@ -665,8 +669,57 @@ def tabela_detalhamento_os_colaborador(
         lista_oficina=lista_oficina,
     )
 
-    return df_os_detalhada_colaborador.to_dict("records")
+    # Gera as opções dos problemas, como dict pois o colaborador pode ter o mesmo problema várias vezes
+    dict_options = {}
+    for _, row in df_os_detalhada_colaborador.iterrows():
+        value = f"{row['CODIGO DO VEICULO']},{row['DESCRICAO DO SERVICO']},{row['problem_no']}"
+        lbl = f"{row['CODIGO DO VEICULO']} - Serviço: {row['DESCRICAO DO SERVICO']} - Problema: {row['problem_no']} "
+        dict_options[value] = lbl
 
+    # Converte para lista de dicionários
+    lista_options = [{"label": lbl, "value": value} for value, lbl in dict_options.items()]
+    lista_options.sort(key=lambda x: x["label"])
+
+    return df_os_detalhada_colaborador.to_dict("records"), lista_options
+
+
+@callback(
+    Output("tabela-detalhamento-problema-colaborador", "rowData"),
+    [
+        Input("input-lista-vec-detalhar-problema-colaborador", "value"),
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+)
+def tabela_detalhamento_problema_colaborador(
+    vec_problema_lbl, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+):
+    if (id_colaborador is None) or (datas is None) or (min_dias is None) or (vec_problema_lbl is None):
+        return []
+
+    vec_problema_options = vec_problema_lbl.split(",")
+    vec_problema = vec_problema_options[0]
+    servico = vec_problema_options[1]
+    problema = vec_problema_options[2]
+
+    df_os_problema_colaborador = colab_service.obtem_detalhamento_problema_colaborador(
+        datas=datas,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
+        vec_problema=vec_problema,
+        servico=servico,
+        num_problema=problema,
+    )
+
+    return df_os_problema_colaborador.to_dict("records")
 
 
 @callback(
@@ -758,7 +811,9 @@ def grafico_gasto_mes(id_colaborador, datas, min_dias, lista_secaos, lista_os, l
     ],
     prevent_initial_call=True,
 )
-def download_excel_categorizadas(n_clicks, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+def download_excel_categorizadas(
+    n_clicks, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+):
     ctx = callback_context  # Obtém o contexto do callback
     if not ctx.triggered:
         return dash.no_update  # Evita execução desnecessária
@@ -771,8 +826,6 @@ def download_excel_categorizadas(n_clicks, id_colaborador, datas, min_dias, list
     if not n_clicks or n_clicks <= 0:
         return dash.no_update
 
-    date_now = datetime.now().strftime("%d-%m-%Y")
-
     df = colab_service.dados_tabela_do_colaborador(
         datas=datas,
         id_colaborador=id_colaborador,
@@ -782,13 +835,16 @@ def download_excel_categorizadas(n_clicks, id_colaborador, datas, min_dias, list
         lista_modelo=lista_modelo,
         lista_oficina=lista_oficina,
     )
+    
     excel_data = gerar_excel(df=df)
+
+    date_now = datetime.now().strftime("%d-%m-%Y")
     return dcc.send_bytes(excel_data, f"tabela_os_retrabalho_categorizadas_{date_now}.xlsx")
 
 
 # Callback para realizar o download quando o botão de os categorizadasfor clicado
 @callback(
-    Output("download-excel-detalhamento", "data"),
+    Output("download-excel-detalhamento-os-colaborador", "data"),
     [
         Input("btn-exportar-detalhamento-pag-colaborador", "n_clicks"),
         Input("input-lista-colaborador", "value"),
@@ -801,7 +857,9 @@ def download_excel_categorizadas(n_clicks, id_colaborador, datas, min_dias, list
     ],
     prevent_initial_call=True,
 )
-def download_excel_detalhamento(n_clicks, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+def download_excel_detalhamento_os(
+    n_clicks, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+):
     ctx = callback_context  # Obtém o contexto do callback
     if not ctx.triggered:
         return dash.no_update  # Evita execução desnecessária
@@ -814,8 +872,6 @@ def download_excel_detalhamento(n_clicks, id_colaborador, datas, min_dias, lista
     if not n_clicks or n_clicks <= 0:
         return dash.no_update
 
-    date_now = datetime.now().strftime("%d-%m-%Y")
-
     df_os_detalhada_colaborador = colab_service.obtem_detalhamento_os_colaborador(
         datas=datas,
         id_colaborador=id_colaborador,
@@ -827,9 +883,70 @@ def download_excel_detalhamento(n_clicks, id_colaborador, datas, min_dias, lista
     )
 
     excel_data = gerar_excel(df=df_os_detalhada_colaborador)
+
+    date_now = datetime.now().strftime("%d-%m-%Y")
     return dcc.send_bytes(excel_data, f"tabela_os_retrabalho_detalhamento_{date_now}.xlsx")
 
 
+# Callback para realizar o download quando o botão de os categorizadasfor clicado
+@callback(
+    Output("download-excel-detalhamento-veiculo-prob-colaborador", "data"),
+    [
+        Input("btn-exportar-detalhamento-veiculo-prob-colaborador", "n_clicks"),
+        Input("input-lista-vec-detalhar-problema-colaborador", "value"),
+        Input("input-lista-colaborador", "value"),
+        Input("input-intervalo-datas-colaborador", "value"),
+        Input("input-min-dias-colaborador", "value"),
+        Input("input-select-secao-colaborador", "value"),
+        Input("input-select-ordens-servico-colaborador", "value"),
+        Input("input-select-modelos-colaborador", "value"),
+        Input("input-select-oficina-colaborador", "value"),
+    ],
+    prevent_initial_call=True,
+)
+def download_excel_detalhamento_problema(
+    n_clicks, vec_problema_lbl, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    if triggered_id != "btn-exportar-detalhamento-veiculo-prob-colaborador":
+        return dash.no_update  # Ignora mudanças nos outros inputs
+
+    if not n_clicks or n_clicks <= 0:
+        return dash.no_update
+    
+    if vec_problema_lbl is None:
+        return dash.no_update
+    
+    vec_problema_options = vec_problema_lbl.split(",")
+    vec_problema = vec_problema_options[0]
+    servico = vec_problema_options[1]
+    problema = vec_problema_options[2]
+
+    df_os_problema_colaborador = colab_service.obtem_detalhamento_problema_colaborador(
+        datas=datas,
+        min_dias=min_dias,
+        lista_secaos=lista_secaos,
+        lista_os=lista_os,
+        lista_modelo=lista_modelo,
+        lista_oficina=lista_oficina,
+        vec_problema=vec_problema,
+        servico=servico,
+        num_problema=problema,
+    )
+
+    excel_data = gerar_excel(df=df_os_problema_colaborador)
+
+    date_now = datetime.now().strftime("%d-%m-%Y")
+    return dcc.send_bytes(excel_data, f"tabela_os_retrabalho_detalhamento_problema_{date_now}.xlsx")
+
+
+##############################################################################
+# Layout #####################################################################
 ##############################################################################
 layout = dbc.Container(
     [
@@ -1456,6 +1573,33 @@ layout = dbc.Container(
             align="center",
         ),
         dmc.Space(h=40),
+        dbc.Alert(
+            [
+                dbc.Row(
+                    [
+                        dbc.Col(DashIconify(icon="material-symbols:info-outline-rounded", width=45), width="auto"),
+                        dbc.Col(
+                            html.P(
+                                """
+                                As tabelas a seguir mostram a atuação do colaborador nas OS, começando por uma visão 
+                                categórica, com todas as OS de um mesmo serviço. Depois, é possível consultar a atuação
+                                individual em cada OS. Os textos são avaliados por modelos de Large Language Model 
+                                (como ChatGPT e DeepSeek) para medir a qualidade das respostas. Por fim, é possível 
+                                acompanhar o desempenho diante de um problema específico de um veículo, entendido como
+                                um conjunto de OS relacionadas até a resolução completa da questão.
+                                """
+                            ),
+                            className="mt-2",
+                            width=True,
+                        ),
+                    ],
+                    align="center",
+                ),
+            ],
+            dismissable=True,
+            color="info",
+        ),
+        dmc.Space(h=40),
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
@@ -1463,7 +1607,7 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Detalhamento do colaborador nas OSs escolhidas (categorizadas)",
+                                "Detalhamento do colaborador nas OSs escolhidas (por categoria)",
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
@@ -1515,7 +1659,7 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"}, #-> permite resize
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
         ),
         dmc.Space(h=40),
         dbc.Row(
@@ -1525,7 +1669,7 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Detalhamento do colaborador nas OSs escolhidas (detalhamento)",
+                                "Detalhamento do colaborador nas OSs escolhidas (por OS)",
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
@@ -1550,7 +1694,7 @@ layout = dbc.Container(
                                                         "font-weight": "bold",
                                                     },
                                                 ),
-                                                dcc.Download(id="download-excel-detalhamento"),
+                                                dcc.Download(id="download-excel-detalhamento-os-colaborador"),
                                             ],
                                             style={"text-align": "right"},
                                         ),
@@ -1577,9 +1721,96 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"}, #-> permite resize
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
         ),
         dmc.Space(h=40),
-
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="game-icons:time-bomb", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Detalhamento da atuação do colaborador em um problema de um veículo",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        gera_labels_inputs("tabela-colaborador-detalhamento-veiculo-prob-colaborador"),
+                                        width=True,
+                                    ),
+                                    dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar-detalhamento-veiculo-prob-colaborador",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel-detalhamento-veiculo-prob-colaborador"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                justify="between",  # Deixa os itens espaçados
+                            ),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Veículos e problema a detalhar:"),
+                                    dcc.Dropdown(
+                                        id="input-lista-vec-detalhar-problema-colaborador",
+                                        options=[],
+                                        placeholder="Selecione o veículo e problema",
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=12,
+                ),
+            ],
+        ),
+        dmc.Space(h=20),
+        dag.AgGrid(
+            id="tabela-detalhamento-problema-colaborador",
+            columnDefs=colaborador_tabelas.tbl_detalhamento_problema_colaborador,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+            },
+            style={"height": 500, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+        ),
     ]
 )

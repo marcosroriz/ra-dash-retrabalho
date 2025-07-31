@@ -925,7 +925,7 @@ class ColaboradorService:
                 *
             FROM
                 mat_view_retrabalho_{min_dias}_dias m
-            JOIN 
+            LEFT JOIN 
                 os_dados_classificacao odc
             ON 
                 m."KEY_HASH" = odc."KEY_HASH" 
@@ -941,9 +941,6 @@ class ColaboradorService:
         LEFT JOIN pecas_agg p
         ON os."NUMERO DA OS" = p."OS"
         """
-        print("--------------------------------")
-        print(query)
-        print("--------------------------------")
         df_os_detalhada_colaborador = pd.read_sql(query, self.pgEngine)
 
         # Preenche valores nulos
@@ -972,7 +969,115 @@ class ColaboradorService:
         # Ordena por data de abertura
         df_os_detalhada_colaborador = df_os_detalhada_colaborador.sort_values(by="DATA DA ABERTURA DA OS DT", ascending=False)
 
-        print(df_os_detalhada_colaborador.head())
-
         return df_os_detalhada_colaborador
 
+
+    def obtem_detalhamento_problema_colaborador(
+        self, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina, 
+        vec_problema, servico, num_problema
+    ):
+        """Retorna dados de detalhamento das OSs do colaborador no período selecionado"""
+        # Query
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
+        WITH 
+        pecas_agg AS (
+            SELECT 
+                pg."OS", 
+                SUM(pg."VALOR") AS total_valor, 
+                STRING_AGG(pg."VALOR"::TEXT, '__SEP__' ORDER BY pg."PRODUTO") AS pecas_valor_str,
+                STRING_AGG(pg."PRODUTO"::text, '__SEP__' ORDER BY pg."PRODUTO") AS pecas_trocadas_str
+            FROM 
+                view_pecas_desconsiderando_combustivel pg 
+            WHERE 
+                to_timestamp(pg."DATA", 'DD/MM/YYYY') BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            GROUP BY 
+                pg."OS"
+        ),
+        os_avaliadas AS (
+            SELECT
+                *
+            FROM
+                mat_view_retrabalho_{min_dias}_dias m
+            LEFT JOIN 
+                os_dados_classificacao odc
+            ON 
+                m."KEY_HASH" = odc."KEY_HASH" 
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+                AND "CODIGO DO VEICULO" = '{vec_problema}'
+                AND "DESCRICAO DO SERVICO" = '{servico}'
+                AND "problem_no" = {num_problema}
+        ),
+        os_avaliadas_com_pecas AS (
+            SELECT *
+            FROM os_avaliadas os
+            LEFT JOIN pecas_agg p
+            ON os."NUMERO DA OS" = p."OS"
+        )
+        SELECT *
+        FROM os_avaliadas_com_pecas os
+        LEFT JOIN colaboradores_frotas_os cfo 
+        ON os."COLABORADOR QUE EXECUTOU O SERVICO" = cfo.cod_colaborador
+        """
+        df_os_detalhada_colaborador = pd.read_sql(query, self.pgEngine)
+
+        # Preenche valores nulos
+        df_os_detalhada_colaborador["total_valor"] = df_os_detalhada_colaborador["total_valor"].fillna(0)
+        df_os_detalhada_colaborador["pecas_valor_str"] = df_os_detalhada_colaborador["pecas_valor_str"].fillna("0")
+        df_os_detalhada_colaborador["pecas_trocadas_str"] = df_os_detalhada_colaborador["pecas_trocadas_str"].fillna("Nenhuma")
+
+        # Campos da LLM
+        df_os_detalhada_colaborador["WHY_SOLUTION_IS_PROBLEM"] = df_os_detalhada_colaborador["WHY_SOLUTION_IS_PROBLEM"].fillna("Não classificado")
+
+        # Lógica para definir o status da OS
+        def definir_status(row):
+            if row.get("correcao_primeira") == True:
+                return "✅ Correção Primeira"
+            elif row.get("correcao") == True:
+                return "☑️ Correção Tardia"
+            elif row.get("retrabalho") == True:
+                return "🔄 Retrabalho"
+            else:
+                return "❓ Não classificado"
+
+        # Aplica a função
+        df_os_detalhada_colaborador["status_os"] = df_os_detalhada_colaborador.apply(definir_status, axis=1)
+
+        # Datas aberturas (converte para DT)
+        df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_os_detalhada_colaborador["DATA DA ABERTURA DA OS"])
+        df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS"])
+
+        # Ordena por data de abertura
+        df_os_detalhada_colaborador = df_os_detalhada_colaborador.sort_values(by="DATA DA ABERTURA DA OS DT", ascending=False)
+
+        # Calcula a diferença de dias entre a abertura da OS e a próxima
+        df_os_detalhada_colaborador["diff_abertura_proxima"] = (
+            df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"] - df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"].shift(1)
+        ).abs()
+
+        # Converte para número de dias (float) e seta 0 para os valores nulos
+        df_os_detalhada_colaborador["diff_abertura_proxima_dias"] = df_os_detalhada_colaborador["diff_abertura_proxima"].dt.days
+        df_os_detalhada_colaborador["diff_abertura_proxima_dias"] = df_os_detalhada_colaborador["diff_abertura_proxima_dias"].fillna(0).astype(int)
+        
+        # Conversão que arredonda o dia para cima
+        # df_os_detalhada_colaborador["diff_abertura_proxima_dias"] = np.ceil(
+        #     df_os_detalhada_colaborador["diff_abertura_proxima"].dt.total_seconds() / 86400 # 86400 segundos = 1 dia
+        # ).fillna(0).astype(int)
+
+        return df_os_detalhada_colaborador
