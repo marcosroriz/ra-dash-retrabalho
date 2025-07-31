@@ -7,7 +7,6 @@
 # IMPORTS ####################################################################
 ##############################################################################
 # Bibliotecas básicas
-import datetime 
 from datetime import date
 import pandas as pd
 
@@ -602,6 +601,98 @@ layout = dbc.Container(
                 },
             },
             zIndex=10,
+        ),
+        # Informações / Ajuda
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Alert(
+                            [
+                                dbc.Row(
+                                    [
+                                        dbc.Col(DashIconify(icon="gravity-ui:target-dart", width=45), width="auto"),
+                                        dbc.Col(
+                                            html.P(
+                                                [
+                                                html.Strong("Correção de primeira:"),
+                                                """
+                                                sem nova OS para o mesmo problema no período selecionado.
+                                                """
+                                                ]
+                                            ),
+                                            className="mt-2",
+                                            width=True,
+                                        ),
+                                    ],
+                                    align="center",
+                                ),
+                            ],
+                            dismissable=True,
+                            color="success",
+                        ),
+                    ],
+                    md=4
+                ),
+                dbc.Col(
+                    [
+                        dbc.Alert(
+                            [
+                                dbc.Row(
+                                    [
+                                        dbc.Col(DashIconify(icon="game-icons:multiple-targets", width=45), width="auto"),
+                                        dbc.Col(
+                                            html.P(
+                                                [
+                                                html.Strong("Correção tardia:"),
+                                                """
+                                                havia OS anterior, mas não há nova para o mesmo problema no período.
+                                                """
+                                                ]
+                                            ),
+                                            className="mt-2",
+                                            width=True,
+                                        ),
+                                    ],
+                                    align="center",
+                                ),
+                            ],
+                            dismissable=True,
+                            color="warning",
+                        ),
+                    ],
+                    md=4
+                ),
+                dbc.Col(
+                    [
+                        dbc.Alert(
+                            [
+                                dbc.Row(
+                                    [
+                                        dbc.Col(DashIconify(icon="pepicons-pop:rewind-time", width=45), width="auto"),
+                                        dbc.Col(
+                                            html.P(
+                                                [
+                                                html.Strong("Retrabalho:"),
+                                                """
+                                                possui OS anterior e posterior para o mesmo problema no período.
+                                                """
+                                                ]
+                                            ),
+                                            className="mt-2",
+                                            width=True,
+                                        ),
+                                    ],
+                                    align="center",
+                                ),
+                            ],
+                            dismissable=True,
+                            color="danger",
+                        ),
+                    ],
+                    md=4
+                ),
+            ]
         ),
         # Cabeçalho
         dbc.Row(
