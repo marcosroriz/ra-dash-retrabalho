@@ -5,12 +5,13 @@ import re
 
 from ..sql_utils import *
 
+
 class ColaboradorService:
     def __init__(self, dbEngine):
         self.pgEngine = dbEngine
 
-    def get_mecanicos(self)->pd.DataFrame:
-        '''Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados'''
+    def get_mecanicos(self) -> pd.DataFrame:
+        """Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados"""
         try:
             df_mecanicos = pd.read_sql(
                 """
@@ -52,8 +53,10 @@ class ColaboradorService:
             return df_mecanicos_todos
         except Exception as e:
             return pd.DataFrame()
-        
-    def obtem_dados_os_mecanico(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+
+    def obtem_dados_os_mecanico(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
         # Query
         data_inicio_str = datas[0]
 
@@ -65,7 +68,7 @@ class ColaboradorService:
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
 
         query = f"""
         SELECT
@@ -77,7 +80,7 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
+            {subquery_oficina_str}
         """
         df_os_mecanico_query = pd.read_sql_query(query, self.pgEngine)
         # Tratamento de datas
@@ -85,10 +88,12 @@ class ColaboradorService:
         df_os_mecanico_query["DATA DO FECHAMENTO DA OS"] = pd.to_datetime(
             df_os_mecanico_query["DATA DO FECHAMENTO DA OS"]
         )
-        return df_os_mecanico_query 
-    
-    def obtem_estatistica_retrabalho_sql(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''Obtem estatisticas e dados analisados de retrabalho para o grafico de pizza geral'''
+        return df_os_mecanico_query
+
+    def obtem_estatistica_retrabalho_sql(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Obtem estatisticas e dados analisados de retrabalho para o grafico de pizza geral"""
         data_inicio_str = datas[0]
 
         # Remove min_dias antes para evitar que a última OS não seja retrabalho
@@ -99,7 +104,7 @@ class ColaboradorService:
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
         query = f"""
         SELECT
             COUNT("NUMERO DA OS") AS "TOTAL_OS",
@@ -117,29 +122,31 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
+            {subquery_oficina_str}
         """
-        
+
         # Executa query
         df = pd.read_sql(query, self.pgEngine)
-         # Calcula o total de correções tardia
+        # Calcula o total de correções tardia
         df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
-        return df 
-    
-    def obtem_estatistica_retrabalho_grafico(self, datas, id_colaborador, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''Obtem estatisticas e dados analisados de retrabalho para o grafico de pizza geral'''
+        return df
+
+    def obtem_estatistica_retrabalho_grafico(
+        self, datas, id_colaborador, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Obtem estatisticas e dados analisados de retrabalho para o grafico de pizza geral"""
         data_inicio_str = datas[0]
 
         # Remove min_dias antes para evitar que a última OS não seja retrabalho
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
-        
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
         query = f"""
             WITH oficina_colaborador AS (
             SELECT DISTINCT "DESCRICAO DA SECAO"
@@ -187,7 +194,7 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
+            {subquery_oficina_str}
         GROUP BY
             year_month, "DESCRICAO DA SECAO"
 
@@ -199,9 +206,11 @@ class ColaboradorService:
         df = pd.read_sql(query, self.pgEngine)
         df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m", errors="coerce")
         return df
-        
-    def obtem_estatistica_retrabalho_grafico_resumo(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''Obtem dados de retrabalho para grafico de resumo'''
+
+    def obtem_estatistica_retrabalho_grafico_resumo(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Obtem dados de retrabalho para grafico de resumo"""
         data_inicio_str = datas[0]
 
         # Remove min_dias antes para evitar que a última OS não seja retrabalho
@@ -212,8 +221,8 @@ class ColaboradorService:
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
-        
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
         query = f"""
         SELECT
             SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
@@ -229,18 +238,20 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
+            {subquery_oficina_str}
     
         """
-        
+
         # Executa query
         df = pd.read_sql(query, self.pgEngine)
-         # Calcula o total de correções tardia
+        # Calcula o total de correções tardia
         df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
         return df
 
-    def dados_tabela_do_colaborador(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''Obtem dados para tabela'''
+    def dados_tabela_do_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Obtem dados para tabela"""
         # Datas
         data_inicio_str = datas[0]
 
@@ -250,15 +261,15 @@ class ColaboradorService:
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         inner_subquery_secoes_str1 = subquery_secoes(lista_secaos, "mt.")
-        inner_subquery_os_str1= subquery_os(lista_os, "mt.")
-        inner_subquery_modelo_str1= subquery_modelos(lista_modelo, "mt.")
-        inner_subquery_ofcina_str1= subquery_oficinas(lista_oficina, "mt.")
-        
+        inner_subquery_os_str1 = subquery_os(lista_os, "mt.")
+        inner_subquery_modelo_str1 = subquery_modelos(lista_modelo, "mt.")
+        inner_subquery_oficina_str1 = subquery_oficinas(lista_oficina, "mt.")
+
         inner_subquery_secoes_str2 = subquery_secoes(lista_secaos, "main.")
         inner_subquery_os_str2 = subquery_os(lista_os, "main.")
         inner_subquery_modelo_str2 = subquery_modelos(lista_modelo, "main.")
         inner_subquery_oficina_str2 = subquery_oficinas(lista_oficina, "main.")
-        
+
         query = f"""
         WITH 
         os_nota_media AS (
@@ -276,7 +287,7 @@ class ColaboradorService:
                 {inner_subquery_secoes_str1}
                 {inner_subquery_os_str1}
                 {inner_subquery_modelo_str1}
-                {inner_subquery_ofcina_str1}
+                {inner_subquery_oficina_str1}
             GROUP BY
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
@@ -325,15 +336,16 @@ class ColaboradorService:
             "TOTAL_OS" DESC;
         """
         # Executa a query
-        
-        
+
         df = pd.read_sql(query, self.pgEngine)
-        df['nota_media_colaborador'] = df['nota_media_colaborador'].replace(np.nan, 0)
-        df['nota_media_os'] = df['nota_media_os'].replace(np.nan, 0)
-        
+        df["nota_media_colaborador"] = df["nota_media_colaborador"].replace(np.nan, 0)
+        df["nota_media_os"] = df["nota_media_os"].replace(np.nan, 0)
+
         return df
-    
-    def dados_grafico_top_10_do_colaborador(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+
+    def dados_grafico_top_10_do_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
         # Datas
         data_inicio_str = datas[0]
 
@@ -346,17 +358,17 @@ class ColaboradorService:
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
 
         inner_subquery_secoes_str1 = subquery_secoes(lista_secaos, "mt.")
-        inner_subquery_os_str1= subquery_os(lista_os, "mt.")
-        inner_subquery_modelo_str1= subquery_modelos(lista_modelo, "mt.")
-        inner_subquery_ofcina_str1= subquery_oficinas(lista_oficina, "mt.")
-        
+        inner_subquery_os_str1 = subquery_os(lista_os, "mt.")
+        inner_subquery_modelo_str1 = subquery_modelos(lista_modelo, "mt.")
+        inner_subquery_oficina_str1 = subquery_oficinas(lista_oficina, "mt.")
+
         inner_subquery_secoes_str2 = subquery_secoes(lista_secaos, "main.")
         inner_subquery_os_str2 = subquery_os(lista_os, "main.")
         inner_subquery_modelo_str2 = subquery_modelos(lista_modelo, "main.")
-        inner_subquery_oficina_str2 = subquery_oficinas(lista_oficina, "main.") 
+        inner_subquery_oficina_str2 = subquery_oficinas(lista_oficina, "main.")
         query = f"""
         WITH normaliza_problema AS (
             SELECT
@@ -372,7 +384,7 @@ class ColaboradorService:
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelo_str}
-                {subquery_ofcina_str}
+                {subquery_oficina_str}
             GROUP BY
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
@@ -408,7 +420,7 @@ class ColaboradorService:
                 {inner_subquery_secoes_str1}
                 {inner_subquery_os_str1}
                 {inner_subquery_modelo_str1}
-                {inner_subquery_ofcina_str1}
+                {inner_subquery_oficina_str1}
             GROUP BY
                 "DESCRICAO DA OFICINA",
                 "DESCRICAO DA SECAO",
@@ -461,26 +473,27 @@ class ColaboradorService:
         ORDER BY
             "TOTAL_OS" DESC;
         """
-        
-        
+
         # Executa a query
         df = pd.read_sql(query, self.pgEngine)
 
         return df
-    
-    def indicador_rank_servico(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''Obtem dados para rank de serviços diferentes'''
+
+    def indicador_rank_servico(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Obtem dados para rank de serviços diferentes"""
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
-        
-        query = F"""
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
             with TABELA_RANK as (SELECT 
             "COLABORADOR QUE EXECUTOU O SERVICO",
             COUNT(DISTINCT "DESCRICAO DO SERVICO") AS quantidade_de_servicos_diferentes,
@@ -492,7 +505,7 @@ class ColaboradorService:
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelo_str}
-                {subquery_ofcina_str}
+                {subquery_oficina_str}
             GROUP BY "COLABORADOR QUE EXECUTOU O SERVICO"),
             TOTAL AS (
                 SELECT COUNT(*) AS total_colaboradores FROM TABELA_RANK
@@ -503,26 +516,25 @@ class ColaboradorService:
                 TABELA_RANK tr, TOTAL t
             where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
             """
-        df_mecanicos = pd.read_sql(
-            query,
-            self.pgEngine
-        )  
+        df_mecanicos = pd.read_sql(query, self.pgEngine)
 
         return df_mecanicos
-    
-    def indicador_rank_total_os(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''Obtem dados para rank de total de OS'''
+
+    def indicador_rank_total_os(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Obtem dados para rank de total de OS"""
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
-        
-        query = F"""
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
             with TABELA_RANK as (SELECT 
                 "COLABORADOR QUE EXECUTOU O SERVICO",
                 COUNT(*) AS quantidade_de_OS,
@@ -534,7 +546,7 @@ class ColaboradorService:
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelo_str}
-                {subquery_ofcina_str}
+                {subquery_oficina_str}
             GROUP BY "COLABORADOR QUE EXECUTOU O SERVICO"),
             TOTAL AS (
                 SELECT COUNT(*) AS total_colaboradores FROM TABELA_RANK
@@ -545,15 +557,12 @@ class ColaboradorService:
                 TABELA_RANK tr, TOTAL t
         where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
         """
-        df_mecanicos = pd.read_sql(
-            query,
-            self.pgEngine
-        )
-        
+        df_mecanicos = pd.read_sql(query, self.pgEngine)
+
         return df_mecanicos
 
     def df_lista_os(self):
-        '''Retorna uma lista das OSs'''
+        """Retorna uma lista das OSs"""
         df_lista_os = pd.read_sql(
             f"""
             SELECT DISTINCT
@@ -566,18 +575,17 @@ class ColaboradorService:
             """,
             self.pgEngine,
         )
-        
+
         return df_lista_os
-    
+
     def df_lista_os_colab(self, min_dias, id_colaborador, datas):
-        '''Retorna uma lista das OSs'''
-        
+        """Retorna uma lista das OSs"""
+
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
-        
+
         df_lista_os = pd.read_sql(
             f"""
             SELECT DISTINCT
@@ -592,20 +600,20 @@ class ColaboradorService:
             """,
             self.pgEngine,
         )
-        
+
         return df_lista_os
-    
+
     def df_lista_os_colab_modelo(self, lista_secaos, lista_os, min_dias, id_colaborador, datas):
-        '''Retorna uma lista das OSs'''
-        
+        """Retorna uma lista das OSs"""
+
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
-        
+
         df_lista_os = pd.read_sql(
             f"""
             SELECT DISTINCT
@@ -621,21 +629,22 @@ class ColaboradorService:
             self.pgEngine,
         )
         return df_lista_os
-    
-    def nota_media_colaborador(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''Retorna a nota media do colaborador'''
-        
+
+    def nota_media_colaborador(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Retorna a nota media do colaborador"""
+
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
-        
-        
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
         query = f"""
         SELECT
           	ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media_colaborador
@@ -649,26 +658,27 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
+            {subquery_oficina_str}
     
         """
         df_mecanico = pd.read_sql(query, self.pgEngine)
         return df_mecanico
-        
-    def evolucao_nota_media_colaborador(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        
-        '''Retorna evoluçao da nota media do colaborador e da oficina'''
-        
+
+    def evolucao_nota_media_colaborador(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Retorna evoluçao da nota media do colaborador e da oficina"""
+
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
-        
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
         query = f"""
             WITH oficina_colaborador AS (
             SELECT DISTINCT "DESCRICAO DA OFICINA"
@@ -709,7 +719,7 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
+            {subquery_oficina_str}
         GROUP BY
             year_month, "DESCRICAO DA OFICINA"
 
@@ -719,21 +729,23 @@ class ColaboradorService:
             """
         df_mecanico = pd.read_sql(query, self.pgEngine)
         return df_mecanico
-    
-    def posicao_rank_nota_media(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''Retorna o rank do colaborador'''
-        
+
+    def posicao_rank_nota_media(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Retorna o rank do colaborador (nota média)"""
+
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
-        
-        query = f'''
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
         with TABELA_RANK as (
         SELECT
             "COLABORADOR QUE EXECUTOU O SERVICO",
@@ -751,7 +763,7 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
+            {subquery_oficina_str}
         GROUP BY 
             "COLABORADOR QUE EXECUTOU O SERVICO"
         ), 
@@ -763,25 +775,27 @@ class ColaboradorService:
         FROM 
             TABELA_RANK tr, TOTAL t
         where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-        '''
-        
+        """
+
         df_mecanico = pd.read_sql(query, self.pgEngine)
         return df_mecanico
-    
-    def evolucao_gasto_colaborador(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''retorna dados de evolução de gasto do colaborador'''
+
+    def evolucao_gasto_colaborador(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Retorna dados de evolução de gasto do colaborador"""
 
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
 
-        query = f'''
+        query = f"""
             WITH oficina_colaborador AS (
             SELECT DISTINCT "DESCRICAO DA OFICINA"
             FROM mat_view_retrabalho_{min_dias}_dias
@@ -821,31 +835,31 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
+            {subquery_oficina_str}
         GROUP BY
             year_month, "DESCRICAO DA OFICINA"
 
         ORDER BY
             year_month,
-            escopo;'''
-        
+            escopo;"""
+
         df_mecanico = pd.read_sql(query, self.pgEngine)
         return df_mecanico
-    
+
     def gasto_colaborador(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
-        '''retorna dados de gasto do colaborador'''
+        """Retorna dados de gasto do colaborador"""
 
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-        
+
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_ofcina_str = subquery_oficinas(lista_oficina)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
 
-        query = f'''SELECT
+        query = f"""SELECT
             SUM(pg."VALOR") AS "TOTAL_GASTO",
             SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO"
         FROM
@@ -859,13 +873,106 @@ class ColaboradorService:
             {subquery_secoes_str}
             {subquery_os_str}
             {subquery_modelo_str}
-            {subquery_ofcina_str}
-        '''
-        
+            {subquery_oficina_str}
+        """
+
         df_mecanico = pd.read_sql(query, self.pgEngine)
         # Formatar "VALOR" para R$ no formato brasileiro e substituindo por 0 os valores nulos
         df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].fillna(0).astype(float).round(2)
-        df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
+        df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].apply(
+            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
         df_mecanico["TOTAL_GASTO_RETRABALHO"] = df_mecanico["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
-        df_mecanico["TOTAL_GASTO_RETRABALHO"] = df_mecanico["TOTAL_GASTO_RETRABALHO"].apply(lambda x: f'R$ {x:,.2f}'.replace(",", "X").replace(".", ",").replace("X", "."))
+        df_mecanico["TOTAL_GASTO_RETRABALHO"] = df_mecanico["TOTAL_GASTO_RETRABALHO"].apply(
+            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
         return df_mecanico
+
+    def obtem_detalhamento_os_colaborador(
+        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Retorna dados de detalhamento das OSs do colaborador no período selecionado"""
+        # Query
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
+        WITH 
+        pecas_agg AS (
+            SELECT 
+                pg."OS", 
+                SUM(pg."VALOR") AS total_valor, 
+                STRING_AGG(pg."VALOR"::TEXT, '__SEP__' ORDER BY pg."PRODUTO") AS pecas_valor_str,
+                STRING_AGG(pg."PRODUTO"::text, '__SEP__' ORDER BY pg."PRODUTO") AS pecas_trocadas_str
+            FROM 
+                view_pecas_desconsiderando_combustivel pg 
+            WHERE 
+                to_timestamp(pg."DATA", 'DD/MM/YYYY') BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            GROUP BY 
+                pg."OS"
+        ),
+        os_avaliadas AS (
+            SELECT
+                *
+            FROM
+                mat_view_retrabalho_{min_dias}_dias m
+            JOIN 
+                os_dados_classificacao odc
+            ON 
+                m."KEY_HASH" = odc."KEY_HASH" 
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+        )
+        SELECT *
+        FROM os_avaliadas os
+        LEFT JOIN pecas_agg p
+        ON os."NUMERO DA OS" = p."OS"
+        """
+        print("--------------------------------")
+        print(query)
+        print("--------------------------------")
+        df_os_detalhada_colaborador = pd.read_sql(query, self.pgEngine)
+
+        # Preenche valores nulos
+        df_os_detalhada_colaborador["total_valor"] = df_os_detalhada_colaborador["total_valor"].fillna(0)
+        df_os_detalhada_colaborador["pecas_valor_str"] = df_os_detalhada_colaborador["pecas_valor_str"].fillna("0")
+        df_os_detalhada_colaborador["pecas_trocadas_str"] = df_os_detalhada_colaborador["pecas_trocadas_str"].fillna("Nenhuma")
+
+        # Lógica para definir o status da OS
+        def definir_status(row):
+            if row.get("correcao_primeira") == True:
+                return "✅ Correção Primeira"
+            elif row.get("correcao") == True:
+                return "☑️ Correção Tardia"
+            elif row.get("retrabalho") == True:
+                return "🔄 Retrabalho"
+            else:
+                return "❓ Não classificado"
+
+        # Aplica a função
+        df_os_detalhada_colaborador["status_os"] = df_os_detalhada_colaborador.apply(definir_status, axis=1)
+
+        # Datas aberturas (converte para DT)
+        df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_os_detalhada_colaborador["DATA DA ABERTURA DA OS"])
+        df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS"])
+
+        # Ordena por data de abertura
+        df_os_detalhada_colaborador = df_os_detalhada_colaborador.sort_values(by="DATA DA ABERTURA DA OS DT", ascending=False)
+
+        print(df_os_detalhada_colaborador.head())
+
+        return df_os_detalhada_colaborador
+
