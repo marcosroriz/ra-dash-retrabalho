@@ -52,6 +52,7 @@ class OSService:
                 AND od."DATA DA ABERTURA DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
                 AND od."DATA DO FECHAMENTO DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
                 AND od."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
+                AND (od."PRIORIDADE SERVICO" = ANY (ARRAY['Vermelho'::text, 'Amarelo'::text, 'Verde'::text]))
                 {withquery_modelos_str}
                 {withquery_oficinas_str}
                 {withquery_os_str}
