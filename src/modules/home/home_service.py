@@ -21,14 +21,14 @@ class HomeService:
     def get_sintese_geral(self, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a síntese geral (que será usado para o gráfico de pizza)"""
 
-        # Extraí a data inicial (já em string)
+        # Extraí a data inicial e final
         data_inicio_str = datas[0]
+        data_fim_str = datas[1]
 
-        # Extraí a data final
         # Remove min_dias antes para evitar que a última OS não seja retrabalho
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
+        # data_fim = pd.to_datetime(datas[1])
+        # data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        # data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
         subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
@@ -43,9 +43,13 @@ class HomeService:
                 SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
                 SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
                 SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+                SUM(CASE WHEN nova_os_com_retrabalho_anterior THEN 1 ELSE 0 END) AS "TOTAL_NOVA_OS_COM_RETRABALHO_ANTERIOR",
+                SUM(CASE WHEN nova_os_sem_retrabalho_anterior THEN 1 ELSE 0 END) AS "TOTAL_NOVA_OS_SEM_RETRABALHO_ANTERIOR",
                 100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
                 100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-                100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
+                100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+                100 * ROUND(SUM(CASE WHEN nova_os_com_retrabalho_anterior THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_NOVA_OS_COM_RETRABALHO_ANTERIOR",
+                100 * ROUND(SUM(CASE WHEN nova_os_sem_retrabalho_anterior THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_NOVA_OS_SEM_RETRABALHO_ANTERIOR"
             FROM
                 mat_view_retrabalho_{min_dias}_dias_distinct
             WHERE
@@ -55,6 +59,7 @@ class HomeService:
                 {subquery_secoes_str}
                 {subquery_os_str}
         """
+        print(query)
 
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
