@@ -119,7 +119,7 @@ def corrige_input(lista):
     return lista
 
 
-def gera_labels_inputs(campo):
+def gera_labels_inputs_colaborador(campo):
     # Cria o callback
     @callback(
         [
@@ -1224,7 +1224,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("labels-indicadores-pag-colaborador"),
+                            gera_labels_inputs_colaborador("labels-indicadores-pag-colaborador"),
                         ]
                     ),
                     width=True,
@@ -1501,7 +1501,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("colaborador-grafico-evolucao-nota-os"),
+                            gera_labels_inputs_colaborador("colaborador-grafico-evolucao-nota-os"),
                         ]
                     ),
                     width=True,
@@ -1519,7 +1519,7 @@ layout = dbc.Container(
                         [
                             html.H4("Evolução das Métricas: Nota media ", className="align-self-center"),
                             dmc.Space(h=5),
-                            gera_labels_inputs("colaborador-grafico-evolucao-retrabalho"),
+                            gera_labels_inputs_colaborador("colaborador-grafico-evolucao-retrabalho"),
                         ]
                     ),
                     width=True,
@@ -1537,7 +1537,7 @@ layout = dbc.Container(
                         [
                             html.H4("Evolução das Métricas: Media de gasto por mês", className="align-self-center"),
                             dmc.Space(h=5),
-                            gera_labels_inputs("colaborador-grafico-evolucao-gasto"),
+                            gera_labels_inputs_colaborador("colaborador-grafico-evolucao-gasto"),
                         ]
                     ),
                     width=True,
@@ -1613,7 +1613,7 @@ layout = dbc.Container(
                             dmc.Space(h=5),
                             dbc.Row(
                                 [
-                                    dbc.Col(gera_labels_inputs("tabela-colaborador-categorizadas-os"), width=True),
+                                    dbc.Col(gera_labels_inputs_colaborador("tabela-colaborador-categorizadas-os"), width=True),
                                     dbc.Col(
                                         html.Div(
                                             [
@@ -1675,7 +1675,7 @@ layout = dbc.Container(
                             dmc.Space(h=5),
                             dbc.Row(
                                 [
-                                    dbc.Col(gera_labels_inputs("tabela-colaborador-detalhamento-os"), width=True),
+                                    dbc.Col(gera_labels_inputs_colaborador("tabela-colaborador-detalhamento-os"), width=True),
                                     dbc.Col(
                                         html.Div(
                                             [
@@ -1738,7 +1738,7 @@ layout = dbc.Container(
                             dbc.Row(
                                 [
                                     dbc.Col(
-                                        gera_labels_inputs("tabela-colaborador-detalhamento-veiculo-prob-colaborador"),
+                                        gera_labels_inputs_colaborador("tabela-colaborador-detalhamento-veiculo-prob-colaborador"),
                                         width=True,
                                     ),
                                     dbc.Col(
