@@ -104,7 +104,11 @@ server = app.server
 # Menu / Navbar
 def criarMenu(dirVertical=True):
     return dbc.Nav(
-        [dbc.NavLink(page["name"], href=page["relative_path"], active="exact") for page in dash.page_registry.values()],
+        [
+            dbc.NavLink(page["name"], href=page["relative_path"], active="exact")
+            for page in dash.page_registry.values()
+            if not page.get("hide_page", False)
+        ],
         vertical=dirVertical,
         pills=True,
     )
