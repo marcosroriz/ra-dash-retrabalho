@@ -7,7 +7,7 @@
 # IMPORTS ####################################################################
 ##############################################################################
 # Bibliotecas básicas
-from datetime import date
+from datetime import date, datetime
 import pandas as pd
 
 # Importar bibliotecas do dash básicas e plotly
@@ -32,6 +32,7 @@ from db import PostgresSingleton
 
 # Imports gerais
 from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, get_secoes, get_modelos, gerar_excel
+
 # Imports específicos
 from modules.home.home_service import HomeService
 import modules.home.graficos as home_graficos
@@ -523,7 +524,7 @@ def download_excel_tabela_colaborador(n_clicks, datas, min_dias, lista_modelos, 
 ##############################################################################
 
 
-def gera_labels_inputs(campo):
+def gera_labels_inputs_visao_geral(campo):
     # Cria o callback
     @callback(
         [
@@ -916,7 +917,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-quanti-frota"),
+                            gera_labels_inputs_visao_geral("visao-geral-quanti-frota"),
                         ]
                     ),
                     width=True,
@@ -938,7 +939,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-evolucao-por-modelo"),
+                            gera_labels_inputs_visao_geral("visao-geral-evolucao-por-modelo"),
                         ]
                     ),
                     width=True,
@@ -961,7 +962,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-evolucao-por-oficina"),
+                            gera_labels_inputs_visao_geral("visao-geral-evolucao-por-oficina"),
                         ]
                     ),
                     width=True,
@@ -983,7 +984,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-evolucao-por-secao"),
+                            gera_labels_inputs_visao_geral("visao-geral-evolucao-por-secao"),
                         ]
                     ),
                     width=True,
@@ -1004,7 +1005,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-evolucao-por-nota"),
+                            gera_labels_inputs_visao_geral("visao-geral-evolucao-por-nota"),
                         ]
                     ),
                     width=True,
@@ -1025,7 +1026,7 @@ layout = dbc.Container(
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs("visao-geral-evolucao-por-custo"),
+                            gera_labels_inputs_visao_geral("visao-geral-evolucao-por-custo"),
                         ]
                     ),
                     width=True,
@@ -1049,7 +1050,7 @@ layout = dbc.Container(
                             dmc.Space(h=5),
                             dbc.Row(
                                 [
-                                    dbc.Col(gera_labels_inputs("visao-geral-tabela-tipo-os"), width=True),
+                                    dbc.Col(gera_labels_inputs_visao_geral("visao-geral-tabela-tipo-os"), width=True),
                                     dbc.Col(
                                         html.Div(
                                             [
@@ -1114,7 +1115,7 @@ layout = dbc.Container(
                             dmc.Space(h=5),
                             dbc.Row(
                                 [
-                                    dbc.Col(gera_labels_inputs("visao-geral-tabela-colaborador-os"), width=True),
+                                    dbc.Col(gera_labels_inputs_visao_geral("visao-geral-tabela-colaborador-os"), width=True),
                                     dbc.Col(
                                         html.Div(
                                             [
@@ -1178,7 +1179,7 @@ layout = dbc.Container(
                             dmc.Space(h=5),
                             dbc.Row(
                                 [
-                                    dbc.Col(gera_labels_inputs("visao-geral-tabela-veiculo"), width=True),
+                                    dbc.Col(gera_labels_inputs_visao_geral("visao-geral-tabela-veiculo"), width=True),
                                     dbc.Col(
                                         html.Div(
                                             [
