@@ -38,7 +38,7 @@ from modules.crud_regra.crud_regra_service import CRUDRegraService
 from modules.home.home_service import HomeService
 
 import modules.crud_regra.graficos as crud_regra_graficos
-
+import modules.crud_regra.tabelas as crud_regra_tabelas
 import modules.home.graficos as home_graficos
 import modules.home.tabelas as home_tabelas
 
@@ -223,7 +223,7 @@ def plota_grafico_pizza_sintese_criar_regra(
 
 # Callback para o grafico de síntese do retrabalho
 @callback(
-    Output("mensagem-sucesso", "children"),
+    Output("tabela-previa-os-regra-criar", "rowData"),
     [
         Input("input-periodo-dias-monitoramento-regra-criar-retrabalho", "value"),
         Input("input-select-dias-regra-criar-retrabalho", "value"),
@@ -236,17 +236,14 @@ def plota_grafico_pizza_sintese_criar_regra(
 def testa_regra_sendo_criada(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
     # Valida input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
-        return "Erro: Por favor, preencha todos os campos corretamente."
+        return []
 
     # Obtem os dados
-    df = crud_regra_service.get_previa_os_regra(
+    df = crud_regra_service.get_previa_os_regra_detalhada(
         data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
     )
 
-
-    # Gera o gráfico
-    # fig = home_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values)
-    return "OI"
+    return df.to_dict(orient="records")
 
 
 ##############################################################################
@@ -804,6 +801,66 @@ layout = dbc.Container(
             ]
         ),
         dmc.Space(h=15),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Pré-visualização das OSs que serão monitoradas pela regra criada",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar-detalhamento-pag-colaborador",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel-previa-os-regra-criar"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                justify="between",  # Deixa os itens espaçados
+                            ),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=40),
+        dag.AgGrid(
+            id="tabela-previa-os-regra-criar",
+            columnDefs=crud_regra_tabelas.tbl_detalhamento_problema_regra,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+            },
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+        ),
     ]
 )
 

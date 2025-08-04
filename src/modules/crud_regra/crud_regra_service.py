@@ -105,9 +105,9 @@ class CRUDRegraService:
             elif row.get("retrabalho") == True:
                 return "🔄 Retrabalho"
             elif row.get("nova_os_com_retrabalho_anterior") == True:
-                return "🆕✴️ Nova OS, com retrabalho prévio"
+                return "✴️ Nova OS, com retrabalho prévio"
             elif row.get("nova_os_sem_retrabalho_anterior") == True:
-                return "🆕✳️ Nova OS, sem retrabalho prévio"
+                return "✳️ Nova OS, sem retrabalho prévio"
             else:
                 return "❓ Não classificado"
             
@@ -118,4 +118,99 @@ class CRUDRegraService:
         # print(df.head())
 
         # print(df_total.head())
+        return df
+
+
+    def get_previa_os_regra_detalhada(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+        """Função para obter a prévia das OS detectadas pela regra (que será usado para envio do e-mail / WhatsApp)"""
+
+        # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+
+
+        # Query
+        query = f"""
+        WITH 
+        pecas_agg AS (
+            SELECT 
+                pg."OS", 
+                SUM(pg."VALOR") AS total_valor, 
+                STRING_AGG(pg."VALOR"::TEXT, '__SEP__' ORDER BY pg."PRODUTO") AS pecas_valor_str,
+                STRING_AGG(pg."PRODUTO"::text, '__SEP__' ORDER BY pg."PRODUTO") AS pecas_trocadas_str
+            FROM 
+                view_pecas_desconsiderando_combustivel pg 
+            WHERE 
+                to_timestamp(pg."DATA", 'DD/MM/YYYY') BETWEEN CURRENT_DATE - INTERVAL '{data_periodo_regra} days' AND CURRENT_DATE
+            GROUP BY 
+                pg."OS"
+        ),
+        os_avaliadas AS (
+            SELECT
+                *
+            FROM
+                mat_view_retrabalho_{min_dias}_dias m
+            LEFT JOIN 
+                os_dados_classificacao odc
+            ON 
+                m."KEY_HASH" = odc."KEY_HASH" 
+            WHERE
+                "DATA DA ABERTURA DA OS"::timestamp BETWEEN CURRENT_DATE - INTERVAL '{data_periodo_regra} days' AND CURRENT_DATE
+                {subquery_modelos_str}
+                {subquery_oficinas_str}
+                {subquery_secoes_str}
+                {subquery_os_str}
+        ),
+        os_avaliadas_com_pecas AS (
+            SELECT *
+            FROM os_avaliadas os
+            LEFT JOIN pecas_agg p
+            ON os."NUMERO DA OS" = p."OS"
+        )
+        SELECT *
+        FROM os_avaliadas_com_pecas os
+        LEFT JOIN colaboradores_frotas_os cfo 
+        ON os."COLABORADOR QUE EXECUTOU O SERVICO" = cfo.cod_colaborador
+        """
+
+        print("--------------------------------")
+        print(query)
+
+        # Executa a query
+        df = pd.read_sql(query, self.dbEngine)
+
+        # Preenche valores nulos
+        df["total_valor"] = df["total_valor"].fillna(0)
+        df["pecas_valor_str"] = df["pecas_valor_str"].fillna("0")
+        df["pecas_trocadas_str"] = df["pecas_trocadas_str"].fillna("Nenhuma")
+
+        # Campos da LLM
+        df["WHY_SOLUTION_IS_PROBLEM"] = df["WHY_SOLUTION_IS_PROBLEM"].fillna("Não classificado")
+
+        # Lógica para definir o status da OS
+        def definir_status(row):
+            if row.get("correcao_primeira") == True:
+                return "✅ Correção Primeira"
+            elif row.get("correcao") == True:
+                return "☑️ Correção Tardia"
+            elif row.get("retrabalho") == True:
+                return "🔄 Retrabalho"
+            elif row.get("nova_os_com_retrabalho_anterior") == True:
+                return "✴️ Nova OS, com retrabalho prévio"
+            elif row.get("nova_os_sem_retrabalho_anterior") == True:
+                return "✳️ Nova OS, sem retrabalho prévio"
+            else:
+                return "❓ Não classificado"
+        # Aplica a função
+        df["status_os"] = df.apply(definir_status, axis=1)
+
+        # Datas aberturas (converte para DT)
+        df["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df["DATA DA ABERTURA DA OS"])
+        df["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df["DATA DO FECHAMENTO DA OS"])
+
+        # Ordena por data de abertura
+        df = df.sort_values(by="DATA DA ABERTURA DA OS DT", ascending=False)
+
         return df
