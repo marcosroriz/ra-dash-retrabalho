@@ -36,8 +36,8 @@ tbl_detalhamento_problema_regra = [
         "sortable": True,
     },
     {
-        "field": "diff_abertura_proxima_dias",
-        "headerName": "DIAS PRÓXIMA OS",
+        "field": "prev_days",
+        "headerName": "DIAS OS ANTERIOR",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 180,
@@ -104,7 +104,7 @@ tbl_detalhamento_problema_regra = [
     },
     {
         "field": "pecas_trocadas_str",
-        "headerName": "PEÇAS TROCADAS",
+        "headerName": "PEÇAS TROCADAS NESTA OS",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "autoHeight": True,

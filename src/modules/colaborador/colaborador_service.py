@@ -1,9 +1,19 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Classe que centraliza os serviços para mostrar na página de colaborador
+
+# Imports básicos
 import pandas as pd
 import numpy as np
 import re
 
+# Imports auxiliares
+from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, subquery_modelos
+from modules.service_utils import definir_status
 
-from ..sql_utils import *
+# Imports do tema
+import tema
 
 
 class ColaboradorService:
@@ -943,38 +953,37 @@ class ColaboradorService:
         """
         df_os_detalhada_colaborador = pd.read_sql(query, self.pgEngine)
 
+        print("--------------------------------")
+        print(query)
+        print("--------------------------------")
+
         # Preenche valores nulos
         df_os_detalhada_colaborador["total_valor"] = df_os_detalhada_colaborador["total_valor"].fillna(0)
         df_os_detalhada_colaborador["pecas_valor_str"] = df_os_detalhada_colaborador["pecas_valor_str"].fillna("0")
-        df_os_detalhada_colaborador["pecas_trocadas_str"] = df_os_detalhada_colaborador["pecas_trocadas_str"].fillna("Nenhuma")
+        df_os_detalhada_colaborador["pecas_trocadas_str"] = df_os_detalhada_colaborador["pecas_trocadas_str"].fillna(
+            "Nenhuma"
+        )
 
-        # Lógica para definir o status da OS
-        def definir_status(row):
-            if row.get("correcao_primeira") == True:
-                return "✅ Correção Primeira"
-            elif row.get("correcao") == True:
-                return "☑️ Correção Tardia"
-            elif row.get("retrabalho") == True:
-                return "🔄 Retrabalho"
-            else:
-                return "❓ Não classificado"
-
-        # Aplica a função
+        # Aplica a função para definir o status de cada OS
         df_os_detalhada_colaborador["status_os"] = df_os_detalhada_colaborador.apply(definir_status, axis=1)
 
         # Datas aberturas (converte para DT)
-        df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_os_detalhada_colaborador["DATA DA ABERTURA DA OS"])
-        df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS"])
+        df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(
+            df_os_detalhada_colaborador["DATA DA ABERTURA DA OS"]
+        )
+        df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(
+            df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS"]
+        )
 
         # Ordena por data de abertura
-        df_os_detalhada_colaborador = df_os_detalhada_colaborador.sort_values(by="DATA DA ABERTURA DA OS DT", ascending=False)
+        df_os_detalhada_colaborador = df_os_detalhada_colaborador.sort_values(
+            by="DATA DA ABERTURA DA OS DT", ascending=False
+        )
 
         return df_os_detalhada_colaborador
 
-
     def obtem_detalhamento_problema_colaborador(
-        self, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina, 
-        vec_problema, servico, num_problema
+        self, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina, vec_problema, servico, num_problema
     ):
         """Retorna dados de detalhamento das OSs do colaborador no período selecionado"""
         # Query
@@ -1040,41 +1049,45 @@ class ColaboradorService:
         # Preenche valores nulos
         df_os_detalhada_colaborador["total_valor"] = df_os_detalhada_colaborador["total_valor"].fillna(0)
         df_os_detalhada_colaborador["pecas_valor_str"] = df_os_detalhada_colaborador["pecas_valor_str"].fillna("0")
-        df_os_detalhada_colaborador["pecas_trocadas_str"] = df_os_detalhada_colaborador["pecas_trocadas_str"].fillna("Nenhuma")
+        df_os_detalhada_colaborador["pecas_trocadas_str"] = df_os_detalhada_colaborador["pecas_trocadas_str"].fillna(
+            "Nenhuma"
+        )
 
         # Campos da LLM
-        df_os_detalhada_colaborador["WHY_SOLUTION_IS_PROBLEM"] = df_os_detalhada_colaborador["WHY_SOLUTION_IS_PROBLEM"].fillna("Não classificado")
+        df_os_detalhada_colaborador["WHY_SOLUTION_IS_PROBLEM"] = df_os_detalhada_colaborador[
+            "WHY_SOLUTION_IS_PROBLEM"
+        ].fillna("Não classificado")
 
-        # Lógica para definir o status da OS
-        def definir_status(row):
-            if row.get("correcao_primeira") == True:
-                return "✅ Correção Primeira"
-            elif row.get("correcao") == True:
-                return "☑️ Correção Tardia"
-            elif row.get("retrabalho") == True:
-                return "🔄 Retrabalho"
-            else:
-                return "❓ Não classificado"
-
-        # Aplica a função
+        # Aplica a função para definir o status de cada OS
         df_os_detalhada_colaborador["status_os"] = df_os_detalhada_colaborador.apply(definir_status, axis=1)
 
         # Datas aberturas (converte para DT)
-        df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_os_detalhada_colaborador["DATA DA ABERTURA DA OS"])
-        df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS"])
+        df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(
+            df_os_detalhada_colaborador["DATA DA ABERTURA DA OS"]
+        )
+        df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(
+            df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS"]
+        )
 
         # Ordena por data de abertura
-        df_os_detalhada_colaborador = df_os_detalhada_colaborador.sort_values(by="DATA DA ABERTURA DA OS DT", ascending=False)
+        df_os_detalhada_colaborador = df_os_detalhada_colaborador.sort_values(
+            by="DATA DA ABERTURA DA OS DT", ascending=False
+        )
 
         # Calcula a diferença de dias entre a abertura da OS e a próxima
         df_os_detalhada_colaborador["diff_abertura_proxima"] = (
-            df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"] - df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"].shift(1)
+            df_os_detalhada_colaborador["DATA DO FECHAMENTO DA OS DT"]
+            - df_os_detalhada_colaborador["DATA DA ABERTURA DA OS DT"].shift(1)
         ).abs()
 
         # Converte para número de dias (float) e seta 0 para os valores nulos
-        df_os_detalhada_colaborador["diff_abertura_proxima_dias"] = df_os_detalhada_colaborador["diff_abertura_proxima"].dt.days
-        df_os_detalhada_colaborador["diff_abertura_proxima_dias"] = df_os_detalhada_colaborador["diff_abertura_proxima_dias"].fillna(0).astype(int)
-        
+        df_os_detalhada_colaborador["diff_abertura_proxima_dias"] = df_os_detalhada_colaborador[
+            "diff_abertura_proxima"
+        ].dt.days
+        df_os_detalhada_colaborador["diff_abertura_proxima_dias"] = (
+            df_os_detalhada_colaborador["diff_abertura_proxima_dias"].fillna(0).astype(int)
+        )
+
         # Conversão que arredonda o dia para cima
         # df_os_detalhada_colaborador["diff_abertura_proxima_dias"] = np.ceil(
         #     df_os_detalhada_colaborador["diff_abertura_proxima"].dt.total_seconds() / 86400 # 86400 segundos = 1 dia

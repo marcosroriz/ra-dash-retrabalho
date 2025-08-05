@@ -16,8 +16,26 @@ import tema
 
 
 # Rotinas para gerar os Gráficos
-def gerar_grafico_pizza_sinteze_geral(df, labels, values):
+def gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False, checklist_alvo=[]):
     """Gera o gráfico de pizza com síntese do total de OS e retrabalhos da tela de criação de regras"""
+
+    # Checklist alvo vai determinar a paletra de cores a se utilizar
+    paleta_cores_padrao = [
+        # tema.COR_SUCESSO, # Correção Primeira
+        # tema.COR_SUCESSO_BRANDO, # Correção Tardia
+        tema.COR_PADRAO, # Nova OS, sem retrabalho prévio
+        tema.COR_ALERTA, # Nova OS, com retrabalho prévio
+        tema.COR_ERRO, # Retrabalho
+    ]
+
+    if usar_checklist:
+        paleta_cores_padrao = [
+            # tema.COR_SUCESSO if "nova_os_sem_retrabalho_anterior" in checklist_alvo else tema.COR_NEUTRO,
+            # tema.COR_SUCESSO_BRANDO if "nova_os_com_retrabalho_anterior" in checklist_alvo else tema.COR_NEUTRO,
+            tema.COR_PADRAO if "nova_os_sem_retrabalho_anterior" in checklist_alvo else tema.COR_NEUTRO,
+            tema.COR_ALERTA if "nova_os_com_retrabalho_anterior" in checklist_alvo else tema.COR_NEUTRO,
+            tema.COR_ERRO if "retrabalho" in checklist_alvo else tema.COR_NEUTRO,
+        ]
 
     fig = go.Figure(
         data=[
@@ -25,7 +43,7 @@ def gerar_grafico_pizza_sinteze_geral(df, labels, values):
                 labels=labels,
                 values=values,
                 direction="clockwise",
-                marker_colors=[tema.COR_SUCESSO, tema.COR_ALERTA, tema.COR_ERRO],
+                marker_colors=paleta_cores_padrao,
                 sort=True,
             )
         ]
@@ -51,7 +69,7 @@ def gerar_grafico_pizza_sinteze_geral(df, labels, values):
 
     # Remove o espaçamento em torno do gráfico
     fig.update_layout(
-        margin=dict(t=60, b=0),  # Remove as margens
+        # margin=dict(t=60, b=0),  # Remove as margens
         height=420,  # Ajuste conforme necessário
         legend=dict(
             orientation="h",  # Legenda horizontal

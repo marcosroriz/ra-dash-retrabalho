@@ -11,21 +11,29 @@ import numpy as np
 # Imports auxiliares
 from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, subquery_modelos
 from modules.entities_utils import get_mecanicos
-
+from modules.service_utils import definir_status
 
 # Classe do serviço
 class CRUDRegraService:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
 
+    def subquery_checklist(self, checklist_alvo, prefix=""):
+        query = ""
+        query_parts = [
+            f"""{prefix}"{alvo}" = TRUE"""
+            for alvo in checklist_alvo
+        ]
+
+        if query_parts:
+            query_or = " OR ".join(query_parts)
+            query = f"AND ({query_or})"
+
+        return query
+
 
     def get_sintese_geral(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a síntese geral (que será usado para o gráfico de pizza)"""
-
-        # Remove min_dias antes para evitar que a última OS não seja retrabalho
-        # data_fim = pd.to_datetime(datas[1])
-        # data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        # data_fim_str = data_fim.strftime("%Y-%m-%d")
 
         # Subqueries
         subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
@@ -56,8 +64,6 @@ class CRUDRegraService:
                 {subquery_secoes_str}
                 {subquery_os_str}
         """
-        print("--------------------------------")
-        print(query)
 
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
@@ -66,9 +72,52 @@ class CRUDRegraService:
         df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
 
         return df
+    
+
+    def get_sintese_geral_filtro_periodo(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
+        """Função para obter a síntese geral (que será usado para o gráfico de pizza)"""
+
+        # Subqueries
+        subquery_modelos_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+
+        # Subquery checklist
+        subquery_checklist_str = self.subquery_checklist(checklist_alvo)
+
+        # Query
+        query = f"""
+            SELECT
+                COUNT(*) AS "TOTAL_NUM_OS",
+                SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+                SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+                SUM(CASE WHEN nova_os_com_retrabalho_anterior THEN 1 ELSE 0 END) AS "TOTAL_NOVA_OS_COM_RETRABALHO_ANTERIOR",
+                SUM(CASE WHEN nova_os_sem_retrabalho_anterior THEN 1 ELSE 0 END) AS "TOTAL_NOVA_OS_SEM_RETRABALHO_ANTERIOR",
+                100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+                100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+                100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+                100 * ROUND(SUM(CASE WHEN nova_os_com_retrabalho_anterior THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_NOVA_OS_COM_RETRABALHO_ANTERIOR",
+                100 * ROUND(SUM(CASE WHEN nova_os_sem_retrabalho_anterior THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_NOVA_OS_SEM_RETRABALHO_ANTERIOR"
+            FROM
+                mat_view_retrabalho_{min_dias}_dias_distinct
+            WHERE
+                "DATA DA ABERTURA DA OS"::timestamp BETWEEN CURRENT_DATE - INTERVAL '{data_periodo_regra} days' AND CURRENT_DATE
+                {subquery_modelos_str}
+                {subquery_oficinas_str}
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_checklist_str}
+        """
+
+        # Executa a query
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
 
 
-    def get_previa_os_regra(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    def get_previa_os_regra(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
         """Função para obter a prévia das OS detectadas pela regra (que será usado para envio do e-mail / WhatsApp)"""
 
         # Subqueries
@@ -76,6 +125,7 @@ class CRUDRegraService:
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
+        subquery_checklist_str = self.subquery_checklist(checklist_alvo)
 
         # Query
         query = f"""
@@ -89,29 +139,15 @@ class CRUDRegraService:
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
+                {subquery_checklist_str}
         """
-        # print("--------------------------------")
-        # print(query)
+        print("--------------------------------")
+        print(query)
 
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
 
-        # Lógica para definir o status da OS
-        def definir_status(row):
-            if row.get("correcao_primeira") == True:
-                return "✅ Correção Primeira"
-            elif row.get("correcao") == True:
-                return "☑️ Correção Tardia"
-            elif row.get("retrabalho") == True:
-                return "🔄 Retrabalho"
-            elif row.get("nova_os_com_retrabalho_anterior") == True:
-                return "✴️ Nova OS, com retrabalho prévio"
-            elif row.get("nova_os_sem_retrabalho_anterior") == True:
-                return "✳️ Nova OS, sem retrabalho prévio"
-            else:
-                return "❓ Não classificado"
-            
-        # Aplica a função
+        # Aplica a função para definir o status de cada OS
         df["status_os"] = df.apply(definir_status, axis=1)
 
         # df_total = df.groupby("status_os").size().reset_index(name="TOTAL")
@@ -121,7 +157,7 @@ class CRUDRegraService:
         return df
 
 
-    def get_previa_os_regra_detalhada(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    def get_previa_os_regra_detalhada(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
         """Função para obter a prévia das OS detectadas pela regra (que será usado para envio do e-mail / WhatsApp)"""
 
         # Subqueries
@@ -129,6 +165,7 @@ class CRUDRegraService:
         subquery_oficinas_str = subquery_oficinas(lista_oficinas)
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
+        subquery_checklist_str = self.subquery_checklist(checklist_alvo)
 
 
         # Query
@@ -151,7 +188,7 @@ class CRUDRegraService:
             SELECT
                 *
             FROM
-                mat_view_retrabalho_{min_dias}_dias m
+                mat_view_retrabalho_{min_dias}_dias_distinct m
             LEFT JOIN 
                 os_dados_classificacao odc
             ON 
@@ -162,6 +199,7 @@ class CRUDRegraService:
                 {subquery_oficinas_str}
                 {subquery_secoes_str}
                 {subquery_os_str}
+                {subquery_checklist_str}
         ),
         os_avaliadas_com_pecas AS (
             SELECT *
@@ -184,31 +222,22 @@ class CRUDRegraService:
         # Preenche valores nulos
         df["total_valor"] = df["total_valor"].fillna(0)
         df["pecas_valor_str"] = df["pecas_valor_str"].fillna("0")
-        df["pecas_trocadas_str"] = df["pecas_trocadas_str"].fillna("Nenhuma")
+        df["pecas_trocadas_str"] = df["pecas_trocadas_str"].fillna("Nenhuma / Não inserida ainda")
 
         # Campos da LLM
+        df["SCORE_SYMPTOMS_TEXT_QUALITY"] = df["SCORE_SYMPTOMS_TEXT_QUALITY"].fillna("-")
+        df["SCORE_SOLUTION_TEXT_QUALITY"] = df["SCORE_SOLUTION_TEXT_QUALITY"].fillna("-")
         df["WHY_SOLUTION_IS_PROBLEM"] = df["WHY_SOLUTION_IS_PROBLEM"].fillna("Não classificado")
 
-        # Lógica para definir o status da OS
-        def definir_status(row):
-            if row.get("correcao_primeira") == True:
-                return "✅ Correção Primeira"
-            elif row.get("correcao") == True:
-                return "☑️ Correção Tardia"
-            elif row.get("retrabalho") == True:
-                return "🔄 Retrabalho"
-            elif row.get("nova_os_com_retrabalho_anterior") == True:
-                return "✴️ Nova OS, com retrabalho prévio"
-            elif row.get("nova_os_sem_retrabalho_anterior") == True:
-                return "✳️ Nova OS, sem retrabalho prévio"
-            else:
-                return "❓ Não classificado"
-        # Aplica a função
+        # Aplica a função para definir o status de cada OS
         df["status_os"] = df.apply(definir_status, axis=1)
 
         # Datas aberturas (converte para DT)
         df["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df["DATA DA ABERTURA DA OS"])
         df["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df["DATA DO FECHAMENTO DA OS"])
+
+        # Dias OS Anterior
+        df["prev_days"] = df["prev_days"].fillna("Não há OS anterior para esse problema")
 
         # Ordena por data de abertura
         df = df.sort_values(by="DATA DA ABERTURA DA OS DT", ascending=False)

@@ -4,7 +4,6 @@
 import pandas as pd
 import io
 
-
 # Funções utilitárias para obtenção das principais entidades do sistema
 
 
@@ -85,6 +84,7 @@ def get_modelos(dbEngine):
         """,
         dbEngine,
     )
+
 
 def gerar_excel(df):
     output = io.BytesIO()

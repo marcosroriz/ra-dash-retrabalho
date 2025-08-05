@@ -12,7 +12,7 @@ import pandas as pd
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
-from dash import Dash, html, dcc, callback, Input, Output, State
+from dash import Dash, html, dcc, callback, Input, Output, State, callback_context
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -35,10 +35,13 @@ from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, ge
 
 # Imports específicos
 from modules.crud_regra.crud_regra_service import CRUDRegraService
+from modules.crud_regra.crud_email_test import CRUDEmailTestService
 from modules.home.home_service import HomeService
 
 import modules.crud_regra.graficos as crud_regra_graficos
 import modules.crud_regra.tabelas as crud_regra_tabelas
+import tema
+
 import modules.home.graficos as home_graficos
 import modules.home.tabelas as home_tabelas
 
@@ -52,6 +55,7 @@ pgEngine = pgDB.get_engine()
 # Cria o serviço
 home_service = HomeService(pgEngine)
 crud_regra_service = CRUDRegraService(pgEngine)
+crud_email_test_service = CRUDEmailTestService(pgEngine)
 
 # Modelos de veículos
 df_modelos_veiculos = get_modelos(pgEngine)
@@ -184,9 +188,12 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
 ##############################################################################
 
 
-# Callback para o grafico de síntese do retrabalho
+# Callback para o grafico de síntese de todas as OS no período monitorado
 @callback(
-    Output("graph-pizza-sintese-retrabalho-regra-criar", "figure"),
+    [
+        Output("graph-pizza-sintese-retrabalho-regra-criar", "figure"),
+        Output("graph-pizza-filtro-retrabalho-regra-criar", "figure"),
+    ],
     [
         Input("input-periodo-dias-monitoramento-regra-criar-retrabalho", "value"),
         Input("input-select-dias-regra-criar-retrabalho", "value"),
@@ -194,34 +201,66 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
         Input("input-select-oficina-regra-criar-retrabalho", "value"),
         Input("input-select-secao-regra-criar-retrabalho", "value"),
         Input("input-select-ordens-servico-regra-criar-retrabalho", "value"),
+        Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
     ],
 )
 def plota_grafico_pizza_sintese_criar_regra(
-    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
 ):
     # Valida input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
-        return go.Figure()
+        return go.Figure(), go.Figure()
 
     # Obtem os dados
     df = crud_regra_service.get_sintese_geral(
         data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
     )
 
+    # Copia o DF para checklist
+    df_checklist = df.copy()
+
+    # Termo e coluna para pegar o total de cada categoria na query
+    dict_checklist = {
+        "correcao_primeira": "TOTAL_CORRECAO_PRIMEIRA",
+        "correcao_tardia": "TOTAL_CORRECAO_TARDIA",
+        "nova_os_sem_retrabalho_anterior": "TOTAL_NOVA_OS_SEM_RETRABALHO_ANTERIOR",
+        "nova_os_com_retrabalho_anterior": "TOTAL_NOVA_OS_COM_RETRABALHO_ANTERIOR",
+        "retrabalho": "TOTAL_RETRABALHO",
+    }
+
+    # Computa o total de OS por categoria
+    total_checklist = 0
+    for termo, coluna in dict_checklist.items():
+        if termo in checklist_alvo:
+            total_checklist += df[coluna].values[0]
+
+    df_checklist["TOTAL_NUM_OS"] = total_checklist
+
     # Prepara os dados para o gráfico
-    labels = ["Nova OS, sem retrabalho prévio", "Nova OS, com retrabalho prévio", "Retrabalho"]
+    labels = [
+        # "Correção Primeira",
+        # "Correção Tardia",
+        "Nova OS, sem retrabalho prévio",
+        "Nova OS, com retrabalho prévio",
+        "Retrabalho",
+    ]
     values = [
+        # df["TOTAL_CORRECAO_PRIMEIRA"].values[0],
+        # df["TOTAL_CORRECAO_TARDIA"].values[0],
         df["TOTAL_NOVA_OS_SEM_RETRABALHO_ANTERIOR"].values[0],
         df["TOTAL_NOVA_OS_COM_RETRABALHO_ANTERIOR"].values[0],
         df["TOTAL_RETRABALHO"].values[0],
     ]
 
     # Gera o gráfico
-    fig = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values)
-    return fig
+    fig_geral = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False)
+    fig_filtro = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(
+        df_checklist, labels, values, usar_checklist=True, checklist_alvo=checklist_alvo
+    )
+    return fig_geral, fig_filtro
 
 
-# Callback para o grafico de síntese do retrabalho
+# Callback para a tabela com a prévia da OS a serem criadas
 @callback(
     Output("tabela-previa-os-regra-criar", "rowData"),
     [
@@ -231,19 +270,88 @@ def plota_grafico_pizza_sintese_criar_regra(
         Input("input-select-oficina-regra-criar-retrabalho", "value"),
         Input("input-select-secao-regra-criar-retrabalho", "value"),
         Input("input-select-ordens-servico-regra-criar-retrabalho", "value"),
+        Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
     ],
 )
-def testa_regra_sendo_criada(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+def tabela_previa_os_regra_criar(
+    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+):
     # Valida input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return []
 
     # Obtem os dados
     df = crud_regra_service.get_previa_os_regra_detalhada(
-        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
     )
 
     return df.to_dict(orient="records")
+
+
+@callback(
+    Output("mensagem-sucesso", "children"),
+    [
+        Input("btn-testar-regra-monitoramento-criar-retrabalho", "n_clicks"),
+        Input("input-nome-regra-monitoramento-retrabalho", "value"),
+        Input("input-periodo-dias-monitoramento-regra-criar-retrabalho", "value"),
+        Input("input-select-dias-regra-criar-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-regra-criar-retrabalho", "value"),
+        Input("input-select-oficina-regra-criar-retrabalho", "value"),
+        Input("input-select-secao-regra-criar-retrabalho", "value"),
+        Input("input-select-ordens-servico-regra-criar-retrabalho", "value"),
+        Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
+    ],
+    prevent_initial_call=True,
+)
+def testa_regra_monitoramento_retrabalho(
+    n_clicks,
+    nome_regra,
+    data_periodo_regra,
+    min_dias,
+    lista_modelos,
+    lista_oficinas,
+    lista_secaos,
+    lista_os,
+    checklist_alvo,
+):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    if triggered_id != "btn-testar-regra-monitoramento-criar-retrabalho":
+        return dash.no_update  # Ignora mudanças nos outros inputs
+
+    if not n_clicks or n_clicks <= 0:
+        return dash.no_update
+    
+    # Valida Resto do input
+    if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+        return dash.no_update
+
+    # Obtem os dados
+    df = crud_regra_service.get_previa_os_regra_detalhada(
+        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+    )
+    num_os = len(df)
+
+    email_str = crud_email_test_service.build_email(
+        df,
+        num_os,
+        nome_regra,
+        data_periodo_regra,
+        min_dias,
+        lista_modelos,
+        lista_oficinas,
+        lista_secaos,
+        lista_os,
+    )
+
+    print("email a ser enviado:", email_str)
+    crud_email_test_service.send_email(email_str, nome_regra, "marcosroriz@ufg.br")
+
+    return "Email enviado com sucesso"
 
 
 ##############################################################################
@@ -310,35 +418,6 @@ layout = dbc.Container(
                     ],
                     md=12,
                 ),
-                # dbc.Col(
-                #     [
-                #         dbc.Alert(
-                #             [
-                #                 dbc.Row(
-                #                     [
-                #                         dbc.Col(DashIconify(icon="pepicons-pop:rewind-time", width=45), width="auto"),
-                #                         dbc.Col(
-                #                             html.P(
-                #                                 [
-                #                                     html.Strong("Período de retrabalho:"),
-                #                                     """
-                #                                 intervalo mínimo de dias entre OS para que uma nova ordem não seja considerada retrabalho
-                #                                 """,
-                #                                 ]
-                #                             ),
-                #                             className="mt-2",
-                #                             width=True,
-                #                         ),
-                #                     ],
-                #                     align="center",
-                #                 ),
-                #             ],
-                #             dismissable=True,
-                #             color="secondary",
-                #         ),
-                #     ],
-                #     md=6,
-                # ),
                 dbc.Col(
                     [
                         dbc.Alert(
@@ -349,9 +428,9 @@ layout = dbc.Container(
                                         dbc.Col(
                                             html.P(
                                                 [
-                                                    html.Strong("Nova OS, sem trabalho prévio:"),
+                                                    html.Strong("Nova OS, sem retrabalho prévio:"),
                                                     """
-                                                não possui OS anterior no período de retrabalho
+                                                não há OS anterior no período de retrabalho
                                                 """,
                                                 ]
                                             ),
@@ -363,7 +442,7 @@ layout = dbc.Container(
                                 ),
                             ],
                             dismissable=True,
-                            color="success",
+                            color="info",
                         ),
                     ],
                     md=4,
@@ -378,7 +457,7 @@ layout = dbc.Container(
                                         dbc.Col(
                                             html.P(
                                                 [
-                                                    html.Strong("Nova OS, com trabalho prévio:"),
+                                                    html.Strong("Nova OS, com retrabalho prévio:"),
                                                     """
                                                 possui OS dentro do intervalo de retrabalho
                                                 """,
@@ -428,321 +507,354 @@ layout = dbc.Container(
                 ),
             ]
         ),
-        # Cabeçalho
+        # Cabeçalho e Inputs
+        html.Hr(),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="carbon:rule-draft", width=45), width="auto"),
+                dbc.Col(
+                    html.H1(
+                        [
+                            "Criar \u00a0",
+                            html.Strong("regra"),
+                            "\u00a0 para monitoramento do retrabalho",
+                        ],
+                        className="align-self-center",
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=15),
+        html.Hr(),
         dbc.Row(
             [
                 dbc.Col(
-                    [
-                        # Cabeçalho e Inputs
+                    dbc.Card(
+                        html.Div(
+                            [
+                                dbc.Label("Nome da Regra de Monitoramento"),
+                                dbc.Input(
+                                    id="input-nome-regra-monitoramento-retrabalho",
+                                    type="text",
+                                    placeholder="Ex: Retrabalho OS 'Motor Esquentando' nos últimos 5 dias...",
+                                    value="",
+                                ),
+                            ],
+                            className="dash-bootstrap",
+                        ),
+                        body=True,
+                    ),
+                    md=12,
+                ),
+            ]
+        ),
+        dmc.Space(h=10),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        html.Div(
+                            [
+                                dbc.Label("Período de Monitoramento (últimos X dias)"),
+                                dbc.InputGroup(
+                                    [
+                                        dbc.Input(
+                                            id="input-periodo-dias-monitoramento-regra-criar-retrabalho",
+                                            type="number",
+                                            placeholder="Dias",
+                                            value=7,
+                                            step=1,
+                                            min=1,
+                                        ),
+                                        dbc.InputGroupText("dias"),
+                                    ]
+                                ),
+                                dmc.Space(h=5),
+                                dbc.FormText(
+                                    html.Em(
+                                        "Período em que as OSs estarão ativas para os filtros da regra de monitoramento contínuo"
+                                    ),
+                                    color="secondary",
+                                ),
+                            ],
+                            className="dash-bootstrap",
+                        ),
+                        body=True,
+                    ),
+                    md=6,
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Tempo (em dias) entre OS para retrabalho"),
+                                    dcc.Dropdown(
+                                        id="input-select-dias-regra-criar-retrabalho",
+                                        options=[
+                                            {"label": "10 dias", "value": 10},
+                                            {"label": "15 dias", "value": 15},
+                                            {"label": "30 dias", "value": 30},
+                                        ],
+                                        placeholder="Período em dias",
+                                        value=10,
+                                    ),
+                                    dmc.Space(h=5),
+                                    dbc.FormText(
+                                        html.Em(
+                                            "Período mínimo de dias entre OS para que uma nova OS não seja considerada retrabalho"
+                                        ),
+                                        color="secondary",
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=6,
+                ),
+            ]
+        ),
+        dmc.Space(h=10),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Modelos de Veículos"),
+                                    dcc.Dropdown(
+                                        id="input-select-modelo-veiculos-regra-criar-retrabalho",
+                                        options=[
+                                            {
+                                                "label": os["MODELO"],
+                                                "value": os["MODELO"],
+                                            }
+                                            for os in lista_todos_modelos_veiculos
+                                        ],
+                                        multi=True,
+                                        value=["TODOS"],
+                                        placeholder="Selecione um ou mais modelos...",
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=12,
+                ),
+            ]
+        ),
+        dmc.Space(h=10),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Oficinas"),
+                                    dcc.Dropdown(
+                                        id="input-select-oficina-regra-criar-retrabalho",
+                                        options=[
+                                            {"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_oficinas
+                                        ],
+                                        multi=True,
+                                        value=["TODAS"],
+                                        placeholder="Selecione uma ou mais oficinas...",
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=6,
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Seções (categorias) de manutenção"),
+                                    dcc.Dropdown(
+                                        id="input-select-secao-regra-criar-retrabalho",
+                                        options=[
+                                            {"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes
+                                        ],
+                                        multi=True,
+                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
+                                        placeholder="Selecione uma ou mais seções...",
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=6,
+                ),
+            ]
+        ),
+        dmc.Space(h=10),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Ordens de Serviço"),
+                                    dcc.Dropdown(
+                                        id="input-select-ordens-servico-regra-criar-retrabalho",
+                                        options=[{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_os],
+                                        multi=True,
+                                        value=["TODAS"],
+                                        placeholder="Selecione uma ou mais ordens de serviço...",
+                                    ),
+                                    dmc.Space(h=10),
+                                    dbc.Row([
+                                        dbc.Col(
+                                            dbc.Label("Categoria:"),
+                                            md=2,
+                                        ),
+                                        dbc.Col(
+                                            dbc.Checklist(
+                                                options=[
+                                                    {
+                                                        "label": "Verde",
+                                                        "value": "Verde",
+                                                    },
+                                                    {
+                                                        "label": "Amarelo",
+                                                        "value": "Amarelo",
+                                                    },
+                                                    {"label": "Vermelho", "value": "Vermelho"},
+                                                ],
+                                                value=["Verde", "Amarelo", "Vermelho"],
+                                                id="checklist-categoria-os-regra-criar-retrabalho",
+                                                inline=True,
+                                            ),
+                                            md=10
+                                        ),
+                                    ])
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=6,
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Alertar:"),
+                                    dbc.Checklist(
+                                        options=[
+                                            {
+                                                "label": "Nova OS, sem retrabalho prévio",
+                                                "value": "nova_os_sem_retrabalho_anterior",
+                                            },
+                                            {
+                                                "label": "Nova OS, com retrabalho prévio",
+                                                "value": "nova_os_com_retrabalho_anterior",
+                                            },
+                                            {"label": "Retrabalho", "value": "retrabalho"},
+                                            # {
+                                            #     "label": "Correção de Primeira",
+                                            #     "value": "correcao_primeira",
+                                            # },
+                                            # {
+                                            #     "label": "Correção tardia",
+                                            #     "value": "correcao_tardia",
+                                            # },
+                                        ],
+                                        value=["nova_os_com_retrabalho_anterior", "retrabalho"],
+                                        id="checklist-alertar-alvo-regra-criar-retrabalho",
+                                        # inline=True,
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=6,
+                ),
+            ]
+        ),
+        dmc.Space(h=10),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
                         dbc.Row(
                             [
-                                html.Hr(),
-                                dbc.Row(
-                                    [
-                                        dbc.Col(DashIconify(icon="carbon:rule-draft", width=45), width="auto"),
-                                        dbc.Col(
-                                            html.H1(
-                                                [
-                                                    "Criar \u00a0",
-                                                    html.Strong("regra"),
-                                                    "\u00a0 para monitoramento do retrabalho",
-                                                ],
-                                                className="align-self-center",
-                                            ),
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                                dmc.Space(h=15),
-                                html.Hr(),
                                 dbc.Col(
-                                    dbc.Card(
-                                        html.Div(
-                                            [
-                                                dbc.Label("Nome da Regra de Monitoramento"),
-                                                dbc.Input(
-                                                    id="input-nome-regra-monitoramento-retrabalho",
-                                                    type="text",
-                                                    placeholder="Ex: Retrabalho OS 'Motor Esquentando' nos últimos 5 dias...",
-                                                    value="",
-                                                ),
-                                            ],
-                                            className="dash-bootstrap",
-                                        ),
-                                        body=True,
+                                    dmc.Switch(
+                                        id="switch-enviar-email-regra-criar-retrabalho",
+                                        label="Enviar email",
+                                        checked=False,
+                                        size="md",
                                     ),
-                                    md=12,
+                                    width="auto",
                                 ),
-                                dmc.Space(h=10),
+                                dbc.Col(width=2),
                                 dbc.Col(
-                                    dbc.Card(
-                                        html.Div(
-                                            [
-                                                dbc.Label("Período de Monitoramento (últimos X dias)"),
-                                                dbc.InputGroup(
-                                                    [
-                                                        dbc.Input(
-                                                            id="input-periodo-dias-monitoramento-regra-criar-retrabalho",
-                                                            type="number",
-                                                            placeholder="Dias",
-                                                            value=5,
-                                                            step=1,
-                                                            min=1,
-                                                        ),
-                                                        dbc.InputGroupText("dias"),
-                                                    ]
-                                                ),
-                                                dmc.Space(h=5),
-                                                dbc.FormText(
-                                                    html.Em(
-                                                        "Período em que as OSs estarão ativas para os filtros da regra de monitoramento contínuo"
-                                                    ),
-                                                    color="secondary",
-                                                ),
-                                            ],
-                                            className="dash-bootstrap",
-                                        ),
-                                        body=True,
+                                    dbc.Input(
+                                        id="input-email-regra-criar-retrabalho",
+                                        type="email",
+                                        placeholder="fulano@odilonsantos.com",
+                                        value="",
+                                        # style={"display": "block"},
                                     ),
-                                    md=6,
+                                    width=6,
                                 ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Tempo (em dias) entre OS para retrabalho"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-dias-regra-criar-retrabalho",
-                                                        options=[
-                                                            {"label": "10 dias", "value": 10},
-                                                            {"label": "15 dias", "value": 15},
-                                                            {"label": "30 dias", "value": 30},
-                                                        ],
-                                                        placeholder="Período em dias",
-                                                        value=10,
-                                                    ),
-                                                    dmc.Space(h=5),
-                                                    dbc.FormText(
-                                                        html.Em(
-                                                            "Período mínimo de dias entre OS para que uma nova OS não seja considerada retrabalho"
-                                                        ),
-                                                        color="secondary",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Modelos de Veículos"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-modelo-veiculos-regra-criar-retrabalho",
-                                                        options=[
-                                                            {
-                                                                "label": os["MODELO"],
-                                                                "value": os["MODELO"],
-                                                            }
-                                                            for os in lista_todos_modelos_veiculos
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODOS"],
-                                                        placeholder="Selecione um ou mais modelos...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=12,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Oficinas"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-oficina-regra-criar-retrabalho",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_oficinas
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais oficinas...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Seções (categorias) de manutenção"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-secao-regra-criar-retrabalho",
-                                                        options=[
-                                                            {"label": sec["LABEL"], "value": sec["LABEL"]}
-                                                            for sec in lista_todas_secoes
-                                                        ],
-                                                        multi=True,
-                                                        value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
-                                                        placeholder="Selecione uma ou mais seções...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Ordens de Serviço"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-ordens-servico-regra-criar-retrabalho",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_os
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais ordens de serviço...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Alertar:"),
-                                                    dbc.Checklist(
-                                                        options=[
-                                                            {
-                                                                "label": "Nova OS, com retrabalho prévio",
-                                                                "value": "nova_os_com_retrabalho_anterior",
-                                                            },
-                                                            {
-                                                                "label": "Nova OS, sem retrabalho prévio",
-                                                                "value": "nova_os_sem_retrabalho_anterior",
-                                                            },
-                                                            {"label": "Retrabalho", "value": "retrabalho"},
-                                                            {
-                                                                "label": "Correção de Primeira",
-                                                                "value": "correcao_primeira",
-                                                            },
-                                                            {
-                                                                "label": "Correção tardia",
-                                                                "value": "correcao_tardia",
-                                                            },
-                                                        ],
-                                                        value=[],
-                                                        id="checklist-alertar-alvo-regra-criar-retrabalho",
-                                                        inline=True,
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        dbc.Row(
-                                            [
-                                                dbc.Col(
-                                                    dmc.Switch(
-                                                        id="switch-enviar-email-regra-criar-retrabalho",
-                                                        label="Enviar email",
-                                                        checked=False,
-                                                        size="md",
-                                                    ),
-                                                    width="auto",
-                                                ),
-                                                dbc.Col(width=2),
-                                                dbc.Col(
-                                                    dbc.Input(
-                                                        id="input-email-regra-criar-retrabalho",
-                                                        type="email",
-                                                        placeholder="fulano@odilonsantos.com",
-                                                        value="",
-                                                        # style={"display": "block"},
-                                                    ),
-                                                    width=6,
-                                                ),
-                                            ],
-                                            align="center",
-                                        ),
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        dbc.Row(
-                                            [
-                                                dbc.Col(
-                                                    dmc.Switch(
-                                                        id="switch-enviar-whatsapp-regra-criar-retrabalho",
-                                                        label="Enviar WhatsApp",
-                                                        checked=False,
-                                                        size="md",
-                                                    ),
-                                                    width="auto",
-                                                ),
-                                                dbc.Col(width=2),
-                                                dbc.Col(
-                                                    dmc.TextInput(
-                                                        w=200,
-                                                        placeholder="(62) 99999-9999",
-                                                        rightSection=DashIconify(icon="logos:whatsapp-icon"),
-                                                    ),
-                                                    width="auto",
-                                                ),
-                                            ],
-                                            align="center",
-                                        ),
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                            ]
+                            ],
+                            align="center",
                         ),
-                    ],
-                    md=12,
+                        body=True,
+                    ),
+                    md=6,
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    dmc.Switch(
+                                        id="switch-enviar-whatsapp-regra-criar-retrabalho",
+                                        label="Enviar WhatsApp",
+                                        checked=False,
+                                        size="md",
+                                    ),
+                                    width="auto",
+                                ),
+                                dbc.Col(width=2),
+                                dbc.Col(
+                                    dbc.Col(
+                                        dmc.TextInput(
+                                            w=200,
+                                            placeholder="(62) 99999-9999",
+                                            rightSection=DashIconify(icon="logos:whatsapp-icon"),
+                                        ),
+                                        width="auto",
+                                    ),
+                                ),
+                            ],
+                            align="center",
+                        ),
+                        body=True,
+                    ),
+                    md=6,
                 ),
             ]
         ),
@@ -752,9 +864,9 @@ layout = dbc.Container(
             [
                 dbc.Col(
                     dbc.Button(
-                        "Pré-visualizar Regra",
-                        id="btn-pre-visualizar-regra-monitoramento-criar-retrabalho",
-                        color="primary",
+                        "Testar Regra (enviar mensagem)",
+                        id="btn-testar-regra-monitoramento-criar-retrabalho",
+                        color="info",
                         className="me-1",
                         style={"padding": "1em", "width": "100%"},
                     ),
@@ -765,42 +877,56 @@ layout = dbc.Container(
                         "Criar Regra",
                         id="btn-criar-regra-monitoramento-criar-retrabalho",
                         color="success",
-                        disabled=True,
                         className="me-1",
                         style={"padding": "1em", "width": "100%"},
+                    ),
+                    md=6,
+                ),
+            ],
+            justify="center",
+        ),
+        html.Div(id="mensagem-sucesso", style={"marginTop": "10px", "fontWeight": "bold"}),
+        dmc.Space(h=40),
+        # Resumo
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            # Cabeçalho
+                            html.Hr(),
+                            dbc.Col(
+                                DashIconify(icon="wpf:statistics", width=45),
+                                width="auto",
+                            ),
+                            dbc.Col(html.H1("Total de OS no período", className="align-self-center"), width=True),
+                            dmc.Space(h=15),
+                            html.Hr(),
+                            dbc.Row(dcc.Graph(id="graph-pizza-sintese-retrabalho-regra-criar")),
+                        ]
+                    ),
+                    md=6,
+                ),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            # Cabeçalho
+                            html.Hr(),
+                            dbc.Col(
+                                DashIconify(icon="meteor-icons:filter", width=45),
+                                width="auto",
+                            ),
+                            dbc.Col(html.H1("OSs filtradas", className="align-self-center"), width=True),
+                            dmc.Space(h=15),
+                            html.Hr(),
+                            dbc.Row(dcc.Graph(id="graph-pizza-filtro-retrabalho-regra-criar")),
+                        ]
                     ),
                     md=6,
                 ),
             ]
         ),
         dmc.Space(h=40),
-        # Resumo
-        dbc.Row(
-            [
-                # Cabeçalho
-                html.Hr(),
-                dbc.Col(
-                    DashIconify(icon="wpf:statistics", width=45),
-                    width="auto",
-                ),
-                dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
-                dmc.Space(h=15),
-                html.Hr(),
-            ],
-            align="center",
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Row(dcc.Graph(id="graph-pizza-sintese-retrabalho-regra-criar")),
-                    md=8,
-                ),
-                dbc.Col(
-                    html.Div(id="mensagem-sucesso", style={"marginTop": "10px", "fontWeight": "bold"}),
-                ),
-            ]
-        ),
-        dmc.Space(h=15),
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),
@@ -808,39 +934,8 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Pré-visualização das OSs que serão monitoradas pela regra criada",
+                                "Pré-visualização das OSs que foram filtradas pela regra criada",
                                 className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Button(
-                                                    "Exportar para Excel",
-                                                    id="btn-exportar-detalhamento-pag-colaborador",
-                                                    n_clicks=0,
-                                                    style={
-                                                        "background-color": "#007bff",  # Azul
-                                                        "color": "white",
-                                                        "border": "none",
-                                                        "padding": "10px 20px",
-                                                        "border-radius": "8px",
-                                                        "cursor": "pointer",
-                                                        "font-size": "16px",
-                                                        "font-weight": "bold",
-                                                    },
-                                                ),
-                                                dcc.Download(id="download-excel-previa-os-regra-criar"),
-                                            ],
-                                            style={"text-align": "right"},
-                                        ),
-                                        width="auto",
-                                    ),
-                                ],
-                                align="center",
-                                justify="between",  # Deixa os itens espaçados
                             ),
                         ]
                     ),
@@ -859,8 +954,9 @@ layout = dbc.Container(
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
             },
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+            style={"height": 500, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
         ),
+        dmc.Space(h=40),
     ]
 )
 

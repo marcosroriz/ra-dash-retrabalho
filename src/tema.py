@@ -35,3 +35,16 @@ COR_PADRAO = px.colors.qualitative.D3[0]
 COR_SUCESSO = px.colors.qualitative.D3[2]
 COR_ERRO = px.colors.qualitative.D3[3]
 COR_ALERTA = px.colors.qualitative.D3[1]
+COR_NEUTRO = px.colors.qualitative.D3[7]
+COR_SUCESSO_BRANDO = px.colors.qualitative.D3[8]
+
+COR_NOVA_OS_SEM_RETRABALHO_ANTERIOR = "#49A6F2"
+COR_NOVA_OS_COM_RETRABALHO_ANTERIOR = "#BA7f7f"
+
+# ICONES DE STATUS
+ICONE_CORRECAO_PRIMEIRA = "🟩"
+ICONE_CORRECAO_TARDIA = "🟧"
+ICONE_RETRABALHO = "🟥"
+ICONE_NOVA_OS_COM_RETRABALHO_ANTERIOR = "🟧"
+ICONE_NOVA_OS_SEM_RETRABALHO_ANTERIOR = "🟦"
+ICONE_NAO_CLASSIFICADO = "❓"
