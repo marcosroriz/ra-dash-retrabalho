@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# Dashboard que lista o retrabalho de uma ou mais OS
+# Dashboard que lista o retrabalho de um tipo de serviço
 
 ##############################################################################
 # IMPORTS ####################################################################
@@ -35,9 +35,9 @@ from db import PostgresSingleton
 from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, get_secoes, get_modelos
 
 # Imports específicos
-from modules.os.os_service import OSService
-import modules.os.graficos as os_graficos
-import modules.os.tabelas as os_tabelas
+from modules.tipo_servico.tipo_servico_service import TipoServicoService
+import modules.tipo_servico.graficos as tipo_servico_graficos
+import modules.tipo_servico.tabelas as tipo_servico_tabelas
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -47,7 +47,7 @@ pgDB = PostgresSingleton.get_instance()
 pgEngine = pgDB.get_engine()
 
 # Cria o serviço
-os_service = OSService(pgEngine)
+tipo_servico_service = TipoServicoService(pgEngine)
 
 # Obtem a lista de Oficinas
 df_oficinas = get_oficinas(pgEngine)
@@ -240,16 +240,16 @@ def computa_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
         return dados_vazios
 
     # Obtém dados das os
-    df_os = os_service.obtem_dados_os_sql(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
+    df_os = tipo_servico_service.obtem_dados_os_sql(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
 
     # Obtem os dados da LLM
-    df_llm_raw = os_service.obtem_dados_os_llm_sql(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
+    df_llm_raw = tipo_servico_service.obtem_dados_os_llm_sql(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
 
     # Faz o merge
     df_os_llm = df_os.merge(df_llm_raw, on="KEY_HASH", how="left")
 
     # Obtem os dados de custo
-    df_custo_raw = os_service.obtem_dados_os_custo_sql(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
+    df_custo_raw = tipo_servico_service.obtem_dados_os_custo_sql(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
 
     # Obtem os dados de custo agregados por OS
     df_custo_por_os_raw = df_custo_raw[["NUMERO DA OS", "VALOR"]].drop_duplicates()
@@ -259,7 +259,7 @@ def computa_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
     df_os_custo_agg = df_os.merge(df_custo_por_os_agg, on="NUMERO DA OS", how="left")
 
     # Obtem dados dos colaboradores
-    df_colaborador = os_service.obtem_dados_colaboradores_pandas(df_os, df_llm_raw, df_custo_por_os_agg)
+    df_colaborador = tipo_servico_service.obtem_dados_colaboradores_pandas(df_os, df_llm_raw, df_custo_por_os_agg)
 
     return {
         "df_os": df_os.to_dict("records"),
@@ -294,7 +294,7 @@ def plota_grafico_pizza_sintese_os(store_payload):
     df = df_os_raw.drop_duplicates(subset=["NUMERO DA OS"])
 
     # Computa sintese
-    estatistica_retrabalho = os_service.get_sintese_os(df)
+    estatistica_retrabalho = tipo_servico_service.get_sintese_os(df)
 
     # Prepara os dados para o gráfico
     labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
@@ -305,7 +305,7 @@ def plota_grafico_pizza_sintese_os(store_payload):
     ]
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_pizza_sinteze_os(df, labels, values)
+    fig = tipo_servico_graficos.gerar_grafico_pizza_sinteze_os(df, labels, values)
 
     return fig
 
@@ -324,10 +324,10 @@ def plota_grafico_cumulativo_retrabalho_os(store_payload):
         return go.Figure()
 
     # Computa os dados
-    df_os_cumulativo = os_service.get_tempo_cumulativo_para_retrabalho(df_os_raw)
+    df_os_cumulativo = tipo_servico_service.get_tempo_cumulativo_para_retrabalho(df_os_raw)
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_cumulativo_os(df_os_cumulativo)
+    fig = tipo_servico_graficos.gerar_grafico_cumulativo_os(df_os_cumulativo)
 
     return fig
 
@@ -344,10 +344,10 @@ def plota_grafico_retrabalho_por_modelo_perc_os(store_payload):
     df = df_os_raw.drop_duplicates(subset=["NUMERO DA OS"])
 
     # Estatística por modelo
-    df_modelo = os_service.get_retrabalho_por_modelo(df)
+    df_modelo = tipo_servico_service.get_retrabalho_por_modelo(df)
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_barras_retrabalho_por_modelo_perc(df_modelo)
+    fig = tipo_servico_graficos.gerar_grafico_barras_retrabalho_por_modelo_perc(df_modelo)
 
     return fig
 
@@ -375,10 +375,10 @@ def plota_grafico_evolucao_retrabalho_por_oficina_por_mes_os(store_payload):
     )
 
     # Estatística por oficina
-    df_oficina = os_service.get_retrabalho_por_oficina(df)
+    df_oficina = tipo_servico_service.get_retrabalho_por_oficina(df)
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_evolucao_retrabalho_por_oficina_por_mes(df_oficina)
+    fig = tipo_servico_graficos.gerar_grafico_evolucao_retrabalho_por_oficina_por_mes(df_oficina)
 
     return fig
 
@@ -410,7 +410,7 @@ def atualiza_indicadores_os_gerais(store_payload):
     df = df_os_raw.drop_duplicates(subset=["NUMERO DA OS"])
 
     # Cálculo
-    df_dias_para_correcao, df_num_os_por_problema, df_estatistica = os_service.get_indicadores_gerais(df)
+    df_dias_para_correcao, df_num_os_por_problema, df_estatistica = tipo_servico_service.get_indicadores_gerais(df)
 
     # Valores
     total_de_problemas = int(df_estatistica["TOTAL_DE_PROBLEMAS"].values[0])
@@ -485,7 +485,7 @@ def atualiza_indicadores_os_mecanico(store_payload):
     df_os_raw = pd.DataFrame(store_payload["df_os"])
 
     # Obtem indicadores
-    df_colaborador = os_service.get_indicadores_colaboradores(df_os_raw)
+    df_colaborador = tipo_servico_service.get_indicadores_colaboradores(df_os_raw)
 
     # Média de OS por mecânico
     media_os_por_mecanico = round(float(df_colaborador["TOTAL_DE_OS"].mean()), 2)
@@ -1232,7 +1232,7 @@ layout = dbc.Container(
             [
                 dag.AgGrid(
                     id="tabela-top-mecanicos",
-                    columnDefs=os_tabelas.tbl_top_mecanicos,
+                    columnDefs=tipo_servico_tabelas.tbl_top_mecanicos,
                     rowData=[],
                     defaultColDef={"filter": True, "floatingFilter": True},
                     columnSize="autoSize",
@@ -1250,7 +1250,7 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="OS", path="/retrabalho-por-os", icon="vaadin:lines-list")
+dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-servico", icon="vaadin:lines-list")
 
 
 # #!/usr/bin/env python

@@ -14,7 +14,7 @@ from modules.entities_utils import get_mecanicos
 
 
 # Classe do serviço
-class OSService:
+class TipoServicoService:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
 
