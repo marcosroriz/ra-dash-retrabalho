@@ -36,6 +36,7 @@ from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, ge
 # Imports específicos
 from modules.crud_regra.crud_regra_service import CRUDRegraService
 from modules.crud_regra.crud_email_test import CRUDEmailTestService
+from modules.crud_regra.crud_wpp_test import CRUDWppTestService
 from modules.home.home_service import HomeService
 
 import modules.crud_regra.graficos as crud_regra_graficos
@@ -300,6 +301,10 @@ def tabela_previa_os_regra_criar(
         Input("input-select-secao-regra-criar-retrabalho", "value"),
         Input("input-select-ordens-servico-regra-criar-retrabalho", "value"),
         Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
+        Input("switch-enviar-email-regra-criar-retrabalho", "checked"),
+        Input("input-email-regra-criar-retrabalho", "value"),
+        Input("switch-enviar-wpp-regra-criar-retrabalho", "checked"),
+        Input("input-telefone-wpp-regra-criar-retrabalho", "value"),
     ],
     prevent_initial_call=True,
 )
@@ -313,7 +318,12 @@ def testa_regra_monitoramento_retrabalho(
     lista_secaos,
     lista_os,
     checklist_alvo,
+    email_ativo,
+    email_destino,
+    wpp_ativo,
+    wpp_telefone,
 ):
+    print("CLICOU NO BOTAO")
     ctx = callback_context  # Obtém o contexto do callback
     if not ctx.triggered:
         return dash.no_update  # Evita execução desnecessária
@@ -325,7 +335,18 @@ def testa_regra_monitoramento_retrabalho(
 
     if not n_clicks or n_clicks <= 0:
         return dash.no_update
-    
+
+    print("EMAIL ATIVO:", email_ativo)
+    print("EMAIL DESTINO:", email_destino)
+    print("WPP ATIVO:", wpp_ativo)
+    print("WPP TELEFONE:", wpp_telefone)
+
+    if email_ativo and not email_destino:
+        return dash.no_update  # Gerar campo erro no input de email
+
+    if wpp_ativo and not wpp_telefone:
+        return dash.no_update  # Gerar campo erro no input de telefone
+
     # Valida Resto do input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return dash.no_update
@@ -336,20 +357,27 @@ def testa_regra_monitoramento_retrabalho(
     )
     num_os = len(df)
 
-    email_str = crud_email_test_service.build_email(
-        df,
-        num_os,
-        nome_regra,
-        data_periodo_regra,
-        min_dias,
-        lista_modelos,
-        lista_oficinas,
-        lista_secaos,
-        lista_os,
+    wpp_service = CRUDWppTestService(wpp_telefone)
+    wpp_service.build_and_send_msg(
+        df, num_os, nome_regra, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
     )
 
-    print("email a ser enviado:", email_str)
-    crud_email_test_service.send_email(email_str, nome_regra, "marcosroriz@ufg.br")
+    # # Envia WhatsApp
+
+    # email_str = crud_email_test_service.build_email(
+    #     df,
+    #     num_os,
+    #     nome_regra,
+    #     data_periodo_regra,
+    #     min_dias,
+    #     lista_modelos,
+    #     lista_oficinas,
+    #     lista_secaos,
+    #     lista_os,
+    # )
+
+    # print("email a ser enviado:", email_str)
+    # crud_email_test_service.send_email(email_str, nome_regra, "marcosroriz@ufg.br")
 
     return "Email enviado com sucesso"
 
@@ -718,31 +746,33 @@ layout = dbc.Container(
                                         placeholder="Selecione uma ou mais ordens de serviço...",
                                     ),
                                     dmc.Space(h=10),
-                                    dbc.Row([
-                                        dbc.Col(
-                                            dbc.Label("Categoria:"),
-                                            md=2,
-                                        ),
-                                        dbc.Col(
-                                            dbc.Checklist(
-                                                options=[
-                                                    {
-                                                        "label": "Verde",
-                                                        "value": "Verde",
-                                                    },
-                                                    {
-                                                        "label": "Amarelo",
-                                                        "value": "Amarelo",
-                                                    },
-                                                    {"label": "Vermelho", "value": "Vermelho"},
-                                                ],
-                                                value=["Verde", "Amarelo", "Vermelho"],
-                                                id="checklist-categoria-os-regra-criar-retrabalho",
-                                                inline=True,
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                dbc.Label("Categoria:"),
+                                                md=2,
                                             ),
-                                            md=10
-                                        ),
-                                    ])
+                                            dbc.Col(
+                                                dbc.Checklist(
+                                                    options=[
+                                                        {
+                                                            "label": "Verde",
+                                                            "value": "Verde",
+                                                        },
+                                                        {
+                                                            "label": "Amarelo",
+                                                            "value": "Amarelo",
+                                                        },
+                                                        {"label": "Vermelho", "value": "Vermelho"},
+                                                    ],
+                                                    value=["Verde", "Amarelo", "Vermelho"],
+                                                    id="checklist-categoria-os-regra-criar-retrabalho",
+                                                    inline=True,
+                                                ),
+                                                md=10,
+                                            ),
+                                        ]
+                                    ),
                                 ],
                                 className="dash-bootstrap",
                             ),
@@ -831,7 +861,7 @@ layout = dbc.Container(
                             [
                                 dbc.Col(
                                     dmc.Switch(
-                                        id="switch-enviar-whatsapp-regra-criar-retrabalho",
+                                        id="switch-enviar-wpp-regra-criar-retrabalho",
                                         label="Enviar WhatsApp",
                                         checked=False,
                                         size="md",
@@ -842,7 +872,7 @@ layout = dbc.Container(
                                 dbc.Col(
                                     dbc.Col(
                                         dmc.TextInput(
-                                            w=200,
+                                            id="input-telefone-wpp-regra-criar-retrabalho",
                                             placeholder="(62) 99999-9999",
                                             rightSection=DashIconify(icon="logos:whatsapp-icon"),
                                         ),

@@ -11,7 +11,7 @@ import numpy as np
 # Imports auxiliares
 from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, subquery_modelos
 from modules.entities_utils import get_mecanicos
-from modules.service_utils import definir_status
+from modules.service_utils import definir_status, definir_status_label, definir_emoji_status
 
 # Classe do serviço
 class CRUDRegraService:
@@ -149,6 +149,8 @@ class CRUDRegraService:
 
         # Aplica a função para definir o status de cada OS
         df["status_os"] = df.apply(definir_status, axis=1)
+        df["status_os_label"] = df.apply(definir_status_label, axis=1)
+        df["status_os_emoji"] = df.apply(definir_emoji_status, axis=1)
 
         # df_total = df.groupby("status_os").size().reset_index(name="TOTAL")
         # print(df.head())
