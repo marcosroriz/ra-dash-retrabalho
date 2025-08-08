@@ -1,0 +1,20 @@
+services:
+  dash-rapido-araguaia-retrabalho:
+    build: .
+    image: ceia-ufg/dash-rapido-araguaia-retrabalho
+    container_name: dash-rapido-araguaia-retrabalho
+    
+    env_file:
+      - src/.env
+    
+    ports:
+      - "${PORT}:${PORT}"
+    
+    networks:
+      - dash-rapido-araguaia-retrabalho
+
+    restart: unless-stopped
+
+networks:
+  dash-rapido-araguaia-retrabalho:
+    driver: bridge
