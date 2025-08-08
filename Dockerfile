@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia todos os arquivos do host para o container
 COPY . .
 
-# Muda o diretório de trabalho para /src
+# Diretório de trabalho para /src
 WORKDIR /src
 
 # Comando de inicialização
