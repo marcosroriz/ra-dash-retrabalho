@@ -6,6 +6,7 @@
 # Tabela detalhamento do problema/OS
 tbl_detalhamento_problema_os = [
     {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 200},
+    {"field": "problem_no", "headerName": "PROBLEMA", "minWidth": 150},
     {
         "field": "cod_colaborador",
         "headerName": "CÓDIGO DO COLABORADOR",
@@ -22,7 +23,7 @@ tbl_detalhamento_problema_os = [
         "autoHeaderHeight": True,
         "maxWidth": 200,
         "valueFormatter": {
-            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
+            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) + ' ' + params.value.slice(11,13) + ':' + params.value.slice(14,16) : ''"
         },
         "sortable": True,
     },

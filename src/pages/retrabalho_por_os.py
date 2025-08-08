@@ -9,6 +9,7 @@
 # Bibliotecas básicas
 from datetime import date
 import pandas as pd
+from collections import defaultdict
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
@@ -38,6 +39,7 @@ from db import PostgresSingleton
 # Imports específicos
 from modules.os.os_service import OSService
 import modules.os.tabelas as os_tabelas
+import modules.os.graficos as os_graficos
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -128,8 +130,13 @@ def callback_sincroniza_input_store(os_value, dias_value):
 def callback_recupera_os_armazena_store_output(data):
     saida = {
         "sucesso": False,
+        "df_os": pd.DataFrame(),
         "os_numero": None,
         "min_dias_retrabalho": None,
+        "codigo_veiculo": None,
+        "modelo_veiculo": None,
+        "problema_veiculo": None,
+        "num_problema_os": None,
     }
 
     # Verifica se o input está vazio
@@ -147,11 +154,57 @@ def callback_recupera_os_armazena_store_output(data):
     df_os = os_service.obtem_detalhamento_os(os_numero, min_dias)
 
     saida["sucesso"] = True
+    saida["df_os"] = df_os.to_dict(orient="records")
+    
+    # Demais dados
     saida["os_numero"] = os_numero
     saida["min_dias_retrabalho"] = min_dias
-    saida["df_os"] = df_os.to_dict(orient="records")
+    saida["codigo_veiculo"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["CODIGO DO VEICULO"].values[0]
+    saida["modelo_veiculo"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["DESCRICAO DO MODELO"].values[0]
+    saida["problema_veiculo"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["DESCRICAO DO SERVICO"].values[0]
+    saida["num_problema_os"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["problem_no"].values[0]
 
     return saida
+
+
+##############################################################################
+### Callbacks para os labels #################################################
+##############################################################################
+
+
+def gera_labels_inputs_detalhamento_os(campo):
+    # Cria o callback
+    @callback(
+        Output(component_id=f"{campo}-labels-detalhamento-os", component_property="children"),
+        Input("store-output-dados-detalhamento-os", "data"),
+    )
+    def atualiza_labels_inputs_detalhamento_os(data):
+        labels = [
+            dmc.Badge("Filtro", color="gray", variant="outline"),
+            dmc.Badge("Escolha a OS primeiro", variant="outline"),
+        ]
+
+        if not data["sucesso"]:
+            return dmc.Group(labels)
+        
+        # Obtem os dados
+        numero_os = data["os_numero"]
+        codigo_veiculo = data["codigo_veiculo"]
+        modelo_veiculo = data["modelo_veiculo"]
+        problema_veiculo = data["problema_veiculo"]
+        num_problema_os = data["num_problema_os"]
+
+        labels = [
+            dmc.Badge(f"OS: {numero_os}", variant="dot"),
+            dmc.Badge(f"Veículo: {codigo_veiculo} - {modelo_veiculo}", variant="dot"),
+            dmc.Badge(f"{problema_veiculo}", variant="dot"),
+            dmc.Badge(f"Problema # {num_problema_os}", variant="dot"),
+        ]
+
+        return labels
+
+    # Cria o componente
+    return dmc.Group(id=f"{campo}-labels-detalhamento-os", children=[])
 
 
 ##############################################################################
@@ -162,6 +215,7 @@ def callback_recupera_os_armazena_store_output(data):
 @callback(
     [
         Output("card-detalhamento-os-classificacao", "children"),
+        Output("card-detalhamento-os-num-problema-os", "children"),
         Output("card-detalhamento-os-colaborador", "children"),
         Output("card-detalhamento-os-data-inicio-os", "children"),
         Output("card-detalhamento-os-data-fim-os", "children"),
@@ -175,6 +229,7 @@ def atualiza_dados_card_detalhamento_os(data):
     if not data["sucesso"]:
         return [
             "❓ OS: Não Informada",
+            "💣 Número do Problema: Não Informado",
             "🧑‍🔧 Colaborador: Não Informado",
             "🚩 Data de abertura da OS: Não Informado",
             "📌 Data de fechamento da OS: Não Informado",
@@ -186,6 +241,7 @@ def atualiza_dados_card_detalhamento_os(data):
     # Obtem os dados
     os_numero = data["os_numero"]
     min_dias = data["min_dias_retrabalho"]
+    num_problema_os = data["num_problema_os"]   
     df_os = pd.DataFrame(data["df_os"]).copy()
 
     # Pega o status da OS
@@ -203,14 +259,13 @@ def atualiza_dados_card_detalhamento_os(data):
     # Pega as peças trocadas
     txt_pecas_os_raw = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["pecas_trocadas_str"].values[0]
     lista_pecas_os = txt_pecas_os_raw.split("__SEP__")
+    lista_pecas_os.sort()
 
-    html_pecas_os = html.Div([
-        html.Span("🧰 Peças trocadas:"),
-        html.Ul([html.Li(p) for p in lista_pecas_os])
-    ])
+    html_pecas_os = html.Div([html.Span("🧰 Peças trocadas:"), html.Ul([html.Li(p) for p in lista_pecas_os])])
 
     return [
         txt_os_classificacao,
+        "💣 Número do Problema: " + str(df_os[df_os["NUMERO DA OS"] == int(os_numero)]["problem_no"].values[0]),
         "🧑‍🔧 Colaborador: " + txt_colaborador,
         "🚩 Data de abertura da OS: " + txt_data_inicio_os,
         "📌 Data de fechamento da OS: " + txt_data_fim_os,
@@ -286,30 +341,39 @@ def atualiza_dados_card_detalhamento_problema(data):
     txt_diff_dias_problema = (data_fim_problema - data_inicio_problema).days
 
     # Pega as peças trocadas
-    lista_pecas_problema = []
+    hashmap_pecas_problema = defaultdict(set)
+
     for index, row in df_problema_os_alvo.iterrows():
-        txt_pecas_problema_raw = row["pecas_trocadas_str"]
-        lista_pecas_problema.extend(txt_pecas_problema_raw.split("__SEP__"))
+        numero_os = row["NUMERO DA OS"]
+        pecas_os = hashmap_pecas_problema[numero_os]
+        pecas_os.update(row["pecas_trocadas_str"].split("__SEP__"))
+        hashmap_pecas_problema[numero_os] = pecas_os
+
+    lista_pecas_problema = []
+    for pecas_os in hashmap_pecas_problema.values():
+        lista_pecas_problema.extend(pecas_os)
 
     # Remove "Nenhuma" from lista_pecas_problema se houver alguma peca diferente de "Nenhuma"
     lista_pecas_problema_final = []
     lista_pecas_problema_sem_nenhuma = [p for p in lista_pecas_problema if p != "Nenhuma"]
-    
+
     if lista_pecas_problema_sem_nenhuma:
         lista_pecas_problema_final = lista_pecas_problema_sem_nenhuma
     else:
         lista_pecas_problema_final = lista_pecas_problema
 
-    html_pecas_problema = html.Div([
-        html.Span("🧰 Peças trocadas até agora:"),
-        html.Ul([html.Li(p) for p in lista_pecas_problema_final])
-    ])
+    # Ordena a lista de peças
+    lista_pecas_problema_final.sort()
+
+    html_pecas_problema = html.Div(
+        [html.Span("🧰 Peças trocadas até agora:"), html.Ul([html.Li(p) for p in lista_pecas_problema_final])]
+    )
 
     return [
         "🚍 Código do veículo: " + txt_codigo_veiculo,
         "⚙️ Modelo do veículo: " + txt_modelo_veiculo,
         "💣 Problema da OS: " + txt_problema_veiculo,
-        "📋 Total de OS no problema: " + str(txt_total_os_no_problema),
+        "📋 Total de OSs no problema: " + str(txt_total_os_no_problema),
         "🚩 Data de abertura do problema: " + txt_data_inicio_problema,
         "📌 Data de fechamento do problema: " + txt_data_fim_problema,
         "📅 Diferença de dias desde o início do problema: " + str(txt_diff_dias_problema),
@@ -352,6 +416,7 @@ def preencher_timeline(data):
                 dmc.Text("🧑‍🔧 Colaborador: " + row["nome_colaborador"], size="sm", className="text-muted"),
                 dmc.Text("🚩 Início: " + row["DATA DA ABERTURA LABEL"], size="sm", className="text-muted"),
                 dmc.Text("📌 Fim: " + row["DATA DO FECHAMENTO LABEL"], size="sm", className="text-muted"),
+                dmc.Text("💬 Correção: " + row["CORRECAO"], size="sm", className="text-muted"),
             ]
         )
 
@@ -416,6 +481,30 @@ def preencher_tabela(data):
     df_os = pd.DataFrame(data["df_os"])
 
     return df_os.to_dict(orient="records")
+
+
+##############################################################################
+# Callbacks para o gantt #####################################################
+##############################################################################
+
+
+# Preenche o gantt com os dados do store
+@callback(
+    Output("graph-gantt-historico-problema-detalhamento-os", "figure"),
+    Input("store-output-dados-detalhamento-os", "data"),
+)
+def preencher_gantt(data):
+    if not data["sucesso"]:
+        return go.Figure()
+
+    # Obtem os dados
+    df_os = pd.DataFrame(data["df_os"])
+    problem_no = data["num_problema_os"]
+    
+    # Gera o gráfico
+    fig = os_graficos.gerar_grafico_gantt_historico_problema_detalhamento_os(df_os, problem_no)
+
+    return fig
 
 
 ##############################################################################
@@ -541,6 +630,7 @@ layout = dbc.Container(
                                     dbc.ListGroup(
                                         [
                                             dbc.ListGroupItem("", id="card-detalhamento-os-classificacao", active=True),
+                                            dbc.ListGroupItem("", id="card-detalhamento-os-num-problema-os"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-colaborador"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-data-inicio-os"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-data-fim-os"),
@@ -612,6 +702,8 @@ layout = dbc.Container(
                                 "Linha do tempo do retrabalho da OS selecionada",
                                 className="align-self-center",
                             ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_detalhamento_os("detalhamento-os-timeline"),
                         ]
                     ),
                     width=True,
@@ -652,7 +744,28 @@ layout = dbc.Container(
                 ),
             ]
         ),
-        dmc.Space(h=40),
+        dmc.Space(h=60),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fa6-solid:chart-gantt", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Histórico (diagrama de Gantt) do problema selecionado ",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_detalhamento_os("detalhamento-os-gantt"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-gantt-historico-problema-detalhamento-os"),
+        dmc.Space(h=20),
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),
@@ -660,9 +773,11 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Detalhamento e histórico da OS e problema selecionado",
+                                "Detalhamento e histórico da OS e do problema selecionado",
                                 className="align-self-center",
                             ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_detalhamento_os("detalhamento-os-tabela"),
                         ]
                     ),
                     width=True,
@@ -679,10 +794,12 @@ layout = dbc.Container(
             columnSize="autoSize",
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                "enableCellTextSelection": True,
+                "ensureDomOrder": True,
             },
-            style={"height": 500, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+            style={"height": 600, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
         ),
-        dmc.Space(h=40),
+        dmc.Space(h=80),
     ]
 )
 

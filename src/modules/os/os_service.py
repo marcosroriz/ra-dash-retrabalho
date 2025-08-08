@@ -56,7 +56,7 @@ class OSService:
                 "DESCRICAO DO SERVICO",
                 "CODIGO DO VEICULO"
             FROM 
-                mat_view_retrabalho_{min_dias}_dias m
+                mat_view_retrabalho_{min_dias}_dias_distinct m
             WHERE 
                 m."NUMERO DA OS" = '{os_numero}'
         ),
@@ -115,20 +115,24 @@ class OSService:
             "%d/%m/%Y %H:%M"
         )
 
-        # Preenche valores nulos
+        # Preenche valores nulos do colaborador
+        df_os_detalhada["nome_colaborador"] = df_os_detalhada["nome_colaborador"].fillna("Não Informado")
+
+        # Preenche valores nulos de peças
         df_os_detalhada["total_valor"] = df_os_detalhada["total_valor"].fillna(0)
         df_os_detalhada["pecas_valor_str"] = df_os_detalhada["pecas_valor_str"].fillna("0")
         df_os_detalhada["pecas_trocadas_str"] = df_os_detalhada["pecas_trocadas_str"].fillna("Nenhuma")
 
-        # Campos da LLM
+        # Preenche valores nulos da LLM
         df_os_detalhada["WHY_SOLUTION_IS_PROBLEM"] = df_os_detalhada["WHY_SOLUTION_IS_PROBLEM"].fillna(
             "Não classificado"
         )
+        df_os_detalhada["SINTOMA"] = df_os_detalhada["SINTOMA"].fillna("Não Informado")
+        df_os_detalhada["CORRECAO"] = df_os_detalhada["CORRECAO"].fillna("Não Informado")
 
         # Aplica a função para definir o status de cada OS
         df_os_detalhada["status_os"] = df_os_detalhada.apply(definir_status, axis=1)
         df_os_detalhada["status_os_label"] = df_os_detalhada.apply(definir_status_label, axis=1)
         df_os_detalhada["status_os_emoji"] = df_os_detalhada.apply(definir_emoji_status, axis=1)
-
 
         return df_os_detalhada
