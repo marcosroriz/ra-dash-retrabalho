@@ -357,10 +357,10 @@ def atualiza_dados_card_detalhamento_problema(data):
     lista_pecas_problema_final = []
     lista_pecas_problema_sem_nenhuma = [p for p in lista_pecas_problema if p != "Nenhuma"]
 
-    if lista_pecas_problema_sem_nenhuma:
+    if len(lista_pecas_problema_sem_nenhuma) > 0:
         lista_pecas_problema_final = lista_pecas_problema_sem_nenhuma
     else:
-        lista_pecas_problema_final = lista_pecas_problema
+        lista_pecas_problema_final = ["Nenhuma"]
 
     # Ordena a lista de peças
     lista_pecas_problema_final.sort()
