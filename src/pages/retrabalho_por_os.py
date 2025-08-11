@@ -119,14 +119,14 @@ def callback_sincroniza_input_store(os_value, dias_value):
         "os_numero": None,
         "min_dias_retrabalho": None,
     }
-    
+
     # Flags para validação
     input_os_valido = True
     input_dias_valido = True
 
     # Validação muda a borda e também mostra campo de erro
     # Estilos das bordas dos inputs
-    style_borda_ok = { 
+    style_borda_ok = {
         "border": "2px solid #198754",  # verde bootstrap
     }
     style_borda_erro = {
@@ -138,8 +138,8 @@ def callback_sincroniza_input_store(os_value, dias_value):
     style_borda_input_dias = style_borda_erro
 
     # Estilos dos erros dos inputs
-    style_campo_erro_visivel = { "display": "block" }
-    style_campo_erro_oculto = { "display": "none" }
+    style_campo_erro_visivel = {"display": "block"}
+    style_campo_erro_oculto = {"display": "none"}
     style_campo_erro_input_os = style_campo_erro_visivel
     style_campo_erro_input_dias = style_campo_erro_visivel
 
@@ -375,12 +375,8 @@ def atualiza_dados_card_detalhamento_problema(data):
     txt_total_os_no_problema = df_problema_os_alvo.shape[0]
 
     # Data do início e fim do problema, primeiro arruma datas
-    df_problema_os_alvo["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(
-        df_problema_os_alvo["DATA DA ABERTURA DA OS DT"], errors="coerce"
-    )
-    df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(
-        df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"], errors="coerce"
-    )
+    df_problema_os_alvo["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DA ABERTURA DA OS DT"], errors="coerce")
+    df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"], errors="coerce")
 
     # Calcula a data de início e fim do problema
     data_inicio_problema = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].min()
@@ -415,9 +411,7 @@ def atualiza_dados_card_detalhamento_problema(data):
     # Ordena a lista de peças
     lista_pecas_problema_final.sort()
 
-    html_pecas_problema = html.Div(
-        [html.Span("🧰 Peças trocadas até agora:"), html.Ul([html.Li(p) for p in lista_pecas_problema_final])]
-    )
+    html_pecas_problema = html.Div([html.Span("🧰 Peças trocadas até agora:"), html.Ul([html.Li(p) for p in lista_pecas_problema_final])])
 
     return [
         "🚍 Código do veículo: " + txt_codigo_veiculo,
@@ -484,9 +478,7 @@ def preencher_timeline(data):
                 bullet=row["status_os_emoji"],
                 title=titulo_item,
                 lineVariant="solid",
-                children=dmc.Paper(
-                    withBorder=True, radius="lg", p="md", style={"backgroundColor": "#fff8e1"}, children=item_body
-                ),
+                children=dmc.Paper(withBorder=True, radius="lg", p="md", style={"backgroundColor": "#fff8e1"}, children=item_body),
             )
 
         timeline_items.append(dmc_timeline_item)
@@ -510,9 +502,7 @@ def preencher_timeline(data):
     #     )
     #     timeline_items.append(dmc_timeline_item)
 
-    return dmc.Timeline(
-        active=problemas_ativos, lineWidth=2, color="lightgray", radius="lg", bulletSize=30, children=timeline_items
-    )
+    return dmc.Timeline(active=problemas_ativos, lineWidth=2, color="lightgray", radius="lg", bulletSize=30, children=timeline_items)
 
 
 ##############################################################################
@@ -720,9 +710,7 @@ layout = dbc.Container(
                                 [
                                     dbc.ListGroup(
                                         [
-                                            dbc.ListGroupItem(
-                                                "", id="card-detalhamento-os-codigo-veiculo", active=True
-                                            ),
+                                            dbc.ListGroupItem("", id="card-detalhamento-os-codigo-veiculo", active=True),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-modelo-veiculo"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-problema-veiculo"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-total-os-no-problema"),

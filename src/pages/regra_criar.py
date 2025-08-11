@@ -184,6 +184,28 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
     return lista_options, corrige_input(lista_os)
 
 
+@callback(
+    Output("input-email-destino-container-regra-criar-retrabalho", "style"),
+    Input("switch-enviar-email-regra-criar-retrabalho", "checked"),
+)
+def mostra_input_email_destino(email_ativo):
+    if email_ativo:
+        return {"display": "block"}
+    else:
+        return {"display": "none"}
+
+
+@callback(
+    Output("input-wpp-destino-container-regra-criar-retrabalho", "style"),
+    Input("switch-enviar-wpp-regra-criar-retrabalho", "checked"),
+)
+def mostra_input_wpp_destino(wpp_ativo):
+    if wpp_ativo:
+        return {"display": "block"}
+    else:
+        return {"display": "none"}
+
+
 ##############################################################################
 # Callbacks para os gráficos #################################################
 ##############################################################################
@@ -205,17 +227,13 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
         Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
     ],
 )
-def plota_grafico_pizza_sintese_criar_regra(
-    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
-):
+def plota_grafico_pizza_sintese_criar_regra(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
     # Valida input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure(), go.Figure()
 
     # Obtem os dados
-    df = crud_regra_service.get_sintese_geral(
-        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
-    )
+    df = crud_regra_service.get_sintese_geral(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     # Copia o DF para checklist
     df_checklist = df.copy()
@@ -255,9 +273,7 @@ def plota_grafico_pizza_sintese_criar_regra(
 
     # Gera o gráfico
     fig_geral = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False)
-    fig_filtro = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(
-        df_checklist, labels, values, usar_checklist=True, checklist_alvo=checklist_alvo
-    )
+    fig_filtro = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(df_checklist, labels, values, usar_checklist=True, checklist_alvo=checklist_alvo)
     return fig_geral, fig_filtro
 
 
@@ -274,17 +290,13 @@ def plota_grafico_pizza_sintese_criar_regra(
         Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
     ],
 )
-def tabela_previa_os_regra_criar(
-    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
-):
+def tabela_previa_os_regra_criar(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
     # Valida input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return []
 
     # Obtem os dados
-    df = crud_regra_service.get_previa_os_regra_detalhada(
-        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
-    )
+    df = crud_regra_service.get_previa_os_regra_detalhada(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo)
 
     return df.to_dict(orient="records")
 
@@ -302,9 +314,17 @@ def tabela_previa_os_regra_criar(
         Input("input-select-ordens-servico-regra-criar-retrabalho", "value"),
         Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
         Input("switch-enviar-email-regra-criar-retrabalho", "checked"),
-        Input("input-email-regra-criar-retrabalho", "value"),
+        Input("input-email-1-regra-criar-retrabalho", "value"),
+        Input("input-email-2-regra-criar-retrabalho", "value"),
+        Input("input-email-3-regra-criar-retrabalho", "value"),
+        Input("input-email-4-regra-criar-retrabalho", "value"),
+        Input("input-email-5-regra-criar-retrabalho", "value"),
         Input("switch-enviar-wpp-regra-criar-retrabalho", "checked"),
-        Input("input-telefone-wpp-regra-criar-retrabalho", "value"),
+        Input("input-wpp-1-regra-criar-retrabalho", "value"),
+        Input("input-wpp-2-regra-criar-retrabalho", "value"),
+        Input("input-wpp-3-regra-criar-retrabalho", "value"),
+        Input("input-wpp-4-regra-criar-retrabalho", "value"),
+        Input("input-wpp-5-regra-criar-retrabalho", "value"),
     ],
     prevent_initial_call=True,
 )
@@ -319,11 +339,18 @@ def testa_regra_monitoramento_retrabalho(
     lista_os,
     checklist_alvo,
     email_ativo,
-    email_destino,
+    email_destino_1,
+    email_destino_2,
+    email_destino_3,
+    email_destino_4,
+    email_destino_5,
     wpp_ativo,
-    wpp_telefone,
+    wpp_telefone_1,
+    wpp_telefone_2,
+    wpp_telefone_3,
+    wpp_telefone_4,
+    wpp_telefone_5,
 ):
-    print("CLICOU NO BOTAO")
     ctx = callback_context  # Obtém o contexto do callback
     if not ctx.triggered:
         return dash.no_update  # Evita execução desnecessária
@@ -337,9 +364,15 @@ def testa_regra_monitoramento_retrabalho(
         return dash.no_update
 
     print("EMAIL ATIVO:", email_ativo)
-    print("EMAIL DESTINO:", email_destino)
+    print("EMAIL DESTINO 1:", email_destino_1)
+    print("EMAIL DESTINO 2:", email_destino_2)
+    print("EMAIL DESTINO 3:", email_destino_3)
+    print("EMAIL DESTINO 4:", email_destino_4)
+    print("EMAIL DESTINO 5:", email_destino_5)
     print("WPP ATIVO:", wpp_ativo)
-    print("WPP TELEFONE:", wpp_telefone)
+    print("WPP TELEFONE 1:", wpp_telefone_1)
+    print("WPP TELEFONE 2:", wpp_telefone_2)
+    print("WPP TELEFONE 3:", wpp_telefone_3)
 
     if email_ativo and not email_destino:
         return dash.no_update  # Gerar campo erro no input de email
@@ -352,15 +385,11 @@ def testa_regra_monitoramento_retrabalho(
         return dash.no_update
 
     # Obtem os dados
-    df = crud_regra_service.get_previa_os_regra_detalhada(
-        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
-    )
+    df = crud_regra_service.get_previa_os_regra_detalhada(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo)
     num_os = len(df)
 
     wpp_service = CRUDWppTestService(wpp_telefone)
-    wpp_service.build_and_send_msg(
-        df, num_os, nome_regra, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
-    )
+    wpp_service.build_and_send_msg(df, num_os, nome_regra, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     # # Envia WhatsApp
 
@@ -405,6 +434,41 @@ layout = dbc.Container(
         #     zIndex=10,
         # ),
         # Informações / Ajuda
+        dmc.Modal(
+            # title="Erro ao carregar os dados",
+            id="modal-simple",
+            centered=True,
+            radius="lg",
+            size="lg",
+            children=dmc.Stack(
+                [
+                    dmc.ThemeIcon(
+                        radius="xl",
+                        size=128,
+                        color="red",
+                        variant="light",
+                        children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
+                    ),
+                    dmc.Title("Erro!", order=1),
+                    dmc.Text(
+                        "Ocorreu um erro ao testar a regra. Verifique se os dados estão corretos."
+                    ),
+                    dmc.Group(
+                        [
+                            dmc.Button(
+                                "Fechar",
+                                color="red",
+                                variant="outline",
+                                id="modal-close-button",
+                            ),
+                        ],
+                        # justify="flex-end",
+                    ),
+                ],
+                align="center",
+                gap="xl",
+            ),
+        ),
         dbc.Row(
             [
                 dbc.Col(
@@ -413,9 +477,7 @@ layout = dbc.Container(
                             [
                                 dbc.Row(
                                     [
-                                        dbc.Col(
-                                            DashIconify(icon="material-symbols:date-range", width=45), width="auto"
-                                        ),
+                                        dbc.Col(DashIconify(icon="material-symbols:date-range", width=45), width="auto"),
                                         dbc.Col(
                                             html.P(
                                                 [
@@ -601,9 +663,7 @@ layout = dbc.Container(
                                 ),
                                 dmc.Space(h=5),
                                 dbc.FormText(
-                                    html.Em(
-                                        "Período em que as OSs estarão ativas para os filtros da regra de monitoramento contínuo"
-                                    ),
+                                    html.Em("Período em que as OSs estarão ativas para os filtros da regra de monitoramento contínuo"),
                                     color="secondary",
                                 ),
                             ],
@@ -631,9 +691,7 @@ layout = dbc.Container(
                                     ),
                                     dmc.Space(h=5),
                                     dbc.FormText(
-                                        html.Em(
-                                            "Período mínimo de dias entre OS para que uma nova OS não seja considerada retrabalho"
-                                        ),
+                                        html.Em("Período mínimo de dias entre OS para que uma nova OS não seja considerada retrabalho"),
                                         color="secondary",
                                     ),
                                 ],
@@ -674,13 +732,8 @@ layout = dbc.Container(
                         ],
                         body=True,
                     ),
-                    md=12,
+                    md=6,
                 ),
-            ]
-        ),
-        dmc.Space(h=10),
-        dbc.Row(
-            [
                 dbc.Col(
                     dbc.Card(
                         [
@@ -689,9 +742,7 @@ layout = dbc.Container(
                                     dbc.Label("Oficinas"),
                                     dcc.Dropdown(
                                         id="input-select-oficina-regra-criar-retrabalho",
-                                        options=[
-                                            {"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_oficinas
-                                        ],
+                                        options=[{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_oficinas],
                                         multi=True,
                                         value=["TODAS"],
                                         placeholder="Selecione uma ou mais oficinas...",
@@ -704,6 +755,11 @@ layout = dbc.Container(
                     ),
                     md=6,
                 ),
+            ]
+        ),
+        dmc.Space(h=10),
+        dbc.Row(
+            [
                 dbc.Col(
                     dbc.Card(
                         [
@@ -712,9 +768,7 @@ layout = dbc.Container(
                                     dbc.Label("Seções (categorias) de manutenção"),
                                     dcc.Dropdown(
                                         id="input-select-secao-regra-criar-retrabalho",
-                                        options=[
-                                            {"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes
-                                        ],
+                                        options=[{"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes],
                                         multi=True,
                                         value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
                                         placeholder="Selecione uma ou mais seções...",
@@ -727,11 +781,6 @@ layout = dbc.Container(
                     ),
                     md=6,
                 ),
-            ]
-        ),
-        dmc.Space(h=10),
-        dbc.Row(
-            [
                 dbc.Col(
                     dbc.Card(
                         [
@@ -745,34 +794,6 @@ layout = dbc.Container(
                                         value=["TODAS"],
                                         placeholder="Selecione uma ou mais ordens de serviço...",
                                     ),
-                                    dmc.Space(h=10),
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                dbc.Label("Categoria:"),
-                                                md=2,
-                                            ),
-                                            dbc.Col(
-                                                dbc.Checklist(
-                                                    options=[
-                                                        {
-                                                            "label": "Verde",
-                                                            "value": "Verde",
-                                                        },
-                                                        {
-                                                            "label": "Amarelo",
-                                                            "value": "Amarelo",
-                                                        },
-                                                        {"label": "Vermelho", "value": "Vermelho"},
-                                                    ],
-                                                    value=["Verde", "Amarelo", "Vermelho"],
-                                                    id="checklist-categoria-os-regra-criar-retrabalho",
-                                                    inline=True,
-                                                ),
-                                                md=10,
-                                            ),
-                                        ]
-                                    ),
                                 ],
                                 className="dash-bootstrap",
                             ),
@@ -781,6 +802,13 @@ layout = dbc.Container(
                     ),
                     md=6,
                 ),
+
+            ]
+        ),
+        dmc.Space(h=10),
+        html.Hr(),
+        dbc.Row(
+            [
                 dbc.Col(
                     dbc.Card(
                         [
@@ -809,7 +837,7 @@ layout = dbc.Container(
                                         ],
                                         value=["nova_os_com_retrabalho_anterior", "retrabalho"],
                                         id="checklist-alertar-alvo-regra-criar-retrabalho",
-                                        # inline=True,
+                                        inline=True,
                                     ),
                                 ],
                                 className="dash-bootstrap",
@@ -817,7 +845,7 @@ layout = dbc.Container(
                         ],
                         body=True,
                     ),
-                    md=6,
+                    md=12,
                 ),
             ]
         ),
@@ -837,16 +865,68 @@ layout = dbc.Container(
                                     ),
                                     width="auto",
                                 ),
-                                dbc.Col(width=2),
                                 dbc.Col(
-                                    dbc.Input(
-                                        id="input-email-regra-criar-retrabalho",
-                                        type="email",
-                                        placeholder="fulano@odilonsantos.com",
-                                        value="",
-                                        # style={"display": "block"},
+                                    dbc.Row(
+                                        [
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dbc.Label("Emails de destino (Digite até 5 emails)"),
+                                                md=12,
+                                            ),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-email-1-regra-criar-retrabalho",
+                                                    placeholder="email1@odilonsantos.com",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="mdi:email"),
+                                                ),
+                                                md=12,
+                                            ),
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-email-2-regra-criar-retrabalho",
+                                                    placeholder="email2@odilonsantos.com",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="mdi:email"),
+                                                ),
+                                                md=12,
+                                            ),
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-email-3-regra-criar-retrabalho",
+                                                    placeholder="email3@odilonsantos.com",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="mdi:email"),
+                                                ),
+                                                md=12,
+                                            ),
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-email-4-regra-criar-retrabalho",
+                                                    placeholder="email4@odilonsantos.com",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="mdi:email"),
+                                                ),
+                                                md=12,
+                                            ),
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-email-5-regra-criar-retrabalho",
+                                                    placeholder="email5@odilonsantos.com",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="mdi:email"),
+                                                ),
+                                                md=12,
+                                            ),
+                                        ],
+                                        align="center",
                                     ),
-                                    width=6,
+                                    id="input-email-destino-container-regra-criar-retrabalho",
+                                    md=12,
                                 ),
                             ],
                             align="center",
@@ -868,16 +948,68 @@ layout = dbc.Container(
                                     ),
                                     width="auto",
                                 ),
-                                dbc.Col(width=2),
-                                dbc.Col(
-                                    dbc.Col(
-                                        dmc.TextInput(
-                                            id="input-telefone-wpp-regra-criar-retrabalho",
-                                            placeholder="(62) 99999-9999",
-                                            rightSection=DashIconify(icon="logos:whatsapp-icon"),
-                                        ),
-                                        width="auto",
+                                                                dbc.Col(
+                                    dbc.Row(
+                                        [
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dbc.Label("WhatsApp de destino (Digite até 5 números)"),
+                                                md=12,
+                                            ),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-wpp-1-regra-criar-retrabalho",
+                                                    placeholder="(62) 99999-9999",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="logos:whatsapp-icon"),
+                                                ),
+                                                md=12,
+                                            ),
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-wpp-2-regra-criar-retrabalho",
+                                                    placeholder="(62) 99999-9999",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="logos:whatsapp-icon"),
+                                                ),
+                                                md=12,
+                                            ),
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-wpp-3-regra-criar-retrabalho",
+                                                    placeholder="(62) 99999-9999",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="logos:whatsapp-icon"),
+                                                ),
+                                                md=12,
+                                            ),
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-wpp-4-regra-criar-retrabalho",
+                                                    placeholder="(62) 99999-9999",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="logos:whatsapp-icon"),
+                                                ),
+                                                md=12,
+                                            ),
+                                            dmc.Space(h=10),
+                                            dbc.Col(
+                                                dmc.TextInput(
+                                                    id="input-wpp-5-regra-criar-retrabalho",
+                                                    placeholder="(62) 99999-9999",
+                                                    value="",
+                                                    leftSection=DashIconify(icon="logos:whatsapp-icon"),
+                                                ),
+                                                md=12,
+                                            ),
+                                        ],
+                                        align="center",
                                     ),
+                                    id="input-wpp-destino-container-regra-criar-retrabalho",
+                                    md=12,
                                 ),
                             ],
                             align="center",
