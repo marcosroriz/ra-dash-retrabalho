@@ -104,22 +104,61 @@ def callback_sincronizar_campos_para_url(os_numero, min_dias):
 @callback(
     [
         Output("store-input-dados-detalhamento-os", "data"),
-        Output("input-detalhamento-os-selecionada", "error"),
+        Output("card-input-detalhamento-os-selecionada", "style"),
+        Output("card-input-detalhamento-select-dias-os-retrabalho", "style"),
+        Output("modal-simple", "opened"),
     ],
     Input("input-detalhamento-os-selecionada", "value"),
     Input("input-detalhamento-select-dias-os-retrabalho", "value"),
 )
 def callback_sincroniza_input_store(os_value, dias_value):
-    if not os_value or not dias_value:
-        return {}, True
+    os_valida = False
+    min_dias_valido = False
+    input_dict = {}
+    style_borda_ok = {
+        "border": "2px solid #198754",  # verde bootstrap
+    }
+    style_borda_erro = {
+        "border": "2px solid #dc3545",  # vermelho bootstrap
+    }
 
-    # Verifica se a OS existe
-    os_existe = os_service.os_existe(os_value, dias_value)
+    # Estilho das bordas dos inputs
+    style_borda_os = style_borda_erro
+    style_borda_dias = style_borda_erro
 
-    if not os_existe:
-        return {}, True
+    # Valida primeiro o min dias
+    print("DIAS VALUES", dias_value)
+    print("TEST: dias_value in [10, 15, 30]", dias_value in [10, 15, 30])
+    if dias_value and dias_value in [10, 15, 30]:
+        min_dias_valido = True
+        input_dict["min_dias_retrabalho"] = dias_value
+        style_borda_dias = style_borda_ok
+    else:
+        input_dict["min_dias_retrabalho"] = None
 
-    return {"os_numero": os_value, "min_dias_retrabalho": dias_value}, False
+    # Valida se há algum número da OS (os_value)
+    if os_value:
+        # Verifica se a OS existe de fato existe
+        try:
+            os_existe = os_service.os_existe(os_value, dias_value)
+            if not os_existe:
+                os_valida = False
+                input_dict["os_numero"] = None
+            else:
+                os_valida = True
+                input_dict["os_numero"] = os_value
+                style_borda_os = style_borda_ok
+        # Caso ocorra algum erro, considera que a OS não existe
+        except Exception as e:
+            os_valida = False
+            input_dict["os_numero"] = None
+    else:
+        input_dict["os_numero"] = None
+
+    if os_valida and min_dias_valido:
+        return input_dict, style_borda_os, style_borda_dias, False
+    else:
+        return {}, style_borda_os, style_borda_dias, True
 
 
 # Recupera as OS escolhidas a partir do input
@@ -130,7 +169,7 @@ def callback_sincroniza_input_store(os_value, dias_value):
 def callback_recupera_os_armazena_store_output(data):
     saida = {
         "sucesso": False,
-        "df_os": pd.DataFrame(),
+        "df_os": {},
         "os_numero": None,
         "min_dias_retrabalho": None,
         "codigo_veiculo": None,
@@ -155,7 +194,7 @@ def callback_recupera_os_armazena_store_output(data):
 
     saida["sucesso"] = True
     saida["df_os"] = df_os.to_dict(orient="records")
-    
+
     # Demais dados
     saida["os_numero"] = os_numero
     saida["min_dias_retrabalho"] = min_dias
@@ -184,9 +223,10 @@ def gera_labels_inputs_detalhamento_os(campo):
             dmc.Badge("Escolha a OS primeiro", variant="outline"),
         ]
 
-        if not data["sucesso"]:
+        # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+        if not data or not data["sucesso"]:
             return dmc.Group(labels)
-        
+
         # Obtem os dados
         numero_os = data["os_numero"]
         codigo_veiculo = data["codigo_veiculo"]
@@ -226,7 +266,8 @@ def gera_labels_inputs_detalhamento_os(campo):
     Input("store-output-dados-detalhamento-os", "data"),
 )
 def atualiza_dados_card_detalhamento_os(data):
-    if not data["sucesso"]:
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["sucesso"]:
         return [
             "❓ OS: Não Informada",
             "💣 Número do Problema: Não Informado",
@@ -238,10 +279,10 @@ def atualiza_dados_card_detalhamento_os(data):
             "🧰 Peças trocadas: Não Informado",
         ]
 
-    # Obtem os dados
+    # Obtem os dados do estado
     os_numero = data["os_numero"]
     min_dias = data["min_dias_retrabalho"]
-    num_problema_os = data["num_problema_os"]   
+    num_problema_os = data["num_problema_os"]
     df_os = pd.DataFrame(data["df_os"]).copy()
 
     # Pega o status da OS
@@ -289,7 +330,8 @@ def atualiza_dados_card_detalhamento_os(data):
     Input("store-output-dados-detalhamento-os", "data"),
 )
 def atualiza_dados_card_detalhamento_problema(data):
-    if not data["sucesso"]:
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["sucesso"]:
         return [
             "🚍 Código do veículo: Não Informado",
             "⚙️ Modelo do veículo: Não Informado",
@@ -392,7 +434,8 @@ def atualiza_dados_card_detalhamento_problema(data):
     Input("store-output-dados-detalhamento-os", "data"),
 )
 def preencher_timeline(data):
-    if not data["sucesso"]:
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["sucesso"]:
         return []
 
     os_numero = data["os_numero"]
@@ -475,9 +518,11 @@ def preencher_timeline(data):
     Input("store-output-dados-detalhamento-os", "data"),
 )
 def preencher_tabela(data):
-    if not data["sucesso"]:
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["sucesso"]:
         return []
 
+    # Obtem os dados do estado
     df_os = pd.DataFrame(data["df_os"])
 
     return df_os.to_dict(orient="records")
@@ -494,13 +539,14 @@ def preencher_tabela(data):
     Input("store-output-dados-detalhamento-os", "data"),
 )
 def preencher_gantt(data):
-    if not data["sucesso"]:
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["sucesso"]:
         return go.Figure()
 
-    # Obtem os dados
+    # Obtem os dados do estado
     df_os = pd.DataFrame(data["df_os"])
     problem_no = data["num_problema_os"]
-    
+
     # Gera o gráfico
     fig = os_graficos.gerar_grafico_gantt_historico_problema_detalhamento_os(df_os, problem_no)
 
@@ -515,6 +561,41 @@ layout = dbc.Container(
         # Estado
         dcc.Store(id="store-input-dados-detalhamento-os"),
         dcc.Store(id="store-output-dados-detalhamento-os"),
+        dmc.Modal(
+            # title="Erro ao carregar os dados",
+            id="modal-simple",
+            centered=True,
+            radius="lg",
+            size="lg",
+            children=dmc.Stack(
+                [
+                    dmc.ThemeIcon(
+                        radius="xl",
+                        size=128,
+                        color="red",
+                        variant="light",
+                        children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
+                    ),
+                    dmc.Title("Erro!", order=1),
+                    dmc.Text(
+                        "Ocorreu um erro ao carregar os dados. Verifique se o número da OS e o período de retrabalho estão corretos."
+                    ),
+                    dmc.Group(
+                        [
+                            dmc.Button(
+                                "Fechar",
+                                color="red",
+                                variant="outline",
+                                id="modal-close-button",
+                            ),
+                        ],
+                        # justify="flex-end",
+                    ),
+                ],
+                align="center",
+                gap="xl",
+            ),
+        ),
         # Alerta
         dbc.Alert(
             [
@@ -572,6 +653,7 @@ layout = dbc.Container(
                                 className="dash-bootstrap",
                             ),
                         ],
+                        id="card-input-detalhamento-os-selecionada",
                         body=True,
                     ),
                     md=6,
@@ -596,6 +678,7 @@ layout = dbc.Container(
                                 className="dash-bootstrap",
                             ),
                         ],
+                        id="card-input-detalhamento-select-dias-os-retrabalho",
                         body=True,
                     ),
                     md=6,
