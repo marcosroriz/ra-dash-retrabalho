@@ -106,16 +106,27 @@ def callback_sincronizar_campos_para_url(os_numero, min_dias):
         Output("store-input-dados-detalhamento-os", "data"),
         Output("card-input-detalhamento-os-selecionada", "style"),
         Output("card-input-detalhamento-select-dias-os-retrabalho", "style"),
-        Output("modal-simple", "opened"),
+        Output("input-detalhamento-os-selecionada-error", "style"),
+        Output("input-detalhamento-select-dias-os-retrabalho-error", "style"),
     ],
     Input("input-detalhamento-os-selecionada", "value"),
     Input("input-detalhamento-select-dias-os-retrabalho", "value"),
 )
 def callback_sincroniza_input_store(os_value, dias_value):
-    os_valida = False
-    min_dias_valido = False
-    input_dict = {}
-    style_borda_ok = {
+    # Input padrão
+    input_dict = {
+        "valido": False,
+        "os_numero": None,
+        "min_dias_retrabalho": None,
+    }
+    
+    # Flags para validação
+    input_os_valido = True
+    input_dias_valido = True
+
+    # Validação muda a borda e também mostra campo de erro
+    # Estilos das bordas dos inputs
+    style_borda_ok = { 
         "border": "2px solid #198754",  # verde bootstrap
     }
     style_borda_erro = {
@@ -123,42 +134,39 @@ def callback_sincroniza_input_store(os_value, dias_value):
     }
 
     # Estilho das bordas dos inputs
-    style_borda_os = style_borda_erro
-    style_borda_dias = style_borda_erro
+    style_borda_input_os = style_borda_erro
+    style_borda_input_dias = style_borda_erro
+
+    # Estilos dos erros dos inputs
+    style_campo_erro_visivel = { "display": "block" }
+    style_campo_erro_oculto = { "display": "none" }
+    style_campo_erro_input_os = style_campo_erro_visivel
+    style_campo_erro_input_dias = style_campo_erro_visivel
 
     # Valida primeiro o min dias
-    print("DIAS VALUES", dias_value)
-    print("TEST: dias_value in [10, 15, 30]", dias_value in [10, 15, 30])
     if dias_value and dias_value in [10, 15, 30]:
-        min_dias_valido = True
         input_dict["min_dias_retrabalho"] = dias_value
-        style_borda_dias = style_borda_ok
+        style_borda_input_dias = style_borda_ok
+        style_campo_erro_input_dias = style_campo_erro_oculto
     else:
-        input_dict["min_dias_retrabalho"] = None
+        input_dias_valido = False
 
     # Valida se há algum número da OS (os_value)
-    if os_value:
-        # Verifica se a OS existe de fato existe
-        try:
-            os_existe = os_service.os_existe(os_value, dias_value)
-            if not os_existe:
-                os_valida = False
-                input_dict["os_numero"] = None
-            else:
-                os_valida = True
-                input_dict["os_numero"] = os_value
-                style_borda_os = style_borda_ok
-        # Caso ocorra algum erro, considera que a OS não existe
-        except Exception as e:
-            os_valida = False
-            input_dict["os_numero"] = None
-    else:
-        input_dict["os_numero"] = None
+    try:
+        # Trim o input
+        os_value = os_value.strip()
+        if os_value and os_service.os_existe(os_value, dias_value):
+            input_dict["os_numero"] = os_value
+            style_borda_input_os = style_borda_ok
+            style_campo_erro_input_os = style_campo_erro_oculto
+        else:
+            input_os_valido = False
+    except Exception:
+        input_os_valido = False
 
-    if os_valida and min_dias_valido:
-        return input_dict, style_borda_os, style_borda_dias, False
-    else:
-        return {}, style_borda_os, style_borda_dias, True
+    input_dict["valido"] = input_os_valido and input_dias_valido
+
+    return input_dict, style_borda_input_os, style_borda_input_dias, style_campo_erro_input_os, style_campo_erro_input_dias
 
 
 # Recupera as OS escolhidas a partir do input
@@ -561,63 +569,6 @@ layout = dbc.Container(
         # Estado
         dcc.Store(id="store-input-dados-detalhamento-os"),
         dcc.Store(id="store-output-dados-detalhamento-os"),
-        dmc.Modal(
-            # title="Erro ao carregar os dados",
-            id="modal-simple",
-            centered=True,
-            radius="lg",
-            size="lg",
-            children=dmc.Stack(
-                [
-                    dmc.ThemeIcon(
-                        radius="xl",
-                        size=128,
-                        color="red",
-                        variant="light",
-                        children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
-                    ),
-                    dmc.Title("Erro!", order=1),
-                    dmc.Text(
-                        "Ocorreu um erro ao carregar os dados. Verifique se o número da OS e o período de retrabalho estão corretos."
-                    ),
-                    dmc.Group(
-                        [
-                            dmc.Button(
-                                "Fechar",
-                                color="red",
-                                variant="outline",
-                                id="modal-close-button",
-                            ),
-                        ],
-                        # justify="flex-end",
-                    ),
-                ],
-                align="center",
-                gap="xl",
-            ),
-        ),
-        # Alerta
-        dbc.Alert(
-            [
-                dbc.Row(
-                    [
-                        dbc.Col(DashIconify(icon="ooui:alert", width=45), width="auto"),
-                        dbc.Col(
-                            html.P(
-                                """
-                                A tela permite analisar o retrabalho de uma OS específica, detalhando o histórico do que foi feito.
-                                """
-                            ),
-                            className="mt-2",
-                            width=True,
-                        ),
-                    ],
-                    align="center",
-                ),
-            ],
-            dismissable=True,
-            color="warning",
-        ),
         html.Hr(),
         dbc.Row(
             [
@@ -649,6 +600,14 @@ layout = dbc.Container(
                                         id="input-detalhamento-os-selecionada",
                                         placeholder="Digite o número da OS",
                                     ),
+                                    dmc.Space(h=5),
+                                    dbc.FormText(
+                                        html.Em(
+                                            "OS não encontrada",
+                                            id="input-detalhamento-os-selecionada-error",
+                                        ),
+                                        color="secondary",
+                                    ),
                                 ],
                                 className="dash-bootstrap",
                             ),
@@ -673,6 +632,14 @@ layout = dbc.Container(
                                         ],
                                         placeholder="Período em dias",
                                         value=10,
+                                    ),
+                                    dmc.Space(h=5),
+                                    dbc.FormText(
+                                        html.Em(
+                                            "Período inválido",
+                                            id="input-detalhamento-select-dias-os-retrabalho-error",
+                                        ),
+                                        color="secondary",
                                     ),
                                 ],
                                 className="dash-bootstrap",
