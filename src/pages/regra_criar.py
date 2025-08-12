@@ -9,6 +9,7 @@
 # Bibliotecas básicas
 from datetime import date, datetime
 import pandas as pd
+import re
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
@@ -184,6 +185,7 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
     return lista_options, corrige_input(lista_os)
 
 
+# Função para mostrar o input de email de destino
 @callback(
     Output("input-email-destino-container-regra-criar-retrabalho", "style"),
     Input("switch-enviar-email-regra-criar-retrabalho", "checked"),
@@ -195,6 +197,7 @@ def mostra_input_email_destino(email_ativo):
         return {"display": "none"}
 
 
+# Função para mostrar o input de WhatsApp de destino
 @callback(
     Output("input-wpp-destino-container-regra-criar-retrabalho", "style"),
     Input("switch-enviar-wpp-regra-criar-retrabalho", "checked"),
@@ -204,6 +207,122 @@ def mostra_input_wpp_destino(wpp_ativo):
         return {"display": "block"}
     else:
         return {"display": "none"}
+
+
+# Função para validar o input de email de destino
+def verifica_erro_email(email_destino):
+    if not email_destino:
+        return False
+
+    email_limpo = email_destino.strip()
+    
+    if not re.match(r"^[\w\.-]+@[\w\.-]+\.\w{2,}$", email_limpo):
+        return True
+
+    return False
+
+
+@callback(
+    Output("input-email-1-regra-criar-retrabalho", "error"),
+    Input("input-email-1-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_email_1(email_destino):
+    return verifica_erro_email(email_destino)
+
+
+@callback(
+    Output("input-email-2-regra-criar-retrabalho", "error"),
+    Input("input-email-2-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_email_2(email_destino):
+    return verifica_erro_email(email_destino)
+
+
+@callback(
+    Output("input-email-3-regra-criar-retrabalho", "error"),
+    Input("input-email-3-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_email_3(email_destino):
+    return verifica_erro_email(email_destino)
+
+
+@callback(
+    Output("input-email-4-regra-criar-retrabalho", "error"),
+    Input("input-email-4-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_email_4(email_destino):
+    return verifica_erro_email(email_destino)
+
+
+@callback(
+    Output("input-email-5-regra-criar-retrabalho", "error"),
+    Input("input-email-5-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_email_5(email_destino):
+    return verifica_erro_email(email_destino)
+
+
+# Função para validar o input de telefone
+def verifica_erro_wpp(wpp_telefone):
+    # Se estive vazio, não considere erro
+    if not wpp_telefone:
+        return False
+
+    wpp_limpo = wpp_telefone.replace(" ", "")
+
+    padroes_validos = [
+        r"^\(\d{2}\)\d{5}-\d{4}$",  # (62)99999-9999
+        r"^\(\d{2}\)\d{4}-\d{4}$",  # (62)9999-9999
+        r"^\d{2}\d{5}-\d{4}$",  # 6299999-9999
+        r"^\d{2}\d{4}-\d{4}$",  # 629999-9999
+        r"^\d{10}$",  # 6299999999 (fixo)
+        r"^\d{11}$",  # 62999999999 (celular)
+    ]
+
+    if not any(re.match(padrao, wpp_limpo) for padrao in padroes_validos):
+        return True
+
+    return False
+
+
+@callback(
+    Output("input-wpp-1-regra-criar-retrabalho", "error"),
+    Input("input-wpp-1-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_wpp_1(wpp_telefone):
+    return verifica_erro_wpp(wpp_telefone)
+
+
+@callback(
+    Output("input-wpp-2-regra-criar-retrabalho", "error"),
+    Input("input-wpp-2-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_wpp_2(wpp_telefone):
+    return verifica_erro_wpp(wpp_telefone)
+
+
+@callback(
+    Output("input-wpp-3-regra-criar-retrabalho", "error"),
+    Input("input-wpp-3-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_wpp_3(wpp_telefone):
+    return verifica_erro_wpp(wpp_telefone)
+
+
+@callback(
+    Output("input-wpp-4-regra-criar-retrabalho", "error"),
+    Input("input-wpp-4-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_wpp_4(wpp_telefone):
+    return verifica_erro_wpp(wpp_telefone)
+
+
+@callback(
+    Output("input-wpp-5-regra-criar-retrabalho", "error"),
+    Input("input-wpp-5-regra-criar-retrabalho", "value"),
+)
+def verifica_erro_wpp_5(wpp_telefone):
+    return verifica_erro_wpp(wpp_telefone)
 
 
 ##############################################################################
@@ -227,13 +346,17 @@ def mostra_input_wpp_destino(wpp_ativo):
         Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
     ],
 )
-def plota_grafico_pizza_sintese_criar_regra(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
+def plota_grafico_pizza_sintese_criar_regra(
+    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+):
     # Valida input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure(), go.Figure()
 
     # Obtem os dados
-    df = crud_regra_service.get_sintese_geral(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
+    df = crud_regra_service.get_sintese_geral(
+        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    )
 
     # Copia o DF para checklist
     df_checklist = df.copy()
@@ -273,7 +396,9 @@ def plota_grafico_pizza_sintese_criar_regra(data_periodo_regra, min_dias, lista_
 
     # Gera o gráfico
     fig_geral = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False)
-    fig_filtro = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(df_checklist, labels, values, usar_checklist=True, checklist_alvo=checklist_alvo)
+    fig_filtro = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(
+        df_checklist, labels, values, usar_checklist=True, checklist_alvo=checklist_alvo
+    )
     return fig_geral, fig_filtro
 
 
@@ -290,13 +415,17 @@ def plota_grafico_pizza_sintese_criar_regra(data_periodo_regra, min_dias, lista_
         Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
     ],
 )
-def tabela_previa_os_regra_criar(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
+def tabela_previa_os_regra_criar(
+    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+):
     # Valida input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return []
 
     # Obtem os dados
-    df = crud_regra_service.get_previa_os_regra_detalhada(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo)
+    df = crud_regra_service.get_previa_os_regra_detalhada(
+        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+    )
 
     return df.to_dict(orient="records")
 
@@ -385,11 +514,15 @@ def testa_regra_monitoramento_retrabalho(
         return dash.no_update
 
     # Obtem os dados
-    df = crud_regra_service.get_previa_os_regra_detalhada(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo)
+    df = crud_regra_service.get_previa_os_regra_detalhada(
+        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+    )
     num_os = len(df)
 
     wpp_service = CRUDWppTestService(wpp_telefone)
-    wpp_service.build_and_send_msg(df, num_os, nome_regra, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
+    wpp_service.build_and_send_msg(
+        df, num_os, nome_regra, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    )
 
     # # Envia WhatsApp
 
@@ -450,9 +583,7 @@ layout = dbc.Container(
                         children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
                     ),
                     dmc.Title("Erro!", order=1),
-                    dmc.Text(
-                        "Ocorreu um erro ao testar a regra. Verifique se os dados estão corretos."
-                    ),
+                    dmc.Text("Ocorreu um erro ao testar a regra. Verifique se os dados estão corretos."),
                     dmc.Group(
                         [
                             dmc.Button(
@@ -477,7 +608,9 @@ layout = dbc.Container(
                             [
                                 dbc.Row(
                                     [
-                                        dbc.Col(DashIconify(icon="material-symbols:date-range", width=45), width="auto"),
+                                        dbc.Col(
+                                            DashIconify(icon="material-symbols:date-range", width=45), width="auto"
+                                        ),
                                         dbc.Col(
                                             html.P(
                                                 [
@@ -663,7 +796,9 @@ layout = dbc.Container(
                                 ),
                                 dmc.Space(h=5),
                                 dbc.FormText(
-                                    html.Em("Período em que as OSs estarão ativas para os filtros da regra de monitoramento contínuo"),
+                                    html.Em(
+                                        "Período em que as OSs estarão ativas para os filtros da regra de monitoramento contínuo"
+                                    ),
                                     color="secondary",
                                 ),
                             ],
@@ -691,7 +826,9 @@ layout = dbc.Container(
                                     ),
                                     dmc.Space(h=5),
                                     dbc.FormText(
-                                        html.Em("Período mínimo de dias entre OS para que uma nova OS não seja considerada retrabalho"),
+                                        html.Em(
+                                            "Período mínimo de dias entre OS para que uma nova OS não seja considerada retrabalho"
+                                        ),
                                         color="secondary",
                                     ),
                                 ],
@@ -742,7 +879,9 @@ layout = dbc.Container(
                                     dbc.Label("Oficinas"),
                                     dcc.Dropdown(
                                         id="input-select-oficina-regra-criar-retrabalho",
-                                        options=[{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_oficinas],
+                                        options=[
+                                            {"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_oficinas
+                                        ],
                                         multi=True,
                                         value=["TODAS"],
                                         placeholder="Selecione uma ou mais oficinas...",
@@ -768,7 +907,9 @@ layout = dbc.Container(
                                     dbc.Label("Seções (categorias) de manutenção"),
                                     dcc.Dropdown(
                                         id="input-select-secao-regra-criar-retrabalho",
-                                        options=[{"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes],
+                                        options=[
+                                            {"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes
+                                        ],
                                         multi=True,
                                         value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
                                         placeholder="Selecione uma ou mais seções...",
@@ -802,7 +943,6 @@ layout = dbc.Container(
                     ),
                     md=6,
                 ),
-
             ]
         ),
         dmc.Space(h=10),
@@ -948,7 +1088,7 @@ layout = dbc.Container(
                                     ),
                                     width="auto",
                                 ),
-                                                                dbc.Col(
+                                dbc.Col(
                                     dbc.Row(
                                         [
                                             dmc.Space(h=10),
