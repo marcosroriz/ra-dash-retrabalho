@@ -34,8 +34,8 @@ headers = {
 ##############################################################################
 def formatar_telefone(numero_br):
     # Remove tudo que não for número
-    somente_digitos = re.sub(r'\D', '', numero_br)
-    
+    somente_digitos = re.sub(r"\D", "", numero_br)
+
     # Adiciona o DDI do Brasil (55) no início, se não tiver
     if not somente_digitos.startswith("55"):
         somente_digitos = "55" + somente_digitos
@@ -50,9 +50,7 @@ def formatar_telefone(numero_br):
 
 
 # Classe do serviço
-class CRUDWppTestService:
-    def __init__(self, to_phone):
-        self.telefone_destino = formatar_telefone(to_phone)
+class CRUDWppTestService(object):
 
     def get_wpp_header(
         self, nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
@@ -82,12 +80,47 @@ class CRUDWppTestService:
 
         title_str = f"OS: {numero_os} / {codigo_veiculo}"
         link_description_str = f"Status: {status_os}"
-        link_str = f"{DASHBOARD_URL}/retrabalho_por_os?os={numero_os}&mindiasretrabalho={min_dias}"
+        link_str = f"{DASHBOARD_URL}/retrabalho-por-os?os={numero_os}&mindiasretrabalho={min_dias}"
 
         os_detectada_str = f"""⚙️ OS: {numero_os} / 🚍 {codigo_veiculo} / {status_os} \n {link_str}"""
         return os_detectada_str, title_str, link_description_str, link_str
 
-    def build_msg(
+    def __wpp_send_text(self, msg_str, telefone_destino):
+        payload = {
+            "phone": telefone_destino,
+            "message": msg_str,
+        }
+        payload_json = json.dumps(payload)
+        print("MANDANDO MENSAGEM:")
+        print(payload_json)
+        response = requests.post(WP_ZAPI_SEND_TEXT_URL, headers=headers, data=payload_json)
+
+        return response.status_code
+
+    def __wpp_send_link(
+        self,
+        msg_str,
+        title_str,
+        link_description_str,
+        link_str,
+        telefone_destino,
+    ):
+        payload = {
+            "phone": telefone_destino,
+            "message": msg_str,
+            "title": title_str,
+            "linkDescription": link_description_str,
+            "link": link_str,
+        }
+
+        payload_json = json.dumps(payload)
+        print("MANDANDO MENSAGEM:")
+        print(payload_json)
+        response = requests.post(WP_ZAPI_SEND_LINK_URL, headers=headers, data=payload_json)
+
+        return response.status_code
+
+    def build_and_send_msg(
         self,
         df,
         num_os,
@@ -98,93 +131,14 @@ class CRUDWppTestService:
         lista_oficinas,
         lista_secaos,
         lista_os,
-    ):
-
-        # Header
-        header_str = self.get_wpp_header(
-            nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
-        )
-
-        # Problemas
-        problema_str_list = []
-
-        lista_problemas = df["DESCRICAO DO SERVICO"].unique()
-        for problema in lista_problemas:
-            df_problema = df[df["DESCRICAO DO SERVICO"] == problema]
-            problema_str = self.get_wpp_problema_header(problema, len(df_problema))
-            content_str = ""
-            for _, row in df_problema.iterrows():
-                content_str += self.get_wpp_problema_content(row, min_dias)
-
-            problema_str += content_str
-
-            problema_str_list.append(problema_str)
-
-        problema_str = "\n".join(problema_str_list)
-
-        # Build msg
-        msg_str = header_str + problema_str
-
-        return msg_str
-
-    def send_msg(self, msg_str):
-        payload = {
-            "phone": self.telefone_destino,
-            "message": msg_str,
-        }
-        payload_json = json.dumps(payload)
-
-        print("Mandando a seguinte mensagem:")
-        print(payload_json)
-        response = requests.post(WP_ZAPI_URL, headers=headers, data=payload_json)
-
-        print(response.text)
-
-    def __wpp_send_text(self, msg_str):
-        payload = {
-            "phone": self.telefone_destino,
-            "message": msg_str,
-        }
-        payload_json = json.dumps(payload)
-        response = requests.post(WP_ZAPI_SEND_TEXT_URL, headers=headers, data=payload_json)
-
-        print(response.text)
-
-    def __wpp_send_link(self, msg_str, title_str, link_description_str, link_str,):
-        payload = {
-            "phone": self.telefone_destino,
-            "message": msg_str,
-            "title": title_str,
-            "linkDescription": link_description_str,
-            "link": link_str,
-        }
-
-        payload_json = json.dumps(payload)
-
-        print("Mandando a seguinte mensagem:")
-        print(payload_json)
-        response = requests.post(WP_ZAPI_SEND_LINK_URL, headers=headers, data=payload_json)
-
-        print(response.text)
-
-
-    def build_and_send_msg(self,
-        df,
-        num_os,
-        nome_regra,
-        data_periodo_regra,
-        min_dias,
-        lista_modelos,
-        lista_oficinas,
-        lista_secaos,
-        lista_os,
+        telefone_destino,
     ):
         cabecalho_str = self.get_wpp_header(
             nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
         )
 
         # Envia o cabeçalho
-        self.__wpp_send_text(cabecalho_str)
+        self.__wpp_send_text(cabecalho_str, telefone_destino)
 
         # Analisa cada problema
         lista_problemas = df["DESCRICAO DO SERVICO"].unique()
@@ -193,11 +147,9 @@ class CRUDWppTestService:
             problema_str = self.get_wpp_problema_header(problema, len(df_problema))
 
             # Envia o problema
-            self.__wpp_send_text(problema_str)
+            self.__wpp_send_text(problema_str, telefone_destino)
 
             # Envia o conteúdo de cada OS
             for _, row in df_problema.iterrows():
                 os_str, title_str, link_description_str, link_str = self.get_wpp_problema_content(row, min_dias)
-                self.__wpp_send_link(os_str, title_str, link_description_str, link_str)
-
-        return "Mensagem enviada com sucesso"
+                self.__wpp_send_link(os_str, title_str, link_description_str, link_str, telefone_destino)

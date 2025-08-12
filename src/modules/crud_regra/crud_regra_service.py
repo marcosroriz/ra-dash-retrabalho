@@ -13,6 +13,7 @@ from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, s
 from modules.entities_utils import get_mecanicos
 from modules.service_utils import definir_status, definir_status_label, definir_emoji_status
 
+
 # Classe do serviço
 class CRUDRegraService:
     def __init__(self, dbEngine):
@@ -20,17 +21,13 @@ class CRUDRegraService:
 
     def subquery_checklist(self, checklist_alvo, prefix=""):
         query = ""
-        query_parts = [
-            f"""{prefix}"{alvo}" = TRUE"""
-            for alvo in checklist_alvo
-        ]
+        query_parts = [f"""{prefix}"{alvo}" = TRUE""" for alvo in checklist_alvo]
 
         if query_parts:
             query_or = " OR ".join(query_parts)
             query = f"AND ({query_or})"
 
         return query
-
 
     def get_sintese_geral(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         """Função para obter a síntese geral (que será usado para o gráfico de pizza)"""
@@ -72,9 +69,10 @@ class CRUDRegraService:
         df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
 
         return df
-    
 
-    def get_sintese_geral_filtro_periodo(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
+    def get_sintese_geral_filtro_periodo(
+        self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+    ):
         """Função para obter a síntese geral (que será usado para o gráfico de pizza)"""
 
         # Subqueries
@@ -116,8 +114,9 @@ class CRUDRegraService:
 
         return df
 
-
-    def get_previa_os_regra(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
+    def get_previa_os_regra(
+        self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+    ):
         """Função para obter a prévia das OS detectadas pela regra (que será usado para envio do e-mail / WhatsApp)"""
 
         # Subqueries
@@ -141,8 +140,6 @@ class CRUDRegraService:
                 {subquery_os_str}
                 {subquery_checklist_str}
         """
-        print("--------------------------------")
-        print(query)
 
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
@@ -152,14 +149,11 @@ class CRUDRegraService:
         df["status_os_label"] = df.apply(definir_status_label, axis=1)
         df["status_os_emoji"] = df.apply(definir_emoji_status, axis=1)
 
-        # df_total = df.groupby("status_os").size().reset_index(name="TOTAL")
-        # print(df.head())
-
-        # print(df_total.head())
         return df
 
-
-    def get_previa_os_regra_detalhada(self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo):
+    def get_previa_os_regra_detalhada(
+        self, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+    ):
         """Função para obter a prévia das OS detectadas pela regra (que será usado para envio do e-mail / WhatsApp)"""
 
         # Subqueries
@@ -168,7 +162,6 @@ class CRUDRegraService:
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_checklist_str = self.subquery_checklist(checklist_alvo)
-
 
         # Query
         query = f"""
@@ -214,9 +207,6 @@ class CRUDRegraService:
         LEFT JOIN colaboradores_frotas_os cfo 
         ON os."COLABORADOR QUE EXECUTOU O SERVICO" = cfo.cod_colaborador
         """
-
-        print("--------------------------------")
-        print(query)
 
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)

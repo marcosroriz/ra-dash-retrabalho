@@ -16,7 +16,7 @@ from email.message import EmailMessage
 ##############################################################################
 # CONFIGURAÇÕES BÁSICAS ######################################################
 ##############################################################################
-
+DASHBOARD_URL = os.getenv("DASHBOARD_URL")
 SMTP_KEY = os.getenv("SMTP")
 
 ##############################################################################
@@ -26,56 +26,81 @@ SMTP_KEY = os.getenv("SMTP")
 # TODO: Usar uma linguagem mais adequada, como Jinja
 
 
-def get_email_body_header(
-    nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
-):
-    regra_str = f"""
+# Classe do serviço
+class CRUDEmailTestService:
+
+    def get_email_header_text(
+        self, nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        regra_str = f"""
     ========================================================
     🚨 REGRA: {nome_regra}    
     ========================================================
-    Período da Regra: {data_periodo_regra}
-    Mínimo de dias para Retrabalho: {min_dias}
-    Modelos: {", ".join(lista_modelos)}
-    Oficinas: {", ".join(lista_oficinas)}
-    Seções: {", ".join(lista_secaos)}
-    OS: {", ".join(lista_os)}
-    Total de OS detectadas: {num_os}
+    * Período da Regra: {data_periodo_regra}
+    * Mínimo de dias para Retrabalho: {min_dias}
+    * Modelos: {", ".join(lista_modelos)}
+    * Oficinas: {", ".join(lista_oficinas)}
+    * Seções: {", ".join(lista_secaos)}
+    * OS: {", ".join(lista_os)}
+    * Total de OS detectadas: {num_os}
     """
 
-    return regra_str
+        return regra_str
 
+    def get_email_header_html(
+        self, nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        regra_str = f"""
+    <h2>🚨 REGRA: {nome_regra}</h2>
+    <ul>
+    <li>Período da Regra: {data_periodo_regra}</li>
+    <li>Mínimo de dias para Retrabalho: {min_dias}</li>
+    <li>Modelos: {", ".join(lista_modelos)}</li>
+    <li>Oficinas: {", ".join(lista_oficinas)}</li>
+    <li>Seções: {", ".join(lista_secaos)}</li>
+    <li>OS: {", ".join(lista_os)}</li>
+    <li>Total de OS detectadas: {num_os}</li>
+    </ul>
+    """
 
-def get_email_body_content(row_os_detectada, col_width=16):
-    os_detectada_str = f"""
-    {"-"*col_width}
-    {'CATEGORIA'.rjust(col_width)}: {row_os_detectada["status_os"]}
-    {'OS'.rjust(col_width)}: {row_os_detectada["NUMERO DA OS"]}
-    {'VEÍCULO'.rjust(col_width)}: {row_os_detectada["CODIGO DO VEICULO"]}
-    {'MODELO'.rjust(col_width)}: {row_os_detectada["DESCRICAO DO MODELO"]}
-    {'SERVIÇO'.rjust(col_width)}: {row_os_detectada["DESCRICAO DO SERVICO"]}
-    {'COLABORADOR'.rjust(col_width)}: {row_os_detectada["nome_colaborador"]}
-    {'SINTOMA'.rjust(col_width)}: {row_os_detectada["SINTOMA"]}
-    {'CORREÇÃO'.rjust(col_width)}: {row_os_detectada["CORRECAO"]}
-    {'SCORE SINTOMA'.rjust(col_width)}: {row_os_detectada["SCORE_SYMPTOMS_TEXT_QUALITY"]}
-    {'SCORE CORREÇÃO'.rjust(col_width)}: {row_os_detectada["SCORE_SOLUTION_TEXT_QUALITY"]}
-    {'JUSTIFICATIVA'.rjust(col_width)}: {row_os_detectada["WHY_SOLUTION_IS_PROBLEM"]}
-    {'TOTAL GASTO'.rjust(col_width)}: {row_os_detectada["total_valor"]}
-    {'PEÇAS TROCADAS'.rjust(col_width)}:\n"""
+        return regra_str
 
-    for peca in row_os_detectada["pecas_trocadas_str"].split("__SEP__"):
-        os_detectada_str += f"""{''.rjust(col_width)} - {peca.strip()}\n"""
+    def get_email_problema_header_text(self, nome_problema, numero_os):
+        secao_str = f"""💣 Problema: {nome_problema} / Total de OS: {numero_os}"""
+        return secao_str
 
-    os_detectada_str += f"{'-'*col_width}\n"
+    def get_email_problema_header_html(self, nome_problema, numero_os):
+        secao_str = f"""<h3>💣 Problema: {nome_problema} / Total de OS: {numero_os}</h3>"""
+        return secao_str
 
-    return os_detectada_str
+    def get_email_problema_content_text(self, row_os_detectada, min_dias):
+        numero_os = row_os_detectada["NUMERO DA OS"]
+        codigo_veiculo = row_os_detectada["CODIGO DO VEICULO"]
+        status_os = row_os_detectada["status_os"]
+        link_str = f"{DASHBOARD_URL}/retrabalho-por-os?os={numero_os}&mindiasretrabalho={min_dias}"
 
+        os_str = f"""
+🚍 {codigo_veiculo} / ⚙️ OS: {numero_os} / {status_os}
+    {link_str}
 
-# Classe do serviço
-class CRUDEmailTestService:
-    def __init__(self, dbEngine):
-        self.dbEngine = dbEngine
+        """
+        return os_str
 
-    def build_email(
+    def get_email_problema_content_html(self, row_os_detectada, min_dias):
+        numero_os = row_os_detectada["NUMERO DA OS"]
+        codigo_veiculo = row_os_detectada["CODIGO DO VEICULO"]
+        status_os = row_os_detectada["status_os"]
+        link_str = f"{DASHBOARD_URL}/retrabalho-por-os?os={numero_os}&mindiasretrabalho={min_dias}"
+
+        os_str = f"""
+        <h4>🚍 {codigo_veiculo} / ⚙️ OS: {numero_os} / {status_os}</h4>
+        <a href="{link_str}">{link_str}</a>
+        <br />
+        <br />
+        """
+        return os_str
+
+    def build_and_send_msg(
         self,
         df,
         num_os,
@@ -86,33 +111,60 @@ class CRUDEmailTestService:
         lista_oficinas,
         lista_secaos,
         lista_os,
+        email_destino,
     ):
+        # Conteúdo do
+        email_text = ""
+        email_html = ""
 
-        # Header
-        header_str = get_email_body_header(
+        # Cabeçalho
+        cabecalho_text = self.get_email_header_text(
             nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
         )
+        cabecalho_html = self.get_email_header_html(
+            nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+        )
+        email_text += cabecalho_text
+        email_html += cabecalho_html
 
-        # Content
-        # content_str = ""
-        # for row in df.to_dict(orient="records"):
-        #     content_str += get_email_body_content(row)
+        # Analisa cada problema
+        lista_problemas = df["DESCRICAO DO SERVICO"].unique()
+        lista_problemas.sort()
+        for problema in lista_problemas:
+            df_problema = df[df["DESCRICAO DO SERVICO"] == problema]
 
-        # Build email
-        email_str = header_str 
-        print(json.dumps(email_str, indent=4))
-        return email_str
+            problema_text = self.get_email_problema_header_text(problema, len(df_problema))
+            problema_html = self.get_email_problema_header_html(problema, len(df_problema))
 
+            email_text += problema_text
+            email_html += problema_html
 
-    def send_email(self, email_str, nome_regra, to_email):
+            # Conteúdo de cada OS
+            # Ordena por status_os e codigo do veiculo
+            df_problema_ordenado = df_problema.sort_values(by=["status_os", "CODIGO DO VEICULO"])
+
+            for _, row in df_problema_ordenado.iterrows():
+                os_text = self.get_email_problema_content_text(row, min_dias)
+                os_html = self.get_email_problema_content_html(row, min_dias)
+                email_text += os_text
+                email_html += os_html
+
+            email_text += "\n"
+            email_html += "<hr />"
+
+        # Constrói o email
         msg = EmailMessage()
         msg["Subject"] = f"🚨 TESTE ALERTA REGRA: {nome_regra}"
         msg["From"] = "ceia.ra.ufg@gmail.com"
-        msg["To"] = to_email
-        msg.set_content(email_str)
+        msg["To"] = email_destino
+        msg.set_content(email_text)
+        msg.add_alternative(email_html, subtype="html")
 
-        print("configurando email")
-        print("Enviando para:", to_email)
+        print("Enviando para:", email_destino)
+        print("Email Texto:")
+        print(email_text)
+        print("Email HTML:")
+        print(email_html)
 
         with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
             smtp.ehlo()
@@ -123,4 +175,3 @@ class CRUDEmailTestService:
 
         print("Email enviado com sucesso")
         return True
-    

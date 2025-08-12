@@ -57,7 +57,6 @@ pgEngine = pgDB.get_engine()
 # Cria o serviço
 home_service = HomeService(pgEngine)
 crud_regra_service = CRUDRegraService(pgEngine)
-crud_email_test_service = CRUDEmailTestService(pgEngine)
 
 # Modelos de veículos
 df_modelos_veiculos = get_modelos(pgEngine)
@@ -215,7 +214,7 @@ def verifica_erro_email(email_destino):
         return False
 
     email_limpo = email_destino.strip()
-    
+
     if not re.match(r"^[\w\.-]+@[\w\.-]+\.\w{2,}$", email_limpo):
         return True
 
@@ -430,10 +429,21 @@ def tabela_previa_os_regra_criar(
     return df.to_dict(orient="records")
 
 
+##############################################################################
+# Callbacks para o teste da regra ############################################
+##############################################################################
+
+
+# Callback para o botão de testar a regra
 @callback(
-    Output("mensagem-sucesso", "children"),
+    [
+        Output("modal-erro-teste-regra", "opened"),
+        Output("modal-sucesso-teste-regra", "opened"),
+    ],
     [
         Input("btn-testar-regra-monitoramento-criar-retrabalho", "n_clicks"),
+        Input("btn-close-modal-erro-teste-regra", "n_clicks"),
+        Input("btn-close-modal-sucesso-teste-regra", "n_clicks"),
         Input("input-nome-regra-monitoramento-retrabalho", "value"),
         Input("input-periodo-dias-monitoramento-regra-criar-retrabalho", "value"),
         Input("input-select-dias-regra-criar-retrabalho", "value"),
@@ -456,9 +466,12 @@ def tabela_previa_os_regra_criar(
         Input("input-wpp-5-regra-criar-retrabalho", "value"),
     ],
     prevent_initial_call=True,
+    allow_duplicate=True,
 )
 def testa_regra_monitoramento_retrabalho(
-    n_clicks,
+    n_clicks_btn_testar,
+    n_clicks_modal_erro,
+    n_clicks_modal_sucesso,
     nome_regra,
     data_periodo_regra,
     min_dias,
@@ -486,32 +499,32 @@ def testa_regra_monitoramento_retrabalho(
 
     # Verifica se o callback foi acionado pelo botão de download
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    if triggered_id != "btn-testar-regra-monitoramento-criar-retrabalho":
-        return dash.no_update  # Ignora mudanças nos outros inputs
 
-    if not n_clicks or n_clicks <= 0:
+    # Checa se o trigger foi o botão de fechar o popup
+    if triggered_id == "btn-close-modal-erro-teste-regra":
+        return [False, dash.no_update]
+    elif triggered_id == "btn-close-modal-sucesso-teste-regra":
+        return [dash.no_update, False]
+    elif triggered_id != "btn-testar-regra-monitoramento-criar-retrabalho":
         return dash.no_update
 
-    print("EMAIL ATIVO:", email_ativo)
-    print("EMAIL DESTINO 1:", email_destino_1)
-    print("EMAIL DESTINO 2:", email_destino_2)
-    print("EMAIL DESTINO 3:", email_destino_3)
-    print("EMAIL DESTINO 4:", email_destino_4)
-    print("EMAIL DESTINO 5:", email_destino_5)
-    print("WPP ATIVO:", wpp_ativo)
-    print("WPP TELEFONE 1:", wpp_telefone_1)
-    print("WPP TELEFONE 2:", wpp_telefone_2)
-    print("WPP TELEFONE 3:", wpp_telefone_3)
+    # Botão clicado foi o de testar a regra
 
-    if email_ativo and not email_destino:
-        return dash.no_update  # Gerar campo erro no input de email
-
-    if wpp_ativo and not wpp_telefone:
-        return dash.no_update  # Gerar campo erro no input de telefone
+    # Se o botão não foi clicado, não faz nada
+    if not n_clicks_btn_testar or n_clicks_btn_testar <= 0:
+        return dash.no_update
 
     # Valida Resto do input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
-        return dash.no_update
+        return [True, False]
+
+    # Valida nome da regra
+    if not nome_regra:
+        return [True, False]
+
+    # Verifica se pelo menos um email ou wpp está ativo
+    if not email_ativo and not wpp_ativo:
+        return [True, False]
 
     # Obtem os dados
     df = crud_regra_service.get_previa_os_regra_detalhada(
@@ -519,29 +532,47 @@ def testa_regra_monitoramento_retrabalho(
     )
     num_os = len(df)
 
-    wpp_service = CRUDWppTestService(wpp_telefone)
-    wpp_service.build_and_send_msg(
-        df, num_os, nome_regra, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
-    )
+    # Envia mensagem via WhatsApp se ativo
+    if wpp_ativo:
+        wpp_telefones = [wpp_telefone_1, wpp_telefone_2, wpp_telefone_3, wpp_telefone_4, wpp_telefone_5]
+        wpp_tel_validos = [wpp for wpp in wpp_telefones if wpp != "" and not verifica_erro_wpp(wpp)]
 
-    # # Envia WhatsApp
+        wpp_service = CRUDWppTestService()
+        for wpp_tel in wpp_tel_validos:
+            wpp_service.build_and_send_msg(
+                df,
+                num_os,
+                nome_regra,
+                data_periodo_regra,
+                min_dias,
+                lista_modelos,
+                lista_oficinas,
+                lista_secaos,
+                lista_os,
+                wpp_tel,
+            )
 
-    # email_str = crud_email_test_service.build_email(
-    #     df,
-    #     num_os,
-    #     nome_regra,
-    #     data_periodo_regra,
-    #     min_dias,
-    #     lista_modelos,
-    #     lista_oficinas,
-    #     lista_secaos,
-    #     lista_os,
-    # )
+    # Envia mensagem via email se ativo
+    if email_ativo:
+        email_destinos = [email_destino_1, email_destino_2, email_destino_3, email_destino_4, email_destino_5]
+        email_destinos_validos = [email for email in email_destinos if email != "" and not verifica_erro_email(email)]
 
-    # print("email a ser enviado:", email_str)
-    # crud_email_test_service.send_email(email_str, nome_regra, "marcosroriz@ufg.br")
+        email_service = CRUDEmailTestService()
+        for email_destino in email_destinos_validos:
+            email_service.build_and_send_msg(
+                df,
+                num_os,
+                nome_regra,
+                data_periodo_regra,
+                min_dias,
+                lista_modelos,
+                lista_oficinas,
+                lista_secaos,
+                lista_os,
+                email_destino,
+            )
 
-    return "Email enviado com sucesso"
+    return [False, True]
 
 
 ##############################################################################
@@ -569,7 +600,47 @@ layout = dbc.Container(
         # Informações / Ajuda
         dmc.Modal(
             # title="Erro ao carregar os dados",
-            id="modal-simple",
+            id="modal-erro-teste-regra",
+            centered=True,
+            radius="lg",
+            size="md",
+            children=dmc.Stack(
+                [
+                    dmc.ThemeIcon(
+                        radius="lg",
+                        size=128,
+                        color="red",
+                        variant="light",
+                        children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
+                    ),
+                    dmc.Title("Erro!", order=1),
+                    dmc.Text("Ocorreu um erro ao testar a regra. Verifique se a regra possui:"),
+                    dmc.List(
+                        [
+                            dmc.ListItem("Nome da regra;"),
+                            dmc.ListItem("Pelo menos um alerta alvo (nova OS, retrabalho, etc);"),
+                            dmc.ListItem("Pelo menos um destino de email ou WhatsApp ativo."),
+                        ],
+                    ),
+                    dmc.Group(
+                        [
+                            dmc.Button(
+                                "Fechar",
+                                color="red",
+                                variant="outline",
+                                id="btn-close-modal-erro-teste-regra",
+                            ),
+                        ],
+                        # justify="flex-end",
+                    ),
+                ],
+                align="center",
+                gap="xl",
+            ),
+        ),
+        dmc.Modal(
+            # title="Erro ao carregar os dados",
+            id="modal-sucesso-teste-regra",
             centered=True,
             radius="lg",
             size="lg",
@@ -578,19 +649,19 @@ layout = dbc.Container(
                     dmc.ThemeIcon(
                         radius="xl",
                         size=128,
-                        color="red",
+                        color="green",
                         variant="light",
-                        children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
+                        children=DashIconify(icon="material-symbols:check-circle-rounded", width=128, height=128),
                     ),
-                    dmc.Title("Erro!", order=1),
-                    dmc.Text("Ocorreu um erro ao testar a regra. Verifique se os dados estão corretos."),
+                    dmc.Title("Sucesso!", order=1),
+                    dmc.Text("A regra foi testada com sucesso."),
                     dmc.Group(
                         [
                             dmc.Button(
                                 "Fechar",
-                                color="red",
+                                color="green",
                                 variant="outline",
-                                id="modal-close-button",
+                                id="btn-close-modal-sucesso-teste-regra",
                             ),
                         ],
                         # justify="flex-end",
@@ -749,7 +820,7 @@ layout = dbc.Container(
             ],
             align="center",
         ),
-        dmc.Space(h=15),
+        # dmc.Space(h=15),
         html.Hr(),
         dbc.Row(
             [
@@ -787,7 +858,7 @@ layout = dbc.Container(
                                             id="input-periodo-dias-monitoramento-regra-criar-retrabalho",
                                             type="number",
                                             placeholder="Dias",
-                                            value=7,
+                                            value=3,
                                             step=1,
                                             min=1,
                                         ),
@@ -1255,6 +1326,8 @@ layout = dbc.Container(
             columnSize="autoSize",
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                "enableCellTextSelection": True,
+                "ensureDomOrder": True,
             },
             style={"height": 500, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
         ),
