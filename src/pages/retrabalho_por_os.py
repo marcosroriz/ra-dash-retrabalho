@@ -543,10 +543,11 @@ def preencher_gantt(data):
 
     # Obtem os dados do estado
     df_os = pd.DataFrame(data["df_os"])
+    os_numero = data["os_numero"]
     problem_no = data["num_problema_os"]
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_gantt_historico_problema_detalhamento_os(df_os, problem_no)
+    fig = os_graficos.gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df_os, os_numero, problem_no)
 
     return fig
 
@@ -790,7 +791,7 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Histórico (diagrama de Gantt) do problema selecionado ",
+                                "Histórico do problema selecionado ",
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
