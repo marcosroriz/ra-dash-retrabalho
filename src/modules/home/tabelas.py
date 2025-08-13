@@ -132,6 +132,14 @@ tbl_top_colaborador_geral_retrabalho = [
         "headerName": "Colaborador",
         "pinned": "left",
     },
+    {
+        "field": "acao",
+        "headerName": "Perfil",
+        "cellRenderer": "Button",
+        "cellRendererParams": {"className": "btn btn-outline-primary btn-sm"},
+        "minWidth": 150,
+        "pinned": "left",
+    },
     {"field": "ID_COLABORADOR", "headerName": "ID", "filter": "agNumberColumnFilter", "minWidth": 120, "maxWidth": 120},
     {
         "field": "TOTAL_TEMPO",

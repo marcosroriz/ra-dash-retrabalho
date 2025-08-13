@@ -104,11 +104,7 @@ server = app.server
 # Menu / Navbar
 def criarMenu(dirVertical=True):
     return dbc.Nav(
-        [
-            dbc.NavLink(page["name"], href=page["relative_path"], active="exact")
-            for page in dash.page_registry.values()
-            if not page.get("hide_page", False)
-        ],
+        [dbc.NavLink(page["name"], href=page["relative_path"], active="exact") for page in dash.page_registry.values() if not page.get("hide_page", False)],
         vertical=dirVertical,
         pills=True,
     )
@@ -139,6 +135,7 @@ header = dmc.Group(
     px="md",
 )
 
+
 # Corpo do app
 app_shell = dmc.AppShell(
     [
@@ -147,7 +144,7 @@ app_shell = dmc.AppShell(
         dmc.AppShellMain(
             dmc.DatesProvider(
                 children=dbc.Container(
-                    [dcc.Location(id="url", refresh=False), dash.page_container],
+                    [dcc.Location(id="url", refresh="callback-nav"), html.Div(id="scroll-hook", style={"display": "none"}), dash.page_container],
                     fluid=True,
                     className="dbc dbc-ag-grid",
                 ),
@@ -177,6 +174,20 @@ def toggle_navbar(opened, navbar):
     navbar["collapsed"] = {"mobile": not opened, "desktop": True}
     return navbar
 
+
+app.clientside_callback(
+    """
+    function(pathname) {
+        setTimeout(function() {
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        }, 1000);  // Pequeno delay
+        return "";
+    }
+
+    """,
+    Output("scroll-hook", "children"),
+    Input("url", "pathname"),
+)
 
 ##############################################################################
 # Auth #######################################################################

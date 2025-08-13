@@ -9,10 +9,11 @@
 # Bibliotecas básicas
 from datetime import date, datetime
 import pandas as pd
+import json
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
-from dash import Dash, html, dcc, callback, Input, Output, State
+from dash import Dash, html, dcc, callback, Input, Output, State, callback_context
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -408,20 +409,45 @@ def atualiza_tabela_top_os_geral_retrabalho(datas, min_dias, lista_modelos, list
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
 def download_excel_tabela_top_os(n_clicks, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
-    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+    if not n_clicks or n_clicks <= 0:  # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
         return dash.no_update
 
-    date_now = date.today().strftime('%d-%m-%Y')
-    
+    date_now = date.today().strftime("%d-%m-%Y")
+
     # Obtem os dados
     df = home_service.get_top_os_geral_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     excel_data = gerar_excel(df=df)
     return dcc.send_bytes(excel_data, f"tabela_tipo_os_{date_now}.xlsx")
 
+
+@callback(
+    Output("url", "href"),
+    [
+        Input("tabela-top-os-colaborador-geral", "cellRendererData"),
+        Input("tabela-top-os-colaborador-geral", "virtualRowData"),
+    ],
+)
+def callback_botao_detalhamento_colaborador(linha, linha_virtual):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de visualização
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
+
+    if triggered_id != "cellRendererData":
+        return dash.no_update
+
+    linha_alvo = linha_virtual[linha["rowIndex"]]
+    print("ID COLABORADOR: ", linha_alvo["COLABORADOR QUE EXECUTOU O SERVICO"])
+
+    print("---- aqui -----")
+
+    return f"/retrabalho-por-colaborador?id_colaborador={linha_alvo['COLABORADOR QUE EXECUTOU O SERVICO']}"
 
 
 @callback(
@@ -443,6 +469,9 @@ def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_mo
     # Obtem dados
     df = home_service.get_top_os_colaboradores(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
+    # Ação de visualização
+    df["acao"] = "🔍 Detalhar"
+
     return df.to_dict("records")
 
 
@@ -457,14 +486,14 @@ def atualiza_tabela_top_colaboradores_geral_retrabalho(datas, min_dias, lista_mo
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
 def download_excel_tabela_colaborador(n_clicks, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
-    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+    if not n_clicks or n_clicks <= 0:  # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
         return dash.no_update
 
-    date_now = date.today().strftime('%d-%m-%Y')
-    
+    date_now = date.today().strftime("%d-%m-%Y")
+
     # Obtem os dados
     df = home_service.get_top_os_colaboradores(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
@@ -505,19 +534,20 @@ def atualiza_tabela_top_veiculos_geral_retrabalho(datas, min_dias, lista_modelos
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
     ],
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
 def download_excel_tabela_colaborador(n_clicks, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
-    if not n_clicks or n_clicks <= 0: # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
+    if not n_clicks or n_clicks <= 0:  # Garantre que ao iniciar ou carregar a page, o arquivo não seja baixado
         return dash.no_update
 
-    date_now = date.today().strftime('%d-%m-%Y')
-    
+    date_now = date.today().strftime("%d-%m-%Y")
+
     # Obtem os dados
     df = home_service.get_top_veiculos(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     excel_data = gerar_excel(df=df)
     return dcc.send_bytes(excel_data, f"tabela_veiculo_{date_now}.xlsx")
+
 
 ##############################################################################
 ### Callbacks para os labels #################################################
@@ -616,10 +646,10 @@ layout = dbc.Container(
                                         dbc.Col(
                                             html.P(
                                                 [
-                                                html.Strong("Correção de primeira:"),
-                                                """
+                                                    html.Strong("Correção de primeira:"),
+                                                    """
                                                 sem nova OS para o mesmo problema no período selecionado.
-                                                """
+                                                """,
                                                 ]
                                             ),
                                             className="mt-2",
@@ -633,7 +663,7 @@ layout = dbc.Container(
                             color="success",
                         ),
                     ],
-                    md=4
+                    md=4,
                 ),
                 dbc.Col(
                     [
@@ -645,10 +675,10 @@ layout = dbc.Container(
                                         dbc.Col(
                                             html.P(
                                                 [
-                                                html.Strong("Correção tardia:"),
-                                                """
+                                                    html.Strong("Correção tardia:"),
+                                                    """
                                                 havia OS anterior, mas não há nova para o mesmo problema no período.
-                                                """
+                                                """,
                                                 ]
                                             ),
                                             className="mt-2",
@@ -662,7 +692,7 @@ layout = dbc.Container(
                             color="warning",
                         ),
                     ],
-                    md=4
+                    md=4,
                 ),
                 dbc.Col(
                     [
@@ -674,10 +704,10 @@ layout = dbc.Container(
                                         dbc.Col(
                                             html.P(
                                                 [
-                                                html.Strong("Retrabalho:"),
-                                                """
+                                                    html.Strong("Retrabalho:"),
+                                                    """
                                                 possui OS anterior e posterior para o mesmo problema no período.
-                                                """
+                                                """,
                                                 ]
                                             ),
                                             className="mt-2",
@@ -691,7 +721,7 @@ layout = dbc.Container(
                             color="danger",
                         ),
                     ],
-                    md=4
+                    md=4,
                 ),
             ]
         ),
@@ -827,7 +857,8 @@ layout = dbc.Container(
                                                     dcc.Dropdown(
                                                         id="input-select-secao-visao-geral",
                                                         options=[
-                                                            {"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes
+                                                            {"label": sec["LABEL"], "value": sec["LABEL"]}
+                                                            for sec in lista_todas_secoes
                                                             # {"label": "TODAS", "value": "TODAS"},
                                                             # {"label": "BORRACHARIA", "value": "MANUTENCAO BORRACHARIA" },
                                                             # {"label": "ELETRICA", "value": "MANUTENCAO ELETRICA"},
@@ -1160,6 +1191,8 @@ layout = dbc.Container(
             columnSize="autoSize",
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                "enableCellTextSelection": True,
+                "ensureDomOrder": True,
             },
             # Permite resize --> https://community.plotly.com/t/anyone-have-better-ag-grid-resizing-scheme/78398/5
             style={"height": 400, "resize": "vertical", "overflow": "hidden"},
