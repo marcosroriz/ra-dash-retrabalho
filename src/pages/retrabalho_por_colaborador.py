@@ -10,6 +10,10 @@
 from datetime import date, datetime
 import pandas as pd
 
+# Importar bibliotecas para manipulação de URL
+import ast
+from urllib.parse import urlparse, parse_qs, unquote
+
 # Importar bibliotecas do dash básicas e plotly
 import dash
 from dash import html, dcc, callback, Input, Output
@@ -65,6 +69,12 @@ lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
 ##############################################################################
 # CALLBACKS ##################################################################
 ##############################################################################
+
+
+##############################################################################
+# Callbacks para os inputs via URL ###########################################
+##############################################################################
+
 
 
 ##############################################################################
@@ -170,32 +180,46 @@ def gera_labels_inputs_colaborador(campo):
 
 
 @callback(
-    Output("input-select-oficina-colaborador", "value"),
+    Output("input-select-oficina-colaborador", "value", allow_duplicate=True),
     Input("input-select-oficina-colaborador", "value"),
+    prevent_initial_call=True,
 )
 def corrige_input_oficina(lista_oficinas):
+    print("--- corrigindo input oficina")
+    print(lista_oficinas)
+    print("--------------------------------")
     return corrige_input(lista_oficinas)
 
 
 @callback(
-    Output("input-select-secao-colaborador", "value"),
+    Output("input-select-secao-colaborador", "value", allow_duplicate=True),
     Input("input-select-secao-colaborador", "value"),
+    prevent_initial_call=True,
 )
 def corrige_input_secao(lista_secaos):
+    print("--- corrigindo input secao")
+    print(lista_secaos)
+    print("--------------------------------")
     return corrige_input(lista_secaos)
 
 
 @callback(
     [
-        Output("input-select-modelos-colaborador", "options"),
-        Output("input-select-modelos-colaborador", "value"),
+        Output("input-select-modelos-colaborador", "options", allow_duplicate=True),
+        Output("input-select-modelos-colaborador", "value", allow_duplicate=True),
     ],
     [
         Input("input-select-modelos-colaborador", "value"),
         Input("input-select-colaborador-colaborador", "value"),
     ],
+    prevent_initial_call=True,
 )
 def corrige_input_modelo(lista_modelos, id_colaborador):
+    print("--- corrigindo input modelo")
+    print(lista_modelos)
+    print(id_colaborador)
+    print("--------------------------------")
+
     # Verifica se há colaborador selecionado
     if id_colaborador is None or not id_colaborador:
         # Retorna a opção padrão (TODAS)
@@ -214,15 +238,21 @@ def corrige_input_modelo(lista_modelos, id_colaborador):
 
 @callback(
     [
-        Output("input-select-ordens-servico-colaborador", "options"),
-        Output("input-select-ordens-servico-colaborador", "value"),
+        Output("input-select-ordens-servico-colaborador", "options", allow_duplicate=True),
+        Output("input-select-ordens-servico-colaborador", "value", allow_duplicate=True),
     ],
     [
         Input("input-select-ordens-servico-colaborador", "value"),
         Input("input-select-colaborador-colaborador", "value"),
     ],
+    prevent_initial_call=True,
 )
 def corrige_input_ordem_servico(lista_os, id_colaborador):
+    print("--- corrigindo input ordem servico")
+    print(lista_os)
+    print(id_colaborador)
+    print("--------------------------------")
+
     # Verifica se há colaborador selecionado
     if id_colaborador is None or not id_colaborador:
         # Retorna a opção padrão (TODAS)
@@ -1745,3 +1775,72 @@ layout = dbc.Container(
 # Registro da página #########################################################
 ##############################################################################
 dash.register_page(__name__, name="Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline")
+
+
+# Função auxiliar para transformar string '[%27A%27,%20%27B%27]' → ['A', 'B']
+def parse_list_param(param):
+    if param:
+        try:
+            return ast.literal_eval(param)
+        except:
+            return []
+    return []
+
+
+# Preenche os dados via URL
+@callback(
+    Output("input-select-colaborador-colaborador", "value"),
+    Output("input-intervalo-datas-colaborador", "value"),
+    Output("input-min-dias-colaborador", "value"),
+    Output("input-select-secao-colaborador", "value"),
+    Output("input-select-ordens-servico-colaborador", "value"),
+    Output("input-select-modelos-colaborador", "value"),
+    Output("input-select-oficina-colaborador", "value"),
+    Input("url", "href"),
+)
+def callback_receber_campos_via_url(href):
+    print("Recebendo os dados via URL")
+    print(href)
+    print("--------------------------------")
+
+    if not href:
+        return (
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+        )
+
+    # Faz o parse dos parâmetros da url
+    parsed_url = urlparse(href)
+    query_params = parse_qs(parsed_url.query)
+
+    id_colaborador = query_params.get("id_colaborador", [None])[0]
+    datas = [query_params.get("data_inicio", [None])[0], query_params.get("data_fim", [None])[0]]
+    min_dias = query_params.get("min_dias", [None])[0]
+    lista_secaos = parse_list_param(query_params.get("lista_secaos", [None])[0])
+    lista_os = parse_list_param(query_params.get("lista_os", [None])[0])
+    lista_modelos = parse_list_param(query_params.get("lista_modelos", [None])[0])
+    lista_oficinas = parse_list_param(query_params.get("lista_oficinas", [None])[0])
+
+    # Converte para int, se não for possível, retorna None
+    if id_colaborador is not None:
+        try:
+            id_colaborador = int(id_colaborador)
+        except ValueError:
+            id_colaborador = None
+
+    if min_dias is not None:
+        try:
+            min_dias = int(min_dias)
+        except ValueError:
+            min_dias = None
+
+    print("Recebendo os dados via URL")
+    print(id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas)
+    print("--------------------------------")
+
+    return id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
