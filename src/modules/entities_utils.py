@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import pandas as pd
+# Bibliotecas padrão
 import io
+import re
+import pandas as pd
 
 # Funções utilitárias para obtenção das principais entidades do sistema
 
@@ -54,7 +56,11 @@ def get_secoes(dbEngine):
 
 def get_mecanicos(dbEngine):
     # Colaboradores / Mecânicos
-    return pd.read_sql("SELECT * FROM colaboradores_frotas_os", dbEngine)
+    df = pd.read_sql("SELECT * FROM colaboradores_frotas_os", dbEngine)
+    df["LABEL_COLABORADOR"] = df["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x))
+    df.sort_values(by="LABEL_COLABORADOR", inplace=True)
+
+    return df
 
 
 def get_lista_os(dbEngine):

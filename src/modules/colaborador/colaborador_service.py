@@ -20,54 +20,49 @@ class ColaboradorService:
     def __init__(self, dbEngine):
         self.pgEngine = dbEngine
 
-    def get_mecanicos(self) -> pd.DataFrame:
-        """Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados"""
-        try:
-            df_mecanicos = pd.read_sql(
-                """
-                SELECT * FROM colaboradores_frotas_os
-                """,
-                self.pgEngine,
-            )
+    def get_modelos_veiculos_colaborador(self, id_colaborador):
+        """Retorna uma lista dos modelos de veículos possíveis para o colaborador"""
 
-            # Ajusta espaços no nome do colaborador
-            df_mecanicos["LABEL_COLABORADOR"] = df_mecanicos["nome_colaborador"].apply(
-                lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)
-            )
+        # Query
+        query = f"""
+        SELECT DISTINCT
+            "DESCRICAO DO MODELO" as "LABEL"
+        FROM 
+            mat_view_retrabalho_10_dias mvrd 
+        WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+        ORDER BY
+            "DESCRICAO DO MODELO"
+        """
 
-            # Obtêm os dados de todos os mecânicos que trabalharam na RA, mesmo os desligados
-            df_mecanicos_todos = pd.read_sql(
-                """
-                SELECT DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO" 
-                FROM os_dados od 
-                """,
-                self.pgEngine,
-            )
+        # Executa a query
+        df = pd.read_sql(query, self.pgEngine)
 
-            # Converte cod_colaborador para int
-            df_mecanicos_todos["cod_colaborador"] = df_mecanicos_todos["COLABORADOR QUE EXECUTOU O SERVICO"].astype(int)
+        return df
+    
 
-            # Faz merge dos dados dos mecânicos da RA com os dados de todos os mecânicos
-            df_mecanicos_todos = df_mecanicos_todos.merge(df_mecanicos, how="left", on="cod_colaborador")
+    def get_os_possiveis_colaborador(self, id_colaborador):
+        """Retorna uma lista dos OS possíveis para o colaborador"""
 
-            # Adiciona o campo não informados para os colaboradores que não estão na RA
-            df_mecanicos_todos["LABEL_COLABORADOR"] = df_mecanicos_todos["LABEL_COLABORADOR"].fillna("Não Informado")
+        # Query
+        query = f"""
+        SELECT DISTINCT
+            "DESCRICAO DO SERVICO" as "LABEL"
+        FROM 
+            mat_view_retrabalho_10_dias mvrd 
+        WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+        ORDER BY
+            "DESCRICAO DO SERVICO"
+        """
 
-            # Adiciona o campo "cod_colaborador" para o campo LABEL
-            df_mecanicos_todos["LABEL_COLABORADOR"] = (
-                df_mecanicos_todos["LABEL_COLABORADOR"] + " (" + df_mecanicos_todos["cod_colaborador"].astype(str) + ")"
-            )
+        # Executa a query
+        df = pd.read_sql(query, self.pgEngine)
 
-            # Ordena os colaboradores
-            df_mecanicos_todos = df_mecanicos_todos.sort_values("LABEL_COLABORADOR")
-            return df_mecanicos_todos
-        except Exception as e:
-            return pd.DataFrame()
+        return df
 
-    def obtem_dados_os_mecanico(
+    def get_sinteze_retrabalho_colaborador_para_grafico_pizza(
         self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
     ):
-        # Query
+        """Obtem dados de retrabalho para grafico de resumo"""
         data_inicio_str = datas[0]
 
         # Remove min_dias antes para evitar que a última OS não seja retrabalho
@@ -75,6 +70,7 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
+        # Filtro das subqueries
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
@@ -82,7 +78,12 @@ class ColaboradorService:
 
         query = f"""
         SELECT
-            *
+            SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+            SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+            SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+            100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+            100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
         FROM
             mat_view_retrabalho_{min_dias}_dias
         WHERE
@@ -92,16 +93,18 @@ class ColaboradorService:
             {subquery_modelo_str}
             {subquery_oficina_str}
         """
-        df_os_mecanico_query = pd.read_sql_query(query, self.pgEngine)
-        # Tratamento de datas
-        df_os_mecanico_query["DATA INICIO SERVICO"] = pd.to_datetime(df_os_mecanico_query["DATA INICIO SERVIÇO"])
-        df_os_mecanico_query["DATA DO FECHAMENTO DA OS"] = pd.to_datetime(
-            df_os_mecanico_query["DATA DO FECHAMENTO DA OS"]
-        )
-        return df_os_mecanico_query
 
-    def obtem_estatistica_retrabalho_sql(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+        # Executa query
+        df = pd.read_sql(query, self.pgEngine)
+        
+        # Calcula o total de correções tardia
+        df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
+
+        return df
+
+
+    def get_indicadores_gerais_retrabalho_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
     ):
         """Obtem estatisticas e dados analisados de retrabalho para o grafico de pizza geral"""
         data_inicio_str = datas[0]
@@ -111,10 +114,12 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
+        # Filtro das subqueries
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
         subquery_oficina_str = subquery_oficinas(lista_oficina)
+
         query = f"""
         SELECT
             COUNT("NUMERO DA OS") AS "TOTAL_OS",
@@ -137,377 +142,34 @@ class ColaboradorService:
 
         # Executa query
         df = pd.read_sql(query, self.pgEngine)
+        
         # Calcula o total de correções tardia
         df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
+
         return df
 
-    def obtem_estatistica_retrabalho_grafico(
-        self, datas, id_colaborador, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
-    ):
-        """Obtem estatisticas e dados analisados de retrabalho para o grafico de pizza geral"""
-        data_inicio_str = datas[0]
 
-        # Remove min_dias antes para evitar que a última OS não seja retrabalho
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        subquery_secoes_str = subquery_secoes(lista_secaos)
-        subquery_os_str = subquery_os(lista_os)
-        subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_oficina_str = subquery_oficinas(lista_oficina)
-
-        query = f"""
-            WITH oficina_colaborador AS (
-            SELECT DISTINCT "DESCRICAO DA SECAO"
-            FROM mat_view_retrabalho_{min_dias}_dias
-            WHERE 
-                "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        )
-        SELECT
-            'COLABORADOR' AS escopo,
-            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-            SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-            SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-            100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QTD_SERVICOS_DIFERENTES"
-        FROM
-            mat_view_retrabalho_{min_dias}_dias
-        WHERE
-            "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND "DESCRICAO DA SECAO" IN (SELECT "DESCRICAO DA SECAO" FROM oficina_colaborador)
-        GROUP BY
-            year_month
-
-        UNION ALL
-
-        SELECT
-            "DESCRICAO DA SECAO" AS escopo,
-            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-            SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-            SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-            100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            COUNT(DISTINCT "DESCRICAO DO SERVICO") AS "QTD_SERVICOS_DIFERENTES"
-        FROM
-            mat_view_retrabalho_{min_dias}_dias
-        WHERE
-            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND "DESCRICAO DA SECAO" IN (SELECT "DESCRICAO DA SECAO" FROM oficina_colaborador)
-            {subquery_secoes_str}
-            {subquery_os_str}
-            {subquery_modelo_str}
-            {subquery_oficina_str}
-        GROUP BY
-            year_month, "DESCRICAO DA SECAO"
-
-        ORDER BY
-            year_month,
-            escopo;
-            """
-        # Executa query
-        df = pd.read_sql(query, self.pgEngine)
-        df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m", errors="coerce")
-        return df
-
-    def obtem_estatistica_retrabalho_grafico_resumo(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
-    ):
-        """Obtem dados de retrabalho para grafico de resumo"""
-        data_inicio_str = datas[0]
-
-        # Remove min_dias antes para evitar que a última OS não seja retrabalho
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        subquery_secoes_str = subquery_secoes(lista_secaos)
-        subquery_os_str = subquery_os(lista_os)
-        subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_oficina_str = subquery_oficinas(lista_oficina)
-
-        query = f"""
-        SELECT
-            SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-            SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-            SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-            100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
-        FROM
-            mat_view_retrabalho_{min_dias}_dias
-        WHERE
-            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-            {subquery_secoes_str}
-            {subquery_os_str}
-            {subquery_modelo_str}
-            {subquery_oficina_str}
-    
-        """
-
-        # Executa query
-        df = pd.read_sql(query, self.pgEngine)
-        # Calcula o total de correções tardia
-        df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
-        return df
-
-    def dados_tabela_do_colaborador(
+    def get_indicador_rank_servico_colaborador(
         self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
-    ):
-        """Obtem dados para tabela"""
-        # Datas
-        data_inicio_str = datas[0]
-
-        # Remove min_dias antes para evitar que a última OS não seja retrabalho
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        inner_subquery_secoes_str1 = subquery_secoes(lista_secaos, "mt.")
-        inner_subquery_os_str1 = subquery_os(lista_os, "mt.")
-        inner_subquery_modelo_str1 = subquery_modelos(lista_modelo, "mt.")
-        inner_subquery_oficina_str1 = subquery_oficinas(lista_oficina, "mt.")
-
-        inner_subquery_secoes_str2 = subquery_secoes(lista_secaos, "main.")
-        inner_subquery_os_str2 = subquery_os(lista_os, "main.")
-        inner_subquery_modelo_str2 = subquery_modelos(lista_modelo, "main.")
-        inner_subquery_oficina_str2 = subquery_oficinas(lista_oficina, "main.")
-
-        query = f"""
-        WITH 
-        os_nota_media AS (
-            -- Calculando a nota média por OS (sem filtro de colaborador)
-            SELECT
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                "DESCRICAO DO SERVICO",
-                ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS nota_media_os
-            FROM mat_view_retrabalho_{min_dias}_dias mt
-            LEFT JOIN os_dados_classificacao odc
-            ON mt."KEY_HASH" = odc."KEY_HASH"
-            WHERE
-                mt."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-                {inner_subquery_secoes_str1}
-                {inner_subquery_os_str1}
-                {inner_subquery_modelo_str1}
-                {inner_subquery_oficina_str1}
-            GROUP BY
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                "DESCRICAO DO SERVICO"
-        )
-        SELECT 
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
-            main."DESCRICAO DO SERVICO",
-            COUNT(distinct main."NUMERO DA OS") AS "TOTAL_OS",
-            SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-            SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-            SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-            100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-            100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            100 * ROUND(COUNT(distinct main."NUMERO DA OS")::NUMERIC / SUM(COUNT(distinct main."NUMERO DA OS")) OVER (), 4) AS "PERC_TOTAL_OS",
-            ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS "nota_media_colaborador",
-            osn.nota_media_os,
-            SUM(pg."VALOR") AS "TOTAL_GASTO",
-            SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
-            100 * ROUND(
-                COALESCE(SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / NULLIF(SUM(pg."VALOR")::NUMERIC, 0), 0),
-            4) AS "PERC_GASTO_RETRABALHO"
-        FROM mat_view_retrabalho_{min_dias}_dias main
-        LEFT JOIN os_dados_classificacao odc
-            ON main."KEY_HASH" = odc."KEY_HASH"
-        LEFT JOIN os_nota_media osn
-            ON main."DESCRICAO DA OFICINA" = osn."DESCRICAO DA OFICINA"
-            AND main."DESCRICAO DA SECAO" = osn."DESCRICAO DA SECAO"
-            AND main."DESCRICAO DO SERVICO" = osn."DESCRICAO DO SERVICO"
-        LEFT JOIN  view_pecas_desconsiderando_combustivel pg
-            ON main."NUMERO DA OS" = pg."OS"
-        WHERE
-            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
-            {inner_subquery_secoes_str2}
-            {inner_subquery_os_str2}
-            {inner_subquery_modelo_str2}
-            {inner_subquery_oficina_str2}
-        GROUP BY
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
-            main."DESCRICAO DO SERVICO",
-            osn.nota_media_os
-        ORDER BY
-            "TOTAL_OS" DESC;
-        """
-        # Executa a query
-
-        df = pd.read_sql(query, self.pgEngine)
-        df["nota_media_colaborador"] = df["nota_media_colaborador"].replace(np.nan, 0)
-        df["nota_media_os"] = df["nota_media_os"].replace(np.nan, 0)
-
-        return df
-
-    def dados_grafico_top_10_do_colaborador(
-        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
-    ):
-        # Datas
-        data_inicio_str = datas[0]
-
-        # Remove min_dias antes para evitar que a última OS não seja retrabalho
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        # Subqueries
-        subquery_secoes_str = subquery_secoes(lista_secaos)
-        subquery_os_str = subquery_os(lista_os)
-        subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_oficina_str = subquery_oficinas(lista_oficina)
-
-        inner_subquery_secoes_str1 = subquery_secoes(lista_secaos, "mt.")
-        inner_subquery_os_str1 = subquery_os(lista_os, "mt.")
-        inner_subquery_modelo_str1 = subquery_modelos(lista_modelo, "mt.")
-        inner_subquery_oficina_str1 = subquery_oficinas(lista_oficina, "mt.")
-
-        inner_subquery_secoes_str2 = subquery_secoes(lista_secaos, "main.")
-        inner_subquery_os_str2 = subquery_os(lista_os, "main.")
-        inner_subquery_modelo_str2 = subquery_modelos(lista_modelo, "main.")
-        inner_subquery_oficina_str2 = subquery_oficinas(lista_oficina, "main.")
-        query = f"""
-        WITH normaliza_problema AS (
-            SELECT
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                "DESCRICAO DO SERVICO" as servico,
-                "CODIGO DO VEICULO",
-                "problem_no"
-            FROM
-                mat_view_retrabalho_{min_dias}_dias
-            WHERE
-                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
-                {subquery_secoes_str}
-                {subquery_os_str}
-                {subquery_modelo_str}
-                {subquery_oficina_str}
-            GROUP BY
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                "DESCRICAO DO SERVICO",
-                "CODIGO DO VEICULO",
-                "problem_no"
-        ),
-        os_problema AS (
-            SELECT
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                servico,
-                COUNT(*) AS num_problema
-            FROM
-                normaliza_problema
-            GROUP BY
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                servico
-        ),
-        os_nota_media AS (
-            -- Calculando a nota média por OS (sem filtro de colaborador)
-            SELECT
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                "DESCRICAO DO SERVICO",
-                ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS nota_media_os
-            FROM mat_view_retrabalho_{min_dias}_dias mt
-            LEFT JOIN os_dados_classificacao odc
-            ON mt."KEY_HASH" = odc."KEY_HASH"
-            WHERE
-                mt."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND mt."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
-                {inner_subquery_secoes_str1}
-                {inner_subquery_os_str1}
-                {inner_subquery_modelo_str1}
-                {inner_subquery_oficina_str1}
-            GROUP BY
-                "DESCRICAO DA OFICINA",
-                "DESCRICAO DA SECAO",
-                "DESCRICAO DO SERVICO"
-        )
-        SELECT
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
-            main."DESCRICAO DO SERVICO",
-            COUNT(main."DESCRICAO DO SERVICO") AS "TOTAL_OS",
-            SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
-            SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
-            SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
-            100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
-            100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
-            100 * ROUND(COUNT(*)::NUMERIC / SUM(COUNT(*)) OVER (), 4) AS "PERC_TOTAL_OS",
-            ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media_colaborador,
-            osn.nota_media_os AS "nota_media_os",
-            SUM(pg."VALOR") AS "TOTAL_GASTO",
-            SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO",
-            100 * ROUND(SUM(CASE WHEN retrabalho THEN pg."VALOR" ELSE 0 END)::NUMERIC / SUM(pg."VALOR")::NUMERIC, 4) AS "PERC_GASTO_RETRABALHO"
-        FROM
-            mat_view_retrabalho_{min_dias}_dias main
-        LEFT JOIN 
-        	os_dados_classificacao odc  
-        ON
-            main."KEY_HASH" = odc."KEY_HASH"
-            
-        LEFT JOIN os_nota_media osn
-            ON main."DESCRICAO DA OFICINA" = osn."DESCRICAO DA OFICINA"
-            AND main."DESCRICAO DA SECAO" = osn."DESCRICAO DA SECAO"
-            AND main."DESCRICAO DO SERVICO" = osn."DESCRICAO DO SERVICO"
-        LEFT JOIN
-            view_pecas_desconsiderando_combustivel pg 
-        ON
-            main."NUMERO DA OS" = pg."OS"
-            AND pg."DATA" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        WHERE
-            main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
-            {inner_subquery_secoes_str2}
-            {inner_subquery_os_str2}
-            {inner_subquery_modelo_str2}
-            {inner_subquery_oficina_str2}
-        GROUP BY
-            main."DESCRICAO DA OFICINA",
-            main."DESCRICAO DA SECAO",
-            main."DESCRICAO DO SERVICO",
-            osn.nota_media_os
-        ORDER BY
-            "TOTAL_OS" DESC;
-        """
-
-        # Executa a query
-        df = pd.read_sql(query, self.pgEngine)
-
-        return df
-
-    def indicador_rank_servico(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
     ):
         """Obtem dados para rank de serviços diferentes"""
         data_inicio_str = datas[0]
         data_fim = pd.to_datetime(datas[1])
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
-
+        
+        # Filtro das subqueries
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
         subquery_oficina_str = subquery_oficinas(lista_oficina)
 
         query = f"""
-            with TABELA_RANK as (SELECT 
-            "COLABORADOR QUE EXECUTOU O SERVICO",
-            COUNT(DISTINCT "DESCRICAO DO SERVICO") AS quantidade_de_servicos_diferentes,
-            ROW_NUMBER() OVER (ORDER BY COUNT(DISTINCT "DESCRICAO DO SERVICO") DESC) AS rank_colaborador
+        WITH TABELA_RANK AS (
+            SELECT 
+                "COLABORADOR QUE EXECUTOU O SERVICO",
+                COUNT(DISTINCT "DESCRICAO DO SERVICO") AS quantidade_de_servicos_diferentes,
+                ROW_NUMBER() OVER (ORDER BY COUNT(DISTINCT "DESCRICAO DO SERVICO") DESC) AS rank_colaborador
             FROM
                 mat_view_retrabalho_{min_dias}_dias
             WHERE
@@ -516,22 +178,24 @@ class ColaboradorService:
                 {subquery_os_str}
                 {subquery_modelo_str}
                 {subquery_oficina_str}
-            GROUP BY "COLABORADOR QUE EXECUTOU O SERVICO"),
+            GROUP BY 
+                "COLABORADOR QUE EXECUTOU O SERVICO"),
             TOTAL AS (
                 SELECT COUNT(*) AS total_colaboradores FROM TABELA_RANK
-            ) 
-            SELECT 
-                tr.rank_colaborador || '/' || t.total_colaboradores AS rank_colaborador
-            FROM 
-                TABELA_RANK tr, TOTAL t
-            where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-            """
-        df_mecanicos = pd.read_sql(query, self.pgEngine)
+        ) 
+        SELECT 
+            tr.rank_colaborador || '/' || t.total_colaboradores AS rank_colaborador
+        FROM 
+            TABELA_RANK tr, TOTAL t
+        WHERE
+            "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+        """
+        df = pd.read_sql(query, self.pgEngine)
 
-        return df_mecanicos
+        return df
 
-    def indicador_rank_total_os(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    def get_indicador_rank_total_os_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
     ):
         """Obtem dados para rank de total de OS"""
         data_inicio_str = datas[0]
@@ -539,13 +203,15 @@ class ColaboradorService:
         data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
         data_fim_str = data_fim.strftime("%Y-%m-%d")
 
+        # Filtro das subqueries
         subquery_secoes_str = subquery_secoes(lista_secaos)
         subquery_os_str = subquery_os(lista_os)
         subquery_modelo_str = subquery_modelos(lista_modelo)
         subquery_oficina_str = subquery_oficinas(lista_oficina)
 
         query = f"""
-            with TABELA_RANK as (SELECT 
+            WITH TABELA_RANK AS (
+                SELECT 
                 "COLABORADOR QUE EXECUTOU O SERVICO",
                 COUNT(*) AS quantidade_de_OS,
                 ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) AS rank_colaborador
@@ -565,83 +231,16 @@ class ColaboradorService:
                 tr.rank_colaborador || '/' || t.total_colaboradores AS rank_colaborador
             FROM 
                 TABELA_RANK tr, TOTAL t
-        where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            WHERE
+                "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
         """
-        df_mecanicos = pd.read_sql(query, self.pgEngine)
+        df = pd.read_sql(query, self.pgEngine)
 
-        return df_mecanicos
+        return df
 
-    def df_lista_os(self):
-        """Retorna uma lista das OSs"""
-        df_lista_os = pd.read_sql(
-            f"""
-            SELECT DISTINCT
-            "DESCRICAO DA SECAO" as "SECAO",
-            "DESCRICAO DO SERVICO" AS "LABEL"
-            FROM 
-                mat_view_retrabalho_10_dias mvrd 
-            ORDER BY
-                "DESCRICAO DO SERVICO"
-            """,
-            self.pgEngine,
-        )
 
-        return df_lista_os
-
-    def df_lista_os_colab(self, min_dias, id_colaborador, datas):
-        """Retorna uma lista das OSs"""
-
-        data_inicio_str = datas[0]
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        df_lista_os = pd.read_sql(
-            f"""
-            SELECT DISTINCT
-            "DESCRICAO DA SECAO" as "SECAO",
-            "DESCRICAO DO SERVICO" AS "LABEL"
-            FROM 
-                mat_view_retrabalho_{min_dias}_dias mvrd 
-            WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            
-            ORDER BY
-                "DESCRICAO DO SERVICO"
-            """,
-            self.pgEngine,
-        )
-
-        return df_lista_os
-
-    def df_lista_os_colab_modelo(self, lista_secaos, lista_os, min_dias, id_colaborador, datas):
-        """Retorna uma lista das OSs"""
-
-        data_inicio_str = datas[0]
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        subquery_secoes_str = subquery_secoes(lista_secaos)
-        subquery_os_str = subquery_os(lista_os)
-
-        df_lista_os = pd.read_sql(
-            f"""
-            SELECT DISTINCT
-            "DESCRICAO DO MODELO" as "LABEL"
-            FROM 
-                mat_view_retrabalho_{min_dias}_dias mvrd 
-            WHERE "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}' AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            {subquery_secoes_str}
-            {subquery_os_str}
-            ORDER BY
-                "DESCRICAO DO MODELO"
-            """,
-            self.pgEngine,
-        )
-        return df_lista_os
-
-    def nota_media_colaborador(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    def get_indicador_nota_media_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
     ):
         """Retorna a nota media do colaborador"""
 
@@ -671,77 +270,14 @@ class ColaboradorService:
             {subquery_oficina_str}
     
         """
-        df_mecanico = pd.read_sql(query, self.pgEngine)
-        return df_mecanico
+        
+        df = pd.read_sql(query, self.pgEngine)
+        
+        return df
 
-    def evolucao_nota_media_colaborador(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
-    ):
-        """Retorna evoluçao da nota media do colaborador e da oficina"""
 
-        data_inicio_str = datas[0]
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        subquery_secoes_str = subquery_secoes(lista_secaos)
-        subquery_os_str = subquery_os(lista_os)
-        subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_oficina_str = subquery_oficinas(lista_oficina)
-
-        query = f"""
-            WITH oficina_colaborador AS (
-            SELECT DISTINCT "DESCRICAO DA OFICINA"
-            FROM mat_view_retrabalho_{min_dias}_dias
-            WHERE 
-                "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        )
-        SELECT
-            'COLABORADOR' AS escopo,
-            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media
-        FROM
-            mat_view_retrabalho_{min_dias}_dias mt1
-        LEFT JOIN
-		    os_dados_classificacao odc  on mt1."KEY_HASH" = odc."KEY_HASH"
-        WHERE
-            "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA"  FROM oficina_colaborador)
-        GROUP BY
-            year_month
-
-        UNION ALL
-
-        SELECT
-            "DESCRICAO DA OFICINA" AS escopo,
-            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media
-        FROM
-            mat_view_retrabalho_{min_dias}_dias mt2
-        LEFT JOIN
-		    os_dados_classificacao odc  on mt2."KEY_HASH" = odc."KEY_HASH" 
-      
-        WHERE 
-            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA" FROM oficina_colaborador)
-            {subquery_secoes_str}
-            {subquery_os_str}
-            {subquery_modelo_str}
-            {subquery_oficina_str}
-        GROUP BY
-            year_month, "DESCRICAO DA OFICINA"
-
-        ORDER BY
-            year_month,
-            escopo;
-            """
-        df_mecanico = pd.read_sql(query, self.pgEngine)
-        return df_mecanico
-
-    def posicao_rank_nota_media(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+    def get_indicador_posicao_rank_nota_media(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
     ):
         """Retorna o rank do colaborador (nota média)"""
 
@@ -756,7 +292,7 @@ class ColaboradorService:
         subquery_oficina_str = subquery_oficinas(lista_oficina)
 
         query = f"""
-        with TABELA_RANK as (
+        WITH TABELA_RANK AS (
         SELECT
             "COLABORADOR QUE EXECUTOU O SERVICO",
             ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) AS nota_media_colaborador,
@@ -784,79 +320,17 @@ class ColaboradorService:
             tr.rank_colaborador || '/' || t.total_colaboradores AS rank_colaborador
         FROM 
             TABELA_RANK tr, TOTAL t
-        where  "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-        """
-
-        df_mecanico = pd.read_sql(query, self.pgEngine)
-        return df_mecanico
-
-    def evolucao_gasto_colaborador(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
-    ):
-        """Retorna dados de evolução de gasto do colaborador"""
-
-        data_inicio_str = datas[0]
-        data_fim = pd.to_datetime(datas[1])
-        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
-        data_fim_str = data_fim.strftime("%Y-%m-%d")
-
-        subquery_secoes_str = subquery_secoes(lista_secaos)
-        subquery_os_str = subquery_os(lista_os)
-        subquery_modelo_str = subquery_modelos(lista_modelo)
-        subquery_oficina_str = subquery_oficinas(lista_oficina)
-
-        query = f"""
-            WITH oficina_colaborador AS (
-            SELECT DISTINCT "DESCRICAO DA OFICINA"
-            FROM mat_view_retrabalho_{min_dias}_dias
-            WHERE 
-                "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-        )
-        SELECT
-            'COLABORADOR' AS escopo,
-            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            Round(avg(pg."VALOR"), 2) AS media_gasto
-        FROM
-            mat_view_retrabalho_{min_dias}_dias mt1
-        JOIN view_pecas_desconsiderando_combustivel pg
-            ON mt1."NUMERO DA OS" = pg."OS"
         WHERE
             "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
-            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA"  FROM oficina_colaborador)
-        GROUP BY
-            year_month
+        """
 
-        UNION ALL
+        df = pd.read_sql(query, self.pgEngine)
+        return df
 
-        SELECT
-            "DESCRICAO DA OFICINA" AS escopo,
-            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
-            Round(avg(pg."VALOR"), 2) AS media_gasto
-        FROM
-            mat_view_retrabalho_{min_dias}_dias mt2
-        JOIN view_pecas_desconsiderando_combustivel pg
-            ON mt2."NUMERO DA OS" = pg."OS"
-      
-        WHERE 
-            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            AND "DESCRICAO DA OFICINA" IN (SELECT "DESCRICAO DA OFICINA" FROM oficina_colaborador)
-            {subquery_secoes_str}
-            {subquery_os_str}
-            {subquery_modelo_str}
-            {subquery_oficina_str}
-        GROUP BY
-            year_month, "DESCRICAO DA OFICINA"
 
-        ORDER BY
-            year_month,
-            escopo;"""
-
-        df_mecanico = pd.read_sql(query, self.pgEngine)
-        return df_mecanico
-
-    def gasto_colaborador(self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina):
+    def get_indicador_gasto_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
         """Retorna dados de gasto do colaborador"""
 
         data_inicio_str = datas[0]
@@ -886,20 +360,473 @@ class ColaboradorService:
             {subquery_oficina_str}
         """
 
-        df_mecanico = pd.read_sql(query, self.pgEngine)
-        # Formatar "VALOR" para R$ no formato brasileiro e substituindo por 0 os valores nulos
-        df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].fillna(0).astype(float).round(2)
-        df_mecanico["TOTAL_GASTO"] = df_mecanico["TOTAL_GASTO"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
-        df_mecanico["TOTAL_GASTO_RETRABALHO"] = df_mecanico["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
-        df_mecanico["TOTAL_GASTO_RETRABALHO"] = df_mecanico["TOTAL_GASTO_RETRABALHO"].apply(
-            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        )
-        return df_mecanico
+        df = pd.read_sql(query, self.pgEngine)
 
-    def obtem_detalhamento_os_colaborador(
-        self, datas, min_dias, id_colaborador, lista_secaos, lista_os, lista_modelo, lista_oficina
+        # Formatar "VALOR" para R$ no formato brasileiro e substituindo por 0 os valores nulos
+        df["TOTAL_GASTO"] = df["TOTAL_GASTO"].fillna(0).astype(float).round(2)
+        df["TOTAL_GASTO"] = df["TOTAL_GASTO"].apply(
+            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+        df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0).astype(float).round(2)
+        df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].apply(
+            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+
+        return df
+
+
+    def get_evolucao_retrabalho_por_mes(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Obtem estatisticas e dados analisados de retrabalho para o grafico de pizza geral"""
+
+        # Extraí a data inicial (já em string)
+        data_inicio_str = datas[0]
+
+        # Extraí a data final
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
+        SELECT
+            'COLABORADOR' AS escopo,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+            SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+            SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+            100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+            100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias
+        WHERE
+            "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            year_month
+
+        UNION ALL
+
+        SELECT
+            "DESCRICAO DA OFICINA" AS escopo,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+            SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+            SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+            100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+            100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias
+        WHERE
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            year_month, "DESCRICAO DA OFICINA"
+        ORDER BY
+            year_month,
+            escopo;
+        """
+
+        # Executa query
+        df = pd.read_sql(query, self.pgEngine)
+
+        # Converte para datetime
+        df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m", errors="coerce")
+        
+        return df
+
+
+    def get_evolucao_nota_media_colaborador_por_mes(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Retorna evoluçao da nota media do colaborador e da oficina"""
+
+        # Extraí a data inicial (já em string)
+        data_inicio_str = datas[0]
+
+        # Extraí a data final
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
+        SELECT
+            'COLABORADOR' AS escopo,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media
+        FROM
+            mat_view_retrabalho_{min_dias}_dias mt1
+        LEFT JOIN
+		    os_dados_classificacao odc  on mt1."KEY_HASH" = odc."KEY_HASH"
+        WHERE
+            "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            year_month
+
+        UNION ALL
+
+        SELECT
+            "DESCRICAO DA OFICINA" AS escopo,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            ROUND(AVG("SCORE_SOLUTION_TEXT_QUALITY"), 2) as nota_media
+        FROM
+            mat_view_retrabalho_{min_dias}_dias mt2
+        LEFT JOIN
+		    os_dados_classificacao odc  on mt2."KEY_HASH" = odc."KEY_HASH" 
+        WHERE 
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            year_month, "DESCRICAO DA OFICINA"
+        ORDER BY
+            year_month,
+            escopo;
+        """
+
+        # Executa a query
+        df = pd.read_sql(query, self.pgEngine)
+
+        return df
+
+
+    def get_evolucao_gasto_colaborador_por_mes(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        """Retorna dados de evolução de gasto do colaborador"""
+
+        # Extraí a data inicial (já em string)
+        data_inicio_str = datas[0]
+
+        # Extraí a data final
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
+        WITH retrabalho_por_colaborador_por_oficina_por_mes AS (
+            SELECT
+                "DESCRICAO DA OFICINA" AS escopo,
+                "COLABORADOR QUE EXECUTOU O SERVICO",
+                to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+                ROUND(SUM(CASE WHEN mt2.retrabalho THEN pg."VALOR" ELSE 0 END), 2) as soma_gasto_retrabalho
+            FROM
+                mat_view_retrabalho_{min_dias}_dias mt2
+            JOIN view_pecas_desconsiderando_combustivel pg
+                ON mt2."NUMERO DA OS" = pg."OS"
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+            GROUP BY
+                year_month, "DESCRICAO DA OFICINA", "COLABORADOR QUE EXECUTOU O SERVICO"
+            ORDER BY
+                year_month,
+                escopo
+        )
+        SELECT
+            'COLABORADOR' AS escopo,
+            to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+            ROUND(SUM(CASE WHEN mt1.retrabalho THEN pg."VALOR" ELSE 0 END), 2) as media_gasto
+        FROM
+            mat_view_retrabalho_{min_dias}_dias mt1
+        JOIN view_pecas_desconsiderando_combustivel pg
+            ON mt1."NUMERO DA OS" = pg."OS"
+        WHERE
+            "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            year_month
+
+        UNION ALL
+
+        SELECT
+            escopo, year_month, AVG(soma_gasto_retrabalho) as media_gasto
+        FROM
+            retrabalho_por_colaborador_por_oficina_por_mes
+        GROUP BY
+            escopo, year_month
+        ORDER BY
+            year_month,
+            escopo;
+        """
+
+        # Executa a query
+        df = pd.read_sql(query, self.pgEngine)
+
+        # Preenche valores nulos com 0
+        df["media_gasto"] = pd.to_numeric(df["media_gasto"], errors="coerce").fillna(0).round(2)
+
+        # Verifica se há colaborador no dataframe para cada mês
+        # Quando não houver, adiciona uma linha com o mês e o escopo "COLABORADOR" e media_gasto = 0
+        meses = df["year_month"].unique()
+        novas_linhas = []
+        for mes in meses:
+            df_mes = df[df["year_month"] == mes]
+            if "COLABORADOR" not in df_mes["escopo"].unique():
+                novas_linhas.append({"escopo": "COLABORADOR", "year_month": mes, "media_gasto": 0})
+
+        # Concatena as novas linhas (se houver)
+        df = pd.concat([df, pd.DataFrame(novas_linhas)], ignore_index=True)
+
+        return df
+
+
+    def get_atuacao_colaborador(self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina):
+        """Retorna dados de atuação do colaborador"""
+
+        # Extraí a data inicial (já em string)
+        data_inicio_str = datas[0]
+
+        # Extraí a data final
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
+        SELECT
+            "DESCRICAO DO TIPO DA OS",
+            COUNT(*) AS "QUANTIDADE"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias
+        WHERE
+            "COLABORADOR QUE EXECUTOU O SERVICO"= '{id_colaborador}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            "DESCRICAO DO TIPO DA OS"
+        ORDER BY
+            "DESCRICAO DO TIPO DA OS"
+        """ 
+
+        # Executa a query
+        df = pd.read_sql(query, self.pgEngine)
+
+        return df
+
+    def get_top_10_tipo_os_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        # Datas
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
+        SELECT
+            "DESCRICAO DO SERVICO",
+            COUNT(*) as "TOTAL_OS" 
+        FROM
+            mat_view_retrabalho_{min_dias}_dias
+        WHERE
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' AND "COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            "DESCRICAO DO SERVICO"
+        ORDER BY
+            "TOTAL_OS" DESC
+        """
+
+        # Executa a query
+        df = pd.read_sql(query, self.pgEngine)
+
+        # Total de OS
+        total_os = df["TOTAL_OS"].sum()
+        df["PERC_TOTAL_OS"] = (100 * pd.to_numeric(df["TOTAL_OS"], errors="coerce") / total_os).round(2)
+
+        # Ordena por total de OS
+        df = df.sort_values("TOTAL_OS", ascending=False)
+
+        # Seleciona as 10 primeiras linhas
+        df = df.head(10)
+
+        return df
+
+
+    def get_dados_tabela_retrabalho_por_categoria_os_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
+    ):
+        # Datas
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelo)
+        subquery_oficina_str = subquery_oficinas(lista_oficina)
+
+        query = f"""
+        WITH os_nota_media AS (
+            SELECT
+                "DESCRICAO DA OFICINA",
+                "DESCRICAO DA SECAO",
+                "DESCRICAO DO SERVICO",
+                ROUND(AVG(odc."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS nota_media_os
+            FROM mat_view_retrabalho_{min_dias}_dias mt
+            LEFT JOIN os_dados_classificacao odc
+                ON mt."KEY_HASH" = odc."KEY_HASH"
+            WHERE
+                mt."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+            GROUP BY
+                "DESCRICAO DA OFICINA",
+                "DESCRICAO DA SECAO",
+                "DESCRICAO DO SERVICO"
+        ),
+
+        os_do_colaborador_com_pecas AS (
+            SELECT
+                main.*,
+                pg."VALOR"
+            FROM mat_view_retrabalho_{min_dias}_dias main
+            LEFT JOIN view_pecas_desconsiderando_combustivel pg
+                ON main."NUMERO DA OS" = pg."OS"
+            WHERE
+                main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+        ),
+
+        os_do_colaborador_com_pecas_e_classificacao AS (
+            SELECT *
+            FROM os_do_colaborador_com_pecas main
+            LEFT JOIN os_dados_classificacao odc
+                ON main."KEY_HASH" = odc."KEY_HASH"
+        ),
+
+        os_estatistica_colaborador AS (
+            SELECT 
+                main."DESCRICAO DA OFICINA",
+                main."DESCRICAO DA SECAO",
+                main."DESCRICAO DO SERVICO",
+
+                COUNT(distinct main."NUMERO DA OS") AS "TOTAL_OS",
+                SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+                SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+                SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+
+                100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+                100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+                100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+                100 * ROUND(
+                    COUNT(DISTINCT main."NUMERO DA OS")::NUMERIC
+                    / SUM(COUNT(DISTINCT main."NUMERO DA OS")) OVER (),
+                    4
+                ) AS "PERC_TOTAL_OS",
+
+                ROUND(AVG(main."SCORE_SOLUTION_TEXT_QUALITY"), 2) AS "nota_media_colaborador",
+
+                SUM(main."VALOR") AS "TOTAL_GASTO",
+                SUM(CASE WHEN main.retrabalho THEN main."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
+                100 * ROUND(
+                    COALESCE(
+                        SUM(CASE WHEN main.retrabalho THEN main."VALOR" ELSE 0 END)::NUMERIC
+                        / NULLIF(SUM(main."VALOR")::NUMERIC, 0),
+                        0
+                    ),
+                    4
+                ) AS "PERC_GASTO_RETRABALHO"
+
+            FROM os_do_colaborador_com_pecas_e_classificacao main
+            GROUP BY 
+                main."DESCRICAO DA OFICINA",
+                main."DESCRICAO DA SECAO",
+                main."DESCRICAO DO SERVICO"
+        )
+
+        SELECT 
+            main.*, 
+            onm.*
+        FROM os_estatistica_colaborador main
+        LEFT JOIN os_nota_media onm 
+            ON main."DESCRICAO DA OFICINA" = onm."DESCRICAO DA OFICINA"
+            AND main."DESCRICAO DA SECAO" = onm."DESCRICAO DA SECAO"
+            AND main."DESCRICAO DO SERVICO" = onm."DESCRICAO DO SERVICO";
+        """
+
+        df = pd.read_sql(query, self.pgEngine)
+        df["nota_media_colaborador"] = df["nota_media_colaborador"].replace(np.nan, 0)
+        df["nota_media_os"] = df["nota_media_os"].replace(np.nan, 0)
+
+        return df
+
+    def get_dados_tabela_detalhamento_os_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
     ):
         """Retorna dados de detalhamento das OSs do colaborador no período selecionado"""
         # Query
@@ -953,10 +880,6 @@ class ColaboradorService:
         """
         df_os_detalhada_colaborador = pd.read_sql(query, self.pgEngine)
 
-        print("--------------------------------")
-        print(query)
-        print("--------------------------------")
-
         # Preenche valores nulos
         df_os_detalhada_colaborador["total_valor"] = df_os_detalhada_colaborador["total_valor"].fillna(0)
         df_os_detalhada_colaborador["pecas_valor_str"] = df_os_detalhada_colaborador["pecas_valor_str"].fillna("0")
@@ -982,8 +905,8 @@ class ColaboradorService:
 
         return df_os_detalhada_colaborador
 
-    def obtem_detalhamento_problema_colaborador(
-        self, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina, vec_problema, servico, num_problema
+    def get_dados_tabela_detalhamento_problema_colaborador(
+        self, id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina, vec_problema, servico, num_problema
     ):
         """Retorna dados de detalhamento das OSs do colaborador no período selecionado"""
         # Query
@@ -1047,16 +970,16 @@ class ColaboradorService:
         df_os_detalhada_colaborador = pd.read_sql(query, self.pgEngine)
 
         # Preenche valores nulos
-        df_os_detalhada_colaborador["total_valor"] = df_os_detalhada_colaborador["total_valor"].fillna(0)
-        df_os_detalhada_colaborador["pecas_valor_str"] = df_os_detalhada_colaborador["pecas_valor_str"].fillna("0")
+        df_os_detalhada_colaborador["total_valor"] = df_os_detalhada_colaborador["total_valor"].fillna(0).infer_objects(copy=False)
+        df_os_detalhada_colaborador["pecas_valor_str"] = df_os_detalhada_colaborador["pecas_valor_str"].fillna("0").infer_objects(copy=False)
         df_os_detalhada_colaborador["pecas_trocadas_str"] = df_os_detalhada_colaborador["pecas_trocadas_str"].fillna(
             "Nenhuma"
-        )
+        ).infer_objects(copy=False)
 
         # Campos da LLM
         df_os_detalhada_colaborador["WHY_SOLUTION_IS_PROBLEM"] = df_os_detalhada_colaborador[
             "WHY_SOLUTION_IS_PROBLEM"
-        ].fillna("Não classificado")
+        ].fillna("Não classificado").infer_objects(copy=False)
 
         # Aplica a função para definir o status de cada OS
         df_os_detalhada_colaborador["status_os"] = df_os_detalhada_colaborador.apply(definir_status, axis=1)

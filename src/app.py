@@ -104,11 +104,39 @@ server = app.server
 # Menu / Navbar
 def criarMenu(dirVertical=True):
     return dbc.Nav(
-        [dbc.NavLink(page["name"], href=page["relative_path"], active="exact") for page in dash.page_registry.values() if not page.get("hide_page", False)],
+        [
+            dbc.NavLink(page["name"], href=page["relative_path"], active="exact")
+            for page in dash.page_registry.values()
+            if not page.get("hide_page", False)
+        ],
         vertical=dirVertical,
         pills=True,
     )
 
+
+# def criarMenuAlt(dirVertical=True):
+#     return dmc.Group(
+#         [
+#             html.A(
+#                 dmc.Button("Visao Geral", leftSection=DashIconify(icon="material-symbols:home"), variant="outline"),
+#                 href="/",
+#             ),
+#             dmc.Menu(
+#                 [
+#                     dmc.MenuTarget(
+#                         dmc.Button("Análise", leftSection=DashIconify(icon="tabler:search"), variant="outline")
+#                     ),
+#                     dmc.MenuDropdown(
+#                         [
+#                             dmc.MenuItem("Colaborador", leftSection=DashIconify(icon="mdi:worker")),
+#                             dmc.MenuItem("Tipo de Serviço", leftSection=DashIconify(icon="ic:baseline-category")),
+#                             dmc.MenuItem("Ordem de Serviço", leftSection=DashIconify(icon="fluent-mdl2:repair")),
+#                         ]
+#                     ),
+#                 ]
+#             ),
+#         ]
+#     )
 
 # Cabeçalho
 header = dmc.Group(
@@ -144,7 +172,14 @@ app_shell = dmc.AppShell(
         dmc.AppShellMain(
             dmc.DatesProvider(
                 children=dbc.Container(
-                    [dcc.Location(id="url", refresh="callback-nav"), html.Div(id="scroll-hook", style={"display": "none"}), dash.page_container],
+                    [
+                        dcc.Location(id="url", refresh="callback-nav"),
+                        # Estado (facilitar a transição entre páginas)
+                        dcc.Store(id="store-input-dados-retrabalho-colaborador"),
+
+                        html.Div(id="scroll-hook", style={"display": "none"}),
+                        dash.page_container,
+                    ],
                     fluid=True,
                     className="dbc dbc-ag-grid",
                 ),

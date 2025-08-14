@@ -13,27 +13,8 @@ import plotly.graph_objects as go
 # Imports do tema
 import tema
 
-def generate_timeline_retrabalho(mouth: list, percent_retrabalho: list):
-    """Gera um grafico de linh contendo a evolução do retrabalho do colaborador"""
-    fig = go.Figure(data=[go.Scatter(x=mouth, y=percent_retrabalho)])
-    return fig
 
-
-def transform_year(year: str):
-    """Retorna a data do começo ao final do ano escolhido"""
-    # Converte o ano para um inteiro
-    year_int = int(year)
-
-    # Define a data de início do ano
-    start_date = datetime(year_int, 1, 1)
-
-    # Define a data de término do ano
-    end_date = datetime(year_int, 12, 31, 23, 59, 59)
-
-    return start_date, end_date
-
-
-def generate_grafico_evolucao(dados):
+def gerar_grafico_evolucao_retrabalho_colaborador_por_mes(dados):
     """Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês"""
 
     # Funde (melt) colunas de retrabalho e correção
@@ -108,15 +89,10 @@ def generate_grafico_evolucao(dados):
     # Aumenta o espaçamento do titulo
     fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
 
-    # Ajusta a altura do gráfico
-    # fig.update_layout(
-    #     height=400,  # Define a altura do gráfico
-    # )
-
     return fig
 
 
-def generate_grafico_evolucao_nota(dados):
+def gerar_grafico_evolucao_nota_media_colaborador_por_mes(dados):
     """Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês"""
 
     # Gera o gráfico
@@ -130,61 +106,20 @@ def generate_grafico_evolucao_nota(dados):
         markers=True,
     )
 
-    # Gera ticks todo mês
-    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
-
-    # Aumenta o espaçamento do titulo
-    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
-
-    return fig
-
-
-def grafico_pizza_colaborador(data):
-    """Retorna o grafico de pizza geral"""
-    if data.empty:
-        return go.Figure()
-    # Prepara os dados para o gráfico
-    labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
-    values = [
-        data["TOTAL_CORRECAO_PRIMEIRA"].values[0],
-        data["TOTAL_CORRECAO_TARDIA"].values[0],
-        data["TOTAL_RETRABALHO"].values[0],
-    ]
-
-    # Gera o gráfico
-    fig = go.Figure(
-        data=[
-            go.Pie(
-                labels=labels,
-                values=values,
-                direction="clockwise",
-                marker_colors=[tema.COR_SUCESSO, tema.COR_ALERTA, tema.COR_ERRO],
-                sort=True,
-            )
-        ]
-    )
-
-    # Arruma legenda e texto
-    fig.update_traces(textinfo="value+percent", sort=False)
-
-    # Remove o espaçamento em torno do gráfico
+    # Renomeia o eixo y
     fig.update_layout(
-        margin=dict(t=20, b=0),  # Remove as margens
-        height=325,  # Ajuste conforme necessário
-        legend=dict(
-            orientation="h",  # Legenda horizontal
-            yanchor="top",  # Ancora no topo
-            xanchor="center",  # Centraliza
-            y=-0.1,  # Coloca abaixo
-            x=0.5,  # Alinha com o centro
+        yaxis=dict(
+            title="Nota Média",
         ),
     )
 
-    # Retorna o gráfico
+    # Gera ticks todo mês
+    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
+
     return fig
 
 
-def generate_grafico_evolucao_gasto(dados):
+def gerar_grafico_evolucao_gasto_colaborador_por_mes(dados):
     """Plota gráfico de evolução das médias de retrabalho e correção de primeira por mês"""
 
     # Gera o gráfico
@@ -194,61 +129,21 @@ def generate_grafico_evolucao_gasto(dados):
         y="media_gasto",
         color="escopo",
         facet_col_spacing=0.05,  # Espaçamento entre os gráficos
-        labels={"escopo": "Oficina", "year_month_dt": "Ano-Mês"},
+        labels={"escopo": "Oficina", "year_month": "Ano-Mês", "media_gasto": "Média de Gasto (R$)"},
+        hover_data={"media_gasto": ":.2f"},
         markers=True,
     )
 
     # Gera ticks todo mês
     fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
 
-    # Aumenta o espaçamento do titulo
-    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))  # Increase standoff for spacing
-
-    return fig
-
-
-def grafico_pizza_colaborador(data):
-    """Retorna o grafico de pizza geral"""
-    if data.empty:
-        return go.Figure()
-    # Prepara os dados para o gráfico
-    labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
-    values = [
-        data["TOTAL_CORRECAO_PRIMEIRA"].values[0],
-        data["TOTAL_CORRECAO_TARDIA"].values[0],
-        data["TOTAL_RETRABALHO"].values[0],
-    ]
-
-    # Gera o gráfico
-    fig = go.Figure(
-        data=[
-            go.Pie(
-                labels=labels,
-                values=values,
-                direction="clockwise",
-                marker_colors=[tema.COR_SUCESSO, tema.COR_ALERTA, tema.COR_ERRO],
-                sort=True,
-            )
-        ]
-    )
-
-    # Arruma legenda e texto
-    fig.update_traces(textinfo="value+percent", sort=False)
-
-    # Remove o espaçamento em torno do gráfico
+    # Renomeia o eixo y
     fig.update_layout(
-        margin=dict(t=20, b=0),  # Remove as margens
-        height=325,  # Ajuste conforme necessário
-        legend=dict(
-            orientation="h",  # Legenda horizontal
-            yanchor="top",  # Ancora no topo
-            xanchor="center",  # Centraliza
-            y=-0.1,  # Coloca abaixo
-            x=0.5,  # Alinha com o centro
+        yaxis=dict(
+            title="Média de Gasto (R$)",
         ),
     )
 
-    # Retorna o gráfico
     return fig
 
 
@@ -268,7 +163,7 @@ def gerar_grafico_pizza_atuacao_colaborador(df):
     )
 
     fig.update_layout(
-        margin=dict(l=50, r=50, t=50, b=50),  # Remove todas as margens desnecessárias
+        # margin=dict(l=50, r=50, t=50, b=50),  # Remove todas as margens desnecessárias
         legend=dict(
             orientation="h",  # Horizontal orientation
             y=0,  # Position the legend below the chart
@@ -298,6 +193,98 @@ def gerar_grafico_pizza_top_10_os_colaborador(df):
     fig.update_layout(
         xaxis_title="",
         yaxis_title="Total de OS",
+        margin=dict(b=150),
     )
 
+    return fig
+
+# "----"
+
+def grafico_pizza_colaborador(data):
+    """Retorna o grafico de pizza geral"""
+    if data.empty:
+        return go.Figure()
+    # Prepara os dados para o gráfico
+    labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
+    values = [
+        data["TOTAL_CORRECAO_PRIMEIRA"].values[0],
+        data["TOTAL_CORRECAO_TARDIA"].values[0],
+        data["TOTAL_RETRABALHO"].values[0],
+    ]
+
+    # Gera o gráfico
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=labels,
+                values=values,
+                direction="clockwise",
+                marker_colors=[tema.COR_SUCESSO, tema.COR_ALERTA, tema.COR_ERRO],
+                sort=True,
+            )
+        ]
+    )
+
+    # Arruma legenda e texto
+    fig.update_traces(textinfo="value+percent", sort=False)
+
+    # Remove o espaçamento em torno do gráfico
+    fig.update_layout(
+        margin=dict(t=20, b=0),  # Remove as margens
+        height=325,  # Ajuste conforme necessário
+        legend=dict(
+            orientation="h",  # Legenda horizontal
+            yanchor="top",  # Ancora no topo
+            xanchor="center",  # Centraliza
+            y=-0.1,  # Coloca abaixo
+            x=0.5,  # Alinha com o centro
+        ),
+    )
+
+    # Retorna o gráfico
+    return fig
+
+
+def grafico_pizza_colaborador(data):
+    """Retorna o grafico de pizza geral"""
+    if data.empty:
+        return go.Figure()
+    # Prepara os dados para o gráfico
+    labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
+    values = [
+        data["TOTAL_CORRECAO_PRIMEIRA"].values[0],
+        data["TOTAL_CORRECAO_TARDIA"].values[0],
+        data["TOTAL_RETRABALHO"].values[0],
+    ]
+
+    # Gera o gráfico
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=labels,
+                values=values,
+                direction="clockwise",
+                marker_colors=[tema.COR_SUCESSO, tema.COR_ALERTA, tema.COR_ERRO],
+                sort=True,
+            )
+        ]
+    )
+
+    # Arruma legenda e texto
+    fig.update_traces(textinfo="value+percent", sort=False)
+
+    # Remove o espaçamento em torno do gráfico
+    fig.update_layout(
+        margin=dict(t=20, b=0),  # Remove as margens
+        height=325,  # Ajuste conforme necessário
+        legend=dict(
+            orientation="h",  # Legenda horizontal
+            yanchor="top",  # Ancora no topo
+            xanchor="center",  # Centraliza
+            y=-0.1,  # Coloca abaixo
+            x=0.5,  # Alinha com o centro
+        ),
+    )
+
+    # Retorna o gráfico
     return fig
