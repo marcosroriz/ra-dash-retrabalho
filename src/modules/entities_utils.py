@@ -56,14 +56,20 @@ def get_secoes(dbEngine):
 
 def get_mecanicos(dbEngine):
     # Colaboradores / Mecânicos
-    df = pd.read_sql("""
+    df = pd.read_sql(
+        """
         SELECT DISTINCT "COLABORADOR QUE EXECUTOU O SERVICO" as "CODIGO", cfo.id, cfo.cod_colaborador, cfo.nome_colaborador 
         FROM mat_view_retrabalho_10_dias mvrd 
         LEFT JOIN colaboradores_frotas_os cfo 
         ON mvrd."COLABORADOR QUE EXECUTOU O SERVICO" = cfo.cod_colaborador 
-        """, dbEngine)
+        """,
+        dbEngine,
+    )
     df["nome_colaborador"] = df["nome_colaborador"].fillna("Não informado").infer_objects(copy=False)
-    df["LABEL_COLABORADOR"] = df["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)) + " (" + df["CODIGO"].astype(str) + ")"
+    df["LABEL_COLABORADOR"] = (
+        df["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x))
+        + " (" + df["CODIGO"].astype(int).astype(str) + ")"
+    )
     df.sort_values(by="LABEL_COLABORADOR", inplace=True)
 
     return df
