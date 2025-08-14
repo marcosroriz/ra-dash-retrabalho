@@ -1040,7 +1040,7 @@ layout = dbc.Container(
                                                         options=[
                                                             {
                                                                 "label": f"{linha['LABEL_COLABORADOR']}",
-                                                                "value": linha["cod_colaborador"],
+                                                                "value": linha["CODIGO"],
                                                             }
                                                             for _, linha in df_mecanicos.iterrows()
                                                         ],
