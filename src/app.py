@@ -174,9 +174,6 @@ app_shell = dmc.AppShell(
                 children=dbc.Container(
                     [
                         dcc.Location(id="url", refresh="callback-nav"),
-                        # Estado (facilitar a transição entre páginas)
-                        dcc.Store(id="store-input-dados-retrabalho-colaborador"),
-
                         html.Div(id="scroll-hook", style={"display": "none"}),
                         dash.page_container,
                     ],

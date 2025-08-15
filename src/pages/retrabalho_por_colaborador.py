@@ -8,17 +8,15 @@
 ##############################################################################
 # Bibliotecas básicas
 from datetime import date, datetime
-import pandas as pd
 
 # Importar bibliotecas para manipulação de URL
 import ast
-from urllib.parse import urlparse, parse_qs, unquote
+from urllib.parse import urlparse, parse_qs
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
 from dash import html, dcc, callback, Input, Output
 import plotly.graph_objects as go
-import plotly.express as px
 
 # Importar bibliotecas do bootstrap e ag-grid
 import dash_bootstrap_components as dbc
@@ -1016,8 +1014,8 @@ def download_excel_detalhamento_problema(n_clicks, vec_problema_lbl, data):
 ##############################################################################
 layout = dbc.Container(
     [
-        # Estado (vem do app.py), mencionando aqui só para relembrarmos
-        # dcc.Store(id="store-input-dados-retrabalho-colaborador")
+        # Estado
+        dcc.Store(id="store-input-dados-retrabalho-colaborador"),
         # Loading
         dmc.LoadingOverlay(
             visible=True,
