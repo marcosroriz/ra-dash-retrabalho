@@ -96,10 +96,6 @@ def parse_list_param(param):
     Input("url", "href"),
 )
 def callback_receber_campos_via_url(href):
-    print("Recebendo os dados via URL")
-    print(href)
-    print("--------------------------------")
-
     if not href:
         return (
             dash.no_update,
@@ -280,9 +276,6 @@ def gera_labels_inputs_colaborador(campo):
     prevent_initial_call=True,
 )
 def corrige_input_oficina(lista_oficinas):
-    print("--- corrigindo input oficina")
-    print(lista_oficinas)
-    print("--------------------------------")
     return corrige_input(lista_oficinas)
 
 
@@ -292,9 +285,6 @@ def corrige_input_oficina(lista_oficinas):
     prevent_initial_call=True,
 )
 def corrige_input_secao(lista_secaos):
-    print("--- corrigindo input secao")
-    print(lista_secaos)
-    print("--------------------------------")
     return corrige_input(lista_secaos)
 
 
@@ -310,11 +300,6 @@ def corrige_input_secao(lista_secaos):
     prevent_initial_call=True,
 )
 def corrige_input_modelo(lista_modelos, id_colaborador):
-    print("--- corrigindo input modelo")
-    print(lista_modelos)
-    print(id_colaborador)
-    print("--------------------------------")
-
     # Verifica se há colaborador selecionado
     if id_colaborador is None or not id_colaborador:
         # Retorna a opção padrão (TODAS)
@@ -343,11 +328,6 @@ def corrige_input_modelo(lista_modelos, id_colaborador):
     prevent_initial_call=True,
 )
 def corrige_input_ordem_servico(lista_os, id_colaborador):
-    print("--- corrigindo input ordem servico")
-    print(lista_os)
-    print(id_colaborador)
-    print("--------------------------------")
-
     # Verifica se há colaborador selecionado
     if id_colaborador is None or not id_colaborador:
         # Retorna a opção padrão (TODAS)
