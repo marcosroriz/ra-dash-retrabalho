@@ -75,6 +75,7 @@ lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
 # Callbacks para os inputs via URL ###########################################
 ##############################################################################
 
+
 # Função auxiliar para transformar string '[%27A%27,%20%27B%27]' → ['A', 'B']
 def parse_list_param(param):
     if param:
@@ -140,6 +141,37 @@ def callback_receber_campos_via_url(href):
 
     return id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
 
+
+@callback(
+    Output("url", "search", allow_duplicate=True),
+    Input("input-select-colaborador-colaborador", "value"),
+    Input("input-intervalo-datas-colaborador", "value"),
+    Input("input-min-dias-colaborador", "value"),
+    Input("input-select-secao-colaborador", "value"),
+    Input("input-select-ordens-servico-colaborador", "value"),
+    Input("input-select-modelos-colaborador", "value"),
+    Input("input-select-oficina-colaborador", "value"),
+    prevent_initial_call="initial_duplicate",
+)
+def callback_sincronizar_campos_para_url(
+    id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
+):
+    if not input_valido(id_colaborador, datas, min_dias, lista_secaos, lista_oficinas, lista_modelos, lista_os):
+        raise dash.exceptions.PreventUpdate
+
+    url_params = [
+        f"id_colaborador={id_colaborador}",
+        f"data_inicio={datas[0]}",
+        f"data_fim={datas[1]}",
+        f"min_dias={min_dias}",
+        f"lista_modelos={lista_modelos}",
+        f"lista_oficinas={lista_oficinas}",
+        f"lista_secaos={lista_secaos}",
+        f"lista_os={lista_os}",
+    ]
+    url_params_str = "&".join(url_params)
+
+    return f"?{url_params_str}"
 
 
 ##############################################################################
@@ -1840,5 +1872,3 @@ layout = dbc.Container(
 # Registro da página #########################################################
 ##############################################################################
 dash.register_page(__name__, name="Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline")
-
-
