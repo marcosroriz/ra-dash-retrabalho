@@ -449,20 +449,15 @@ def download_excel_tabela_top_os(n_clicks, datas, min_dias, lista_modelos, lista
 
 
 @callback(
-    [
-        Output("url", "href"),
-        Output("store-input-dados-retrabalho-colaborador", "data", allow_duplicate=True),
-    ],
-    [
-        Input("tabela-top-os-colaborador-geral", "cellRendererData"),
-        Input("tabela-top-os-colaborador-geral", "virtualRowData"),
-        Input("input-intervalo-datas-geral", "value"),
-        Input("input-select-dias-geral-retrabalho", "value"),
-        Input("input-select-modelo-veiculos-visao-geral", "value"),
-        Input("input-select-oficina-visao-geral", "value"),
-        Input("input-select-secao-visao-geral", "value"),
-        Input("input-select-ordens-servico-visao-geral", "value"),
-    ],
+    Output("url", "href"),
+    Input("tabela-top-os-colaborador-geral", "cellRendererData"),
+    Input("tabela-top-os-colaborador-geral", "virtualRowData"),
+    Input("input-intervalo-datas-geral", "value"),
+    Input("input-select-dias-geral-retrabalho", "value"),
+    Input("input-select-modelo-veiculos-visao-geral", "value"),
+    Input("input-select-oficina-visao-geral", "value"),
+    Input("input-select-secao-visao-geral", "value"),
+    Input("input-select-ordens-servico-visao-geral", "value"),
     prevent_initial_call=True,
 )
 def callback_botao_detalhamento_colaborador(
@@ -470,18 +465,16 @@ def callback_botao_detalhamento_colaborador(
 ):
     ctx = callback_context  # Obtém o contexto do callback
     if not ctx.triggered:
-        return dash.no_update, dash.no_update  # Evita execução desnecessária
+        return dash.no_update  # Evita execução desnecessária
 
     # Verifica se o callback foi acionado pelo botão de visualização
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
 
     if triggered_id != "cellRendererData":
-        return dash.no_update, dash.no_update
+        return dash.no_update
 
     linha_alvo = linha_virtual[linha["rowIndex"]]
-    print("ID COLABORADOR: ", linha_alvo["COLABORADOR QUE EXECUTOU O SERVICO"])
 
-    print("---- aqui -----")
     url_params = [
         f"id_colaborador={linha_alvo['COLABORADOR QUE EXECUTOU O SERVICO']}",
         f"data_inicio={datas[0]}",
@@ -494,20 +487,7 @@ def callback_botao_detalhamento_colaborador(
     ]
     url_params_str = "&".join(url_params)
 
-    input_dict = {
-        "valido": True,
-        "id_colaborador": int(linha_alvo["COLABORADOR QUE EXECUTOU O SERVICO"]),
-        "datas": datas,
-        "min_dias": int(min_dias),
-        "lista_secaos": lista_secaos,
-        "lista_os": lista_os,
-        "lista_modelo": lista_modelos,
-        "lista_oficina": lista_oficinas,
-    }
-    print("Passando o input_dict para o store-input-dados-retrabalho-colaborador")
-    print(input_dict)
-
-    return f"/retrabalho-por-colaborador?{url_params_str}", input_dict
+    return f"/retrabalho-por-colaborador?{url_params_str}"
 
 
 @callback(
