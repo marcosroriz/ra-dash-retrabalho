@@ -213,63 +213,6 @@ def corrige_input(lista):
     # Por fim, se não caiu em nenhum caso, retorna o valor original
     return lista
 
-
-def gera_labels_inputs_colaborador(campo):
-    # Cria o callback
-    @callback(
-        [
-            Output(component_id=f"{campo}-labels", component_property="children"),
-        ],
-        [
-            Input("input-min-dias-colaborador", "value"),
-            Input("input-select-secao-colaborador", "value"),
-            Input("input-select-ordens-servico-colaborador", "value"),
-            Input("input-select-modelos-colaborador", "value"),
-            Input("input-select-oficina-colaborador", "value"),
-        ],
-    )
-    def atualiza_labels_inputs(min_dias, lista_secaos, lista_os, lista_modelo, lista_oficinas):
-        labels_antes = [
-            # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
-            dmc.Badge("Filtro", color="gray", variant="outline"),
-        ]
-        min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
-        lista_oficinas_labels = []
-        lista_secaos_labels = []
-        lista_os_labels = []
-
-        if lista_oficinas is None or not lista_oficinas or "TODAS" in lista_oficinas:
-            lista_oficinas_labels.append(dmc.Badge("Todas as oficinas", variant="outline"))
-        else:
-            for oficina in lista_oficinas:
-                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
-
-        if lista_modelo is None or not lista_modelo or "TODAS" in lista_modelo:
-            lista_oficinas_labels.append(dmc.Badge("Todos os modelos", variant="outline"))
-        else:
-            for oficina in lista_modelo:
-                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
-
-        if lista_secaos is None or not lista_secaos or "TODAS" in lista_secaos:
-            lista_secaos_labels.append(dmc.Badge("Todas as seções", variant="outline"))
-        else:
-            for secao in lista_secaos:
-                lista_secaos_labels.append(dmc.Badge(secao, variant="dot"))
-
-        if lista_os is None or not lista_os or "TODAS" in lista_os:
-            lista_os_labels.append(dmc.Badge("Todas as ordens de serviço", variant="outline"))
-        else:
-            for os in lista_os:
-                lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
-
-        return [
-            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels)
-        ]
-
-    # Cria o componente
-    return dmc.Group(id=f"{campo}-labels", children=[])
-
-
 @callback(
     Output("input-select-oficina-colaborador", "value", allow_duplicate=True),
     Input("input-select-oficina-colaborador", "value"),
@@ -342,6 +285,63 @@ def corrige_input_ordem_servico(lista_os, id_colaborador):
     lista_options = [{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_os_possiveis]
 
     return lista_options, corrige_input(lista_os)
+
+
+def gera_labels_inputs_colaborador(campo):
+    # Cria o callback
+    @callback(
+        [
+            Output(component_id=f"{campo}-labels", component_property="children"),
+        ],
+        [
+            Input("input-min-dias-colaborador", "value"),
+            Input("input-select-secao-colaborador", "value"),
+            Input("input-select-ordens-servico-colaborador", "value"),
+            Input("input-select-modelos-colaborador", "value"),
+            Input("input-select-oficina-colaborador", "value"),
+        ],
+    )
+    def atualiza_labels_inputs(min_dias, lista_secaos, lista_os, lista_modelo, lista_oficinas):
+        labels_antes = [
+            # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
+            dmc.Badge("Filtro", color="gray", variant="outline"),
+        ]
+        min_dias_label = [dmc.Badge(f"{min_dias} dias", variant="outline")]
+        lista_oficinas_labels = []
+        lista_secaos_labels = []
+        lista_os_labels = []
+
+        if lista_oficinas is None or not lista_oficinas or "TODAS" in lista_oficinas:
+            lista_oficinas_labels.append(dmc.Badge("Todas as oficinas", variant="outline"))
+        else:
+            for oficina in lista_oficinas:
+                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+
+        if lista_modelo is None or not lista_modelo or "TODAS" in lista_modelo:
+            lista_oficinas_labels.append(dmc.Badge("Todos os modelos", variant="outline"))
+        else:
+            for oficina in lista_modelo:
+                lista_oficinas_labels.append(dmc.Badge(oficina, variant="dot"))
+
+        if lista_secaos is None or not lista_secaos or "TODAS" in lista_secaos:
+            lista_secaos_labels.append(dmc.Badge("Todas as seções", variant="outline"))
+        else:
+            for secao in lista_secaos:
+                lista_secaos_labels.append(dmc.Badge(secao, variant="dot"))
+
+        if lista_os is None or not lista_os or "TODAS" in lista_os:
+            lista_os_labels.append(dmc.Badge("Todas as ordens de serviço", variant="outline"))
+        else:
+            for os in lista_os:
+                lista_os_labels.append(dmc.Badge(f"OS: {os}", variant="dot"))
+
+        return [
+            dmc.Group(labels_antes + min_dias_label + lista_oficinas_labels + lista_secaos_labels + lista_os_labels)
+        ]
+
+    # Cria o componente
+    return dmc.Group(id=f"{campo}-labels", children=[])
+
 
 
 ##############################################################################

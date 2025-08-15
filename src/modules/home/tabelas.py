@@ -250,17 +250,25 @@ tbl_top_colaborador_geral_retrabalho = [
 # Tabela Top Veiculo
 tbl_top_veiculo_retrabalho = [
     {
-        "field": "DESCRICAO DO MODELO",
-        "headerName": "Modelo",
-        "minWidth": 250,
-        "pinned": "left",
-    },
-    {
         "field": "CODIGO DO VEICULO",
-        "headerName": "ID",
+        "headerName": "VEÍCULO",
         "minWidth": 120,
         "maxWidth": 120,
         "pinned": "left",
+    },
+    {
+        "field": "acao",
+        "headerName": "Perfil",
+        "cellRenderer": "Button",
+        "cellRendererParams": {"className": "btn btn-outline-primary btn-sm"},
+        "minWidth": 150,
+        "pinned": "left",
+    },
+    {
+        "field": "DESCRICAO DO MODELO",
+        "headerName": "Modelo",
+        "minWidth": 250,
+        # "pinned": "left",
     },
     {
         "field": "TOTAL_OS",

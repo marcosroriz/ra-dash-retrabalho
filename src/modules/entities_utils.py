@@ -68,7 +68,9 @@ def get_mecanicos(dbEngine):
     df["nome_colaborador"] = df["nome_colaborador"].fillna("Não informado").infer_objects(copy=False)
     df["LABEL_COLABORADOR"] = (
         df["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x))
-        + " (" + df["CODIGO"].astype(int).astype(str) + ")"
+        + " ("
+        + df["CODIGO"].astype(int).astype(str)
+        + ")"
     )
     df.sort_values(by="LABEL_COLABORADOR", inplace=True)
 
@@ -99,6 +101,30 @@ def get_modelos(dbEngine):
             "DESCRICAO DO MODELO" AS "MODELO"
         FROM 
             mat_view_retrabalho_10_dias mvrd
+        """,
+        dbEngine,
+    )
+
+
+def get_veiculos(dbEngine):
+    # Lista de veículos
+    return pd.read_sql(
+        """
+        WITH veiculos_unicos AS (
+            SELECT
+                "CODIGO DO VEICULO",
+                "DESCRICAO DO MODELO",
+                ROW_NUMBER() OVER (PARTITION BY "CODIGO DO VEICULO" ORDER BY "DESCRICAO DO MODELO") AS rn
+            FROM 
+                mat_view_retrabalho_10_dias
+        )
+        SELECT
+            "CODIGO DO VEICULO" AS "VEICULO",
+            "DESCRICAO DO MODELO" AS "MODELO"
+        FROM 
+            veiculos_unicos
+        WHERE 
+            rn = 1;
         """,
         dbEngine,
     )

@@ -449,7 +449,7 @@ def download_excel_tabela_top_os(n_clicks, datas, min_dias, lista_modelos, lista
 
 
 @callback(
-    Output("url", "href"),
+    Output("url", "href", allow_duplicate=True),
     Input("tabela-top-os-colaborador-geral", "cellRendererData"),
     Input("tabela-top-os-colaborador-geral", "virtualRowData"),
     Input("input-intervalo-datas-geral", "value"),
@@ -544,6 +544,47 @@ def download_excel_tabela_colaborador(n_clicks, datas, min_dias, lista_modelos, 
 
 
 @callback(
+    Output("url", "href", allow_duplicate=True),
+    Input("tabela-top-veiculos-geral", "cellRendererData"),
+    Input("tabela-top-veiculos-geral", "virtualRowData"),
+    Input("input-intervalo-datas-geral", "value"),
+    Input("input-select-dias-geral-retrabalho", "value"),
+    Input("input-select-modelo-veiculos-visao-geral", "value"),
+    Input("input-select-oficina-visao-geral", "value"),
+    Input("input-select-secao-visao-geral", "value"),
+    Input("input-select-ordens-servico-visao-geral", "value"),
+    prevent_initial_call=True,
+)
+def callback_botao_detalhamento_veiculo(
+    linha, linha_virtual, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de visualização
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
+
+    if triggered_id != "cellRendererData":
+        return dash.no_update
+
+    linha_alvo = linha_virtual[linha["rowIndex"]]
+
+    url_params = [
+        f"id_veiculo={linha_alvo['CODIGO DO VEICULO']}",
+        f"data_inicio={datas[0]}",
+        f"data_fim={datas[1]}",
+        f"min_dias={min_dias}",
+        f"lista_modelos={lista_modelos}",
+        f"lista_oficinas={lista_oficinas}",
+        f"lista_secaos={lista_secaos}",
+        f"lista_os={lista_os}",
+    ]
+    url_params_str = "&".join(url_params)
+
+    return f"/retrabalho-por-veiculo?{url_params_str}"
+
+@callback(
     Output("tabela-top-veiculos-geral", "rowData"),
     [
         Input("input-intervalo-datas-geral", "value"),
@@ -563,6 +604,9 @@ def atualiza_tabela_top_veiculos_geral_retrabalho(
 
     # Obtem dados
     df = home_service.get_top_veiculos(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
+
+    # Ação de visualização
+    df["acao"] = "🔍 Detalhar"
 
     return df.to_dict("records")
 
@@ -917,17 +961,6 @@ layout = dbc.Container(
                                                         options=[
                                                             {"label": sec["LABEL"], "value": sec["LABEL"]}
                                                             for sec in lista_todas_secoes
-                                                            # {"label": "TODAS", "value": "TODAS"},
-                                                            # {"label": "BORRACHARIA", "value": "MANUTENCAO BORRACHARIA" },
-                                                            # {"label": "ELETRICA", "value": "MANUTENCAO ELETRICA"},
-                                                            # {"label": "GARAGEM", "value": "MANUTENÇÃO GARAGEM"},
-                                                            # {"label": "LANTERNAGEM", "value": "MANUTENCAO LANTERNAGEM"},
-                                                            # {"label": "LUBRIFICAÇÃO", "value": "LUBRIFICAÇÃO"},
-                                                            # {"label": "MECANICA", "value": "MANUTENCAO MECANICA"},
-                                                            # {"label": "PINTURA", "value": "MANUTENCAO PINTURA"},
-                                                            # {"label": "SERVIÇOS DE TERCEIROS", "value": "SERVIÇOS DE TERCEIROS"},
-                                                            # {"label": "SETOR DE ALINHAMENTO", "value": "SETOR DE ALINHAMENTO"},
-                                                            # {"label": "SETOR DE POLIMENTO", "value": "SETOR DE POLIMENTO"},
                                                         ],
                                                         multi=True,
                                                         value=["MANUTENCAO ELETRICA", "MANUTENCAO MECANICA"],
