@@ -346,6 +346,145 @@ class VeiculoService:
         )
 
         return df_combinado
+    
+    def get_evolucao_custo_por_mes(self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+        # Datas
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+
+        # Query para obter o custo total por mês
+        # Primeiro, calcula o custo por veículo por mês
+        # Segundo, faz os filtros para:
+        # - o veículo
+        # - o modelo
+        # - todos os veículos
+        query = f"""
+        WITH media_custo_por_veiculo as (
+            SELECT
+                    to_char(to_timestamp("DATA DO FECHAMENTO DA OS", 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM') AS year_month,
+                    SUM(pg."VALOR") AS "TOTAL_GASTO",
+                    SUM(CASE WHEN main.retrabalho THEN pg."VALOR" ELSE NULL END) AS "TOTAL_GASTO_RETRABALHO",
+                    "CODIGO DO VEICULO",
+                    "DESCRICAO DO MODELO"
+                FROM
+                    mat_view_retrabalho_{min_dias}_dias_distinct main
+                JOIN
+                    view_pecas_desconsiderando_combustivel pg 
+                ON
+                    main."NUMERO DA OS" = pg."OS"
+                WHERE
+                    "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                    {subquery_oficinas_str}
+                    {subquery_secoes_str}
+                    {subquery_os_str}
+                GROUP BY
+                    year_month, "CODIGO DO VEICULO", "DESCRICAO DO MODELO"
+        )
+
+        -- Custo do veículo selecionado
+        SELECT
+            "CODIGO DO VEICULO" as "CATEGORIA",
+            year_month, 
+            avg("TOTAL_GASTO") as "TOTAL_GASTO", 
+            AVG("TOTAL_GASTO_RETRABALHO") as "TOTAL_GASTO_RETRABALHO"
+        FROM 
+            media_custo_por_veiculo
+        WHERE 
+            "CODIGO DO VEICULO" IN ('{id_veiculo}')
+        GROUP BY 
+            "CODIGO DO VEICULO", year_month
+
+        UNION ALL 
+        -- Custo do modelo selecionado
+        
+        SELECT 
+            "DESCRICAO DO MODELO" as "CATEGORIA",
+            year_month, 
+            avg("TOTAL_GASTO") as "TOTAL_GASTO", 
+            AVG("TOTAL_GASTO_RETRABALHO") as "TOTAL_GASTO_RETRABALHO"
+        FROM 
+            media_custo_por_veiculo
+        WHERE 
+            "DESCRICAO DO MODELO" in (
+                SELECT DISTINCT "DESCRICAO DO MODELO"
+                FROM
+                    mat_view_retrabalho_{min_dias}_dias_distinct
+                WHERE
+                    "CODIGO DO VEICULO" = '{id_veiculo}'
+            )
+        GROUP BY 
+            "DESCRICAO DO MODELO", year_month
+
+        UNION ALL
+        -- Custo geral
+        
+        SELECT 
+            'MÉDIA GERAL' as "CATEGORIA",
+            year_month, 
+            avg("TOTAL_GASTO") as "TOTAL_GASTO", 
+            AVG("TOTAL_GASTO_RETRABALHO") as "TOTAL_GASTO_RETRABALHO"
+        FROM 
+            media_custo_por_veiculo
+        GROUP BY 
+            year_month
+        ORDER BY 
+            year_month;
+        """
+
+        # Executa Query
+        df = pd.read_sql(query, self.dbEngine)
+
+        # Limpa os valores nulos
+        df["TOTAL_GASTO"] = df["TOTAL_GASTO"].fillna(0)
+        df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0)
+        
+        # Verifica se há dados do veículo no dataframe para cada mês
+        # Quando não houver, adiciona uma linha com o mês e o escopo "VEÍCULO" e media_gasto = 0
+        meses = df["year_month"].unique()
+        categorias = df["CATEGORIA"].unique()
+        novas_linhas = []
+        for mes in meses:
+            df_mes = df[df["year_month"] == mes]
+            for cat in categorias:
+                if cat not in df_mes["CATEGORIA"].unique():
+                    novas_linhas.append({"CATEGORIA": cat, "year_month": mes, "TOTAL_GASTO": 0, "TOTAL_GASTO_RETRABALHO": 0})
+
+        # Concatena as novas linhas (se houver)
+        df = pd.concat([df, pd.DataFrame(novas_linhas)], ignore_index=True)
+
+        # Arruma dt
+        df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m", errors="coerce")
+
+        # Ordena o dataframe
+        df = df.sort_values(by=["year_month_dt", "CATEGORIA"])
+
+        # Funde (melt) colunas de retrabalho e correção
+        df_melt = df.melt(
+            id_vars=["CATEGORIA", "year_month_dt"], 
+            value_vars=["TOTAL_GASTO", "TOTAL_GASTO_RETRABALHO"],
+            var_name="TIPO_GASTO",
+            value_name="GASTO"
+        )
+
+        # Ajustar os nomes em TIPO_GASTO
+        df_melt["TIPO_GASTO"] = df_melt["TIPO_GASTO"].replace({
+            "TOTAL_GASTO": "TOTAL",
+            "TOTAL_GASTO_RETRABALHO": "RETRABALHO"
+        })
+
+        # Ordena novamente
+        df_melt = df_melt.sort_values(by=["year_month_dt", "CATEGORIA"])
+
+        return df_melt
 
     def atualizar_servicos_func(self, datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
         # Datas

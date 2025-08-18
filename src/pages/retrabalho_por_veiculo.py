@@ -488,6 +488,37 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(data):
     fig = veiculos_graficos.grafico_evolucao_retrabalho_por_secao_por_mes(df)
 
     return fig
+
+
+@callback(
+    Output("graph-evolucao-custo-por-mes-veiculo", "figure"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def plota_grafico_evolucao_retrabalho_por_secao_por_mes(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return go.Figure()
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_evolucao_custo_por_mes(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    # Plota o gráfico
+    fig = veiculos_graficos.grafico_evolucao_custo_por_mes(df)
+    
+    return fig
+
+    # return fig
     
 
 
@@ -1305,7 +1336,7 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Relações de retrabalho / mês / seção",
+                                "Evolução do retrabalho por seção",
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
@@ -1328,11 +1359,11 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Valor das peças trocadas por mês",
+                                "Evolução do custo de peças trocadas por mês",
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("pecas-trocadas-por-mes"),
+                            gera_labels_inputs_veiculos("evolucao-custo-por-mes-veiculos"),
                         ]
                     ),
                     width=True,
@@ -1340,8 +1371,8 @@ layout = dbc.Container(
             ],
             align="center",
         ),
-        dcc.Graph(id="graph-pecas-trocadas-por-mes"),
-        dmc.Space(h=20),
+        dcc.Graph(id="graph-evolucao-custo-por-mes-veiculo"),
+        dmc.Space(h=40),
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:cog-outline", width=45), width="auto"),

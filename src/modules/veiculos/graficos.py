@@ -201,6 +201,70 @@ def grafico_evolucao_retrabalho_por_secao_por_mes(df):
     return fig
 
 
+def grafico_evolucao_custo_por_mes(df):
+    fig = px.line(
+        df,
+        x="year_month_dt",
+        y="GASTO",
+        color="CATEGORIA",
+        facet_col="TIPO_GASTO",
+        facet_col_spacing=0.05,  # Espaçamento entre os gráficos
+        labels={"year_month_dt": "Ano-Mês", "GASTO": "Custo", },
+        markers=True,
+    )
+
+    # Ajusta o formato do eixo Y para exibir valores como porcentagem
+    # fig.update_yaxes(tickformat=".2f")
+
+    # Personaliza o layout do gráfico
+    fig.update_layout(
+        yaxis=dict(
+            title="Custo (R$)",
+        ),
+        yaxis2=dict(
+            title="Custo (R$)",
+            overlaying="y",
+            side="right",
+            anchor="x",
+        ),
+        margin=dict(b=100),  # Espaço na parte inferior
+    )
+
+    # Adiciona títulos específicos para cada gráfico
+    fig.update_layout(
+        annotations=[
+            dict(
+                text="Custo total de peças",
+                x=0.25,  # Posição X para o primeiro plot
+                y=1.05,  # Posição Y acima do gráfico
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+            dict(
+                text="Custo de peças (retrabalho)",
+                x=0.75,  # Posição X para o segundo plot
+                y=1.05,  # Posição Y acima do gráfico
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16),
+            ),
+        ]
+    )
+
+    # Configura os ticks no eixo X para exibição mensal
+    fig.update_xaxes(dtick="M1", tickformat="%Y-%b", title_text="Ano-Mês", title_standoff=90)
+
+    # Ajusta o espaçamento dos títulos do eixo X
+    fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
+
+    return fig
+
+
+
+
 
 def grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas):
         # Gráfico 1: Quantidade de OS por Veículo e por mês
@@ -357,7 +421,7 @@ def grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo):
     return fig
 
 def gerar_grafico_evolucao_retrabalho_por_veiculo_por_mes(df):
-        # Gera o gráfico
+    # Gera o gráfico
     fig = px.line(
         df,
         x="year_month_dt",
