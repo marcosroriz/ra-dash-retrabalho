@@ -563,7 +563,7 @@ layout = dbc.Container(
         html.Hr(),
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="vaadin:lines-list", width=45), width="auto"),
+                dbc.Col(DashIconify(icon="fluent-mdl2:repair", width=45), width="auto"),
                 dbc.Col(
                     html.H1(
                         [
@@ -845,4 +845,4 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="OS", path="/retrabalho-por-os", icon="vaadin:lines-list")
+dash.register_page(__name__, name="OS", path="/retrabalho-por-os", icon="fluent-mdl2:repair")

@@ -1365,4 +1365,4 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Visão Geral", path="/", icon="mdi:bus-alert")
+dash.register_page(__name__, name="Visão Geral", path="/", icon="tabler:dashboard")

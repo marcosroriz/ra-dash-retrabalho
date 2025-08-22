@@ -592,7 +592,7 @@ layout = dbc.Container(
                                 html.Hr(),
                                 dbc.Row(
                                     [
-                                        dbc.Col(DashIconify(icon="vaadin:lines-list", width=45), width="auto"),
+                                        dbc.Col(DashIconify(icon="ic:baseline-category", width=45), width="auto"),
                                         dbc.Col(
                                             html.H1(
                                                 [
@@ -1250,7 +1250,7 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-servico", icon="vaadin:lines-list")
+dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-servico", icon="ic:baseline-category")
 
 
 # #!/usr/bin/env python

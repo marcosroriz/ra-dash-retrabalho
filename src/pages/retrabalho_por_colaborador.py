@@ -1849,4 +1849,4 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Colaborador", path="/retrabalho-por-colaborador", icon="fluent-mdl2:timeline")
+dash.register_page(__name__, name="Colaborador", path="/retrabalho-por-colaborador", icon="mdi:account-wrench")

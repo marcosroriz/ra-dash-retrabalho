@@ -556,7 +556,7 @@ layout = dbc.Container(
                                 html.Hr(),
                                 dbc.Row(
                                     [
-                                        dbc.Col(DashIconify(icon="mdi:bus-alert", width=45), width="auto"),
+                                        dbc.Col(DashIconify(icon="mdi:bus", width=45), width="auto"),
                                         dbc.Col(
                                             html.H1(
                                                 [
@@ -1886,4 +1886,4 @@ def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, l
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Veículo", path="/retrabalho-por-veiculo", icon="mdi:bus-alert")
+dash.register_page(__name__, name="Veículo", path="/retrabalho-por-veiculo", icon="mdi:bus")
