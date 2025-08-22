@@ -21,6 +21,10 @@ import dash_auth
 import dash_mantine_components as dmc
 from dash import Dash, _dash_renderer, dcc, html, callback, Input, Output, State
 
+# Dash componentes Mantine e icones
+import dash_mantine_components as dmc
+from dash_iconify import DashIconify
+
 # Graficos
 import plotly.graph_objs as go
 import plotly.io as pio
@@ -105,10 +109,24 @@ server = app.server
 def criarMenu(dirVertical=True):
     return dbc.Nav(
         [
+            # dbc.NavLink(
+            #     html.Span(
+            #         [
+            #             DashIconify(icon=page["icon"], width=16, className="me-1"),
+            #             dmc.Space(w=2),
+            #             dmc.Text(page["name"], size="sm"),
+            #         ],
+            #         style={"display": "flex", "alignItems": "center"},
+            #     ),
+            #     href=page["relative_path"],
+            #     class_name="me-2",
+            #     active="exact",
+            # )
             dbc.NavLink(page["name"], href=page["relative_path"], active="exact")
             for page in dash.page_registry.values()
             if not page.get("hide_page", False)
         ],
+        class_name="dash-bootstrap",
         vertical=dirVertical,
         pills=True,
     )

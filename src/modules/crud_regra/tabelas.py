@@ -3,6 +3,45 @@
 
 # Arquivo que centraliza as tabelas utilizadas na página regra de monitoramento
 
+# Tabela de regras existentes
+tbl_regras_existentes = [
+    {"field": "nome_regra", "headerName": "NOME DA REGRA", "minWidth": 200},
+    {
+        "field": "data_criacao",
+        "headerName": "DATA DE CRIAÇÃO",
+        "minWidth": 100,
+        "filter": "agDateColumnFilter",
+        "valueFormatter": {
+            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
+        },
+    },
+    {"field": "data_atualizacao", "headerName": "DATA DE ATUALIZAÇÃO", "minWidth": 100},
+    {
+        "field": "relatorio",
+        "headerName": "Relatório",
+        "cellRenderer": "Button",
+        "floatingFilter": False,
+        "filter": False,
+        "cellRendererParams": {"className": "btn btn-outline-primary btn-sm"},
+    },
+    {
+        "field": "editar",
+        "headerName": "Editar",
+        "cellRenderer": "Button",
+        "floatingFilter": False,
+        "filter": False,
+        "cellRendererParams": {"className": "btn btn-outline-warning btn-sm"},
+    },
+    {
+        "field": "apagar",
+        "headerName": "Apagar",
+        "cellRenderer": "Button",
+        "floatingFilter": False,
+        "filter": False,
+        "cellRendererParams": {"className": "btn btn-outline-danger btn-sm"},
+    },
+]
+
 # Tabela detalhamento do problema/OS que envolve a regra
 tbl_detalhamento_problema_regra = [
     {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 200},
@@ -41,9 +80,7 @@ tbl_detalhamento_problema_regra = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 180,
-        "valueFormatter": {
-            "function": "params.value !== null ? params.value + ' dias' : '0 dias'"
-        },
+        "valueFormatter": {"function": "params.value !== null ? params.value + ' dias' : '0 dias'"},
         "filter": "agNumberColumnFilter",
         "type": ["numericColumn"],
     },
