@@ -5,20 +5,32 @@
 
 # Tabela de regras existentes
 tbl_regras_existentes = [
-    {"field": "nome_regra", "headerName": "NOME DA REGRA", "minWidth": 200},
+    {"field": "nome_regra", "headerName": "NOME DA REGRA", "minWidth": 250},
     {
         "field": "data_criacao",
         "headerName": "DATA DE CRIAÇÃO",
-        "minWidth": 100,
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "minWidth": 120,
         "filter": "agDateColumnFilter",
         "valueFormatter": {
             "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
         },
     },
-    {"field": "data_atualizacao", "headerName": "DATA DE ATUALIZAÇÃO", "minWidth": 100},
+    {
+        "field": "data_atualizacao",
+        "headerName": "DATA DE ATUALIZAÇÃO",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "minWidth": 200,
+        "filter": "agDateColumnFilter",
+        "valueFormatter": {
+            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
+        },
+    },
     {
         "field": "relatorio",
-        "headerName": "Relatório",
+        "headerName": "VER RELATÓRIO",
         "cellRenderer": "Button",
         "floatingFilter": False,
         "filter": False,
@@ -26,7 +38,7 @@ tbl_regras_existentes = [
     },
     {
         "field": "editar",
-        "headerName": "Editar",
+        "headerName": "EDITAR",
         "cellRenderer": "Button",
         "floatingFilter": False,
         "filter": False,
@@ -34,7 +46,7 @@ tbl_regras_existentes = [
     },
     {
         "field": "apagar",
-        "headerName": "Apagar",
+        "headerName": "APAGAR",
         "cellRenderer": "Button",
         "floatingFilter": False,
         "filter": False,

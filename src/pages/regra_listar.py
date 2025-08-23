@@ -344,7 +344,7 @@ layout = dbc.Container(
                 }
             ],
             defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
+            columnSize="responsiveSizeToFit",
             dashGridOptions={
                 "localeText": locale_utils.AG_GRID_LOCALE_BR,
                 "enableCellTextSelection": True,
