@@ -8,6 +8,7 @@
 ##############################################################################
 # Bibliotecas básicas
 from datetime import date, datetime
+import json
 import pandas as pd
 import re
 
@@ -44,6 +45,7 @@ pgEngine = pgDB.get_engine()
 # Cria o serviço
 crud_regra_service = CRUDRegraService(pgEngine)
 
+
 # Função para preparar os dados para a tabela
 def prepara_dados_tabela(df_regras):
     df_regras["acao_relatorio"] = "📋 Relatório"
@@ -51,14 +53,17 @@ def prepara_dados_tabela(df_regras):
     df_regras["acao_apagar"] = "❌ Apagar"
     return df_regras
 
+
 # Obtem todas as regras e prepara os dados para a tabela
 df_todas_regras = crud_regra_service.get_todas_regras()
 df_todas_regras = prepara_dados_tabela(df_todas_regras)
 lista_todas_regras = df_todas_regras.to_dict(orient="records")
 
+
 ##############################################################################
 # CALLBACKS ##################################################################
 ##############################################################################
+
 
 # Callback botão criar regra
 @callback(
@@ -72,18 +77,88 @@ def cb_botao_criar_regra(n_clicks):
 
     return "/regra-criar"
 
+
+@callback(
+    Output("modal-confirma-apagar-gerenciar-regra", "opened", allow_duplicate=True),
+    Input("btn-cancelar-apagar-regra", "n_clicks"),
+    prevent_initial_call=True,
+)
+def cb_botao_cancelar_apagar_regra(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        return dash.no_update
+    else:
+        return False
+    
+@callback(
+    Output("modal-confirma-apagar-gerenciar-regra", "opened", allow_duplicate=True),
+    Input("btn-confirma-apagar-regra", "n_clicks"),
+    Input("nome-regra-apagar-gerenciar-regra", "children"),
+    prevent_initial_call=True,
+)
+def cb_botao_confirma_apagar_regra(n_clicks, nome_regra):
+    if n_clicks is None or n_clicks == 0:
+        return dash.no_update
+    else:
+        match = re.search(r"ID:\s*(\d+)", nome_regra)
+        id_regra = int(match.group(1))
+
+        # Apagar a regra
+        crud_regra_service.apagar_regra(id_regra)
+        return False
+
+
+# Callback para acessar o botão apertado da tabela e guardar no estado
+@callback(
+    Output("modal-confirma-apagar-gerenciar-regra", "opened"),
+    Output("nome-regra-apagar-gerenciar-regra", "children"),
+    # Output("id-regra-apagar-gerenciar-regra", "children"),
+    Input("tabela-regras-existentes", "cellRendererData"),
+    Input("tabela-regras-existentes", "virtualRowData"),
+)
+def cb_botao_apagar_regra(linha, linha_virtual):
+    # Obtém o contexto do callback
+    ctx = callback_context
+    if not ctx.triggered:
+        # Evita execução desnecessária
+        return dash.no_update, dash.no_update
+
+    # Verifica se o callback foi acionado pelo botão de visualização
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
+
+    print(f"triggered_id: {triggered_id}")
+    if triggered_id != "cellRendererData":
+        return dash.no_update, dash.no_update
+
+    # Pega os dados da regra clicada
+    dados_regra = linha_virtual[linha["rowIndex"]]
+
+    # Extraí a ação a ser feita
+    acao = linha["colId"]
+
+    if acao == "acao_relatorio":
+        return dash.no_update, dash.no_update
+    elif acao == "acao_editar":
+        return dash.no_update, dash.no_update
+    elif acao == "acao_apagar":
+        nome_regra = f"{dados_regra["nome"]} (ID: {dados_regra["id"]})"
+        return True, nome_regra
+    else:
+        return dash.no_update, dash.no_update
+
+
 ##############################################################################
 # Layout #####################################################################
 ##############################################################################
 layout = dbc.Container(
     [
-        # Informações / Ajuda
         dmc.Modal(
-            # title="Erro ao carregar os dados",
-            id="modal-erro-apagar-regra",
+            id="modal-confirma-apagar-gerenciar-regra",
             centered=True,
             radius="lg",
             size="md",
+            opened=False,
+            closeOnClickOutside=False,
+            closeOnEscape=True,
             children=dmc.Stack(
                 [
                     dmc.ThemeIcon(
@@ -91,63 +166,34 @@ layout = dbc.Container(
                         size=128,
                         color="red",
                         variant="light",
-                        children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
+                        children=DashIconify(icon="material-symbols:delete", width=128, height=128),
                     ),
-                    dmc.Title("Erro!", order=1),
-                    dmc.Text("Ocorreu um erro ao testar a regra. Verifique se a regra possui:"),
+                    dmc.Title("Apagar Regra?", order=1),
+                    dmc.Text("Você tem certeza que deseja apagar a regra?"),
                     dmc.List(
                         [
-                            dmc.ListItem("Nome da regra;"),
-                            dmc.ListItem("Pelo menos um alerta alvo (nova OS, retrabalho, etc);"),
-                            dmc.ListItem("Pelo menos um destino de email ou WhatsApp ativo."),
+                            dmc.ListItem(id="nome-regra-apagar-gerenciar-regra"),
+                            # dmc.ListItem(id="id-regra-apagar-gerenciar-regra"),
                         ],
                     ),
+                    dmc.Text("Esta ação não poderá ser desfeita."),
                     dmc.Group(
                         [
+                            dmc.Button("Cancelar", id="btn-cancelar-apagar-regra", variant="default"),
                             dmc.Button(
-                                "Fechar",
+                                "Apagar",
                                 color="red",
                                 variant="outline",
-                                id="btn-close-modal-erro-teste-regra",
+                                id="btn-confirma-apagar-regra",
                             ),
                         ],
-                        # justify="flex-end",
+                        # mt="lg",
+                        justify="flex-end",
                     ),
+                    dmc.Space(h=20),
                 ],
                 align="center",
-                gap="xl",
-            ),
-        ),
-        dmc.Modal(
-            # title="Erro ao carregar os dados",
-            id="modal-sucesso-apagar-regra",
-            centered=True,
-            radius="lg",
-            size="lg",
-            children=dmc.Stack(
-                [
-                    dmc.ThemeIcon(
-                        radius="xl",
-                        size=128,
-                        color="green",
-                        variant="light",
-                        children=DashIconify(icon="material-symbols:check-circle-rounded", width=128, height=128),
-                    ),
-                    dmc.Title("Sucesso!", order=1),
-                    dmc.Text("A regra foi testada com sucesso."),
-                    dmc.Group(
-                        [
-                            dmc.Button(
-                                "Fechar",
-                                color="green",
-                                variant="outline",
-                                id="btn-close-modal-sucesso-teste-regra",
-                            ),
-                        ],
-                    ),
-                ],
-                align="center",
-                gap="xl",
+                gap="md",
             ),
         ),
         # Cabeçalho e Inputs

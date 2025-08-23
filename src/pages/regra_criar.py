@@ -589,7 +589,7 @@ def testa_regra_monitoramento_retrabalho(
     )
     num_os = len(df)
 
-    Envia mensagem via WhatsApp se ativo
+    # Envia mensagem via WhatsApp se ativo
     if wpp_ativo:
         wpp_service = CRUDWppTestService()
         for wpp_tel in wpp_tel_validos:

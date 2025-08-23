@@ -39,6 +39,25 @@ class CRUDRegraService:
         
         return df
 
+    def apagar_regra(self, id_regra):
+        """Função para apagar uma regra de monitoramento"""
+
+        # Query
+        query = f"""
+            DELETE FROM regra_monitoramento_os WHERE id = {id_regra}
+        """
+
+        print(f"Query: {query}")
+
+        try:    
+            # Executa a query
+            with self.dbEngine.begin() as conn:
+                conn.execute(text(query))
+        
+            return True
+        except Exception as e:
+            print(f"Erro ao apagar regra: {e}")
+            return False
 
     def criar_regra_monitoramento(self, payload):
         """Função para criar uma regra de monitoramento"""
