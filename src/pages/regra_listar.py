@@ -86,6 +86,17 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 # CALLBACKS ##################################################################
 ##############################################################################
 
+# Callback botão criar regra
+@callback(
+    Output("url", "href", allow_duplicate=True),
+    Input("btn-criar-regra", "n_clicks"),
+    prevent_initial_call=True,
+)
+def cb_botao_criar_regra(n_clicks):
+    if n_clicks is None:
+        return dash.no_update
+
+    return "/regra-criar"
 
 ##############################################################################
 # Layout #####################################################################
@@ -166,136 +177,6 @@ layout = dbc.Container(
                 gap="xl",
             ),
         ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        dbc.Alert(
-                            [
-                                dbc.Row(
-                                    [
-                                        dbc.Col(
-                                            DashIconify(icon="material-symbols:date-range", width=45), width="auto"
-                                        ),
-                                        dbc.Col(
-                                            html.P(
-                                                [
-                                                    html.Strong("Período de monitoramento:"),
-                                                    #     """
-                                                    # período em que as OSs estarão ativas para os filtros da regra de monitoramento contínuo.
-                                                    # """,
-                                                    """
-                                                intervalo em que as OSs serão analisadas pelos filtros da regra de 
-                                                monitoramento contínuo. Esse valor é diferente do período de retrabalho,
-                                                que define o número mínimo de dias entre OS para que uma nova OS não 
-                                                seja considerada retrabalho. Exemplo: um monitoramento de 2 dias com
-                                                período de retrabalho de 30 dias irá avaliar continuamente 
-                                                as OSs dos dois últimos dias para identificar retrabalhos.
-                                                """,
-                                                ]
-                                            ),
-                                            className="mt-2",
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                            ],
-                            dismissable=True,
-                            color="secondary",
-                        ),
-                    ],
-                    md=12,
-                ),
-                dbc.Col(
-                    [
-                        dbc.Alert(
-                            [
-                                dbc.Row(
-                                    [
-                                        dbc.Col(DashIconify(icon="mdi:new-box", width=45), width="auto"),
-                                        dbc.Col(
-                                            html.P(
-                                                [
-                                                    html.Strong("Nova OS, sem retrabalho prévio:"),
-                                                    """
-                                                não há OS anterior no período de retrabalho
-                                                """,
-                                                ]
-                                            ),
-                                            className="mt-2",
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                            ],
-                            dismissable=True,
-                            color="info",
-                        ),
-                    ],
-                    md=4,
-                ),
-                dbc.Col(
-                    [
-                        dbc.Alert(
-                            [
-                                dbc.Row(
-                                    [
-                                        dbc.Col(DashIconify(icon="mdi:alert-decagram-outline", width=45), width="auto"),
-                                        dbc.Col(
-                                            html.P(
-                                                [
-                                                    html.Strong("Nova OS, com retrabalho prévio:"),
-                                                    """
-                                                possui OS dentro do intervalo de retrabalho
-                                                """,
-                                                ]
-                                            ),
-                                            className="mt-2",
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                            ],
-                            dismissable=True,
-                            color="warning",
-                        ),
-                    ],
-                    md=4,
-                ),
-                dbc.Col(
-                    [
-                        dbc.Alert(
-                            [
-                                dbc.Row(
-                                    [
-                                        dbc.Col(DashIconify(icon="pepicons-pop:rewind-time", width=45), width="auto"),
-                                        dbc.Col(
-                                            html.P(
-                                                [
-                                                    html.Strong("Retrabalho:"),
-                                                    """
-                                                OS de retrabalho confirmada dentro do período de monitoramento
-                                                """,
-                                                ]
-                                            ),
-                                            className="mt-2",
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                            ],
-                            dismissable=True,
-                            color="danger",
-                        ),
-                    ],
-                    md=4,
-                ),
-            ]
-        ),
         # Cabeçalho e Inputs
         html.Hr(),
         dbc.Row(
@@ -329,20 +210,7 @@ layout = dbc.Container(
         dag.AgGrid(
             id="tabela-regras-existentes",
             columnDefs=crud_regra_tabelas.tbl_regras_existentes,
-            rowData=[
-                {
-                    "id": 1,
-                    "relatorio": "📋 Relatório",
-                    "editar": "✏️ Editar",
-                    "apagar": "❌ Apagar",
-                    "nome_regra": "Regra 1",
-                    "data_surgimento": "2021-01-01",
-                    "data_criacao": "2021-01-01",
-                    "data_atualizacao": "2021-01-01",
-                    "periodo_monitoramento": "10 dias",
-                    "tempo_retrabalho": "30 dias",
-                }
-            ],
+            rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="responsiveSizeToFit",
             dashGridOptions={

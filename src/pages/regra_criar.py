@@ -111,6 +111,33 @@ def input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, li
     return True
 
 
+time_pattern = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d$")
+
+
+def horario_valido(horario_envio):
+    if not horario_envio:
+        return False
+
+    if not time_pattern.match(horario_envio):
+        return False
+
+    return True
+
+
+def target_os_valido(checklist):
+    if not checklist:
+        return False
+
+    if (
+        "nova_os_sem_retrabalho_anterior" in checklist
+        or "nova_os_com_retrabalho_anterior" in checklist
+        or "retrabalho" in checklist
+    ):
+        return True
+
+    return False
+
+
 # Corrige o input para garantir que o termo para todas ("TODAS") não seja selecionado junto com outras opções
 def corrige_input(lista, termo_all="TODAS"):
     # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
@@ -515,7 +542,9 @@ def testa_regra_monitoramento_retrabalho(
         return dash.no_update
 
     # Valida Resto do input
-    if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    if not input_valido(
+        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ) or not target_os_valido(checklist_alvo):
         return [True, False]
 
     # Valida nome da regra
@@ -525,7 +554,23 @@ def testa_regra_monitoramento_retrabalho(
     # Verifica se pelo menos um email ou wpp está ativo
     if not email_ativo and not wpp_ativo:
         return [True, False]
-
+    
+    # Valida se há pelo menos um telefone de whatsapp válido caso esteja ativo    
+    wpp_telefones = [wpp_telefone_1, wpp_telefone_2, wpp_telefone_3, wpp_telefone_4, wpp_telefone_5]
+    wpp_tel_validos = []
+    if wpp_ativo:
+        wpp_tel_validos = [wpp for wpp in wpp_telefones if wpp != "" and not verifica_erro_wpp(wpp)]
+        if len(wpp_tel_validos) == 0:
+            return [True, False]
+        
+    # Valida se há pelo menos um email válido caso esteja ativo
+    email_destinos = [email_destino_1, email_destino_2, email_destino_3, email_destino_4, email_destino_5]
+    email_destinos_validos = []
+    if email_ativo:
+        email_destinos_validos = [email for email in email_destinos if email != "" and not verifica_erro_email(email)]
+        if len(email_destinos_validos) == 0:
+            return [True, False]
+    
     # Obtem os dados
     df = crud_regra_service.get_previa_os_regra_detalhada(
         data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
@@ -534,9 +579,6 @@ def testa_regra_monitoramento_retrabalho(
 
     # Envia mensagem via WhatsApp se ativo
     if wpp_ativo:
-        wpp_telefones = [wpp_telefone_1, wpp_telefone_2, wpp_telefone_3, wpp_telefone_4, wpp_telefone_5]
-        wpp_tel_validos = [wpp for wpp in wpp_telefones if wpp != "" and not verifica_erro_wpp(wpp)]
-
         wpp_service = CRUDWppTestService()
         for wpp_tel in wpp_tel_validos:
             wpp_service.build_and_send_msg(
@@ -554,9 +596,6 @@ def testa_regra_monitoramento_retrabalho(
 
     # Envia mensagem via email se ativo
     if email_ativo:
-        email_destinos = [email_destino_1, email_destino_2, email_destino_3, email_destino_4, email_destino_5]
-        email_destinos_validos = [email for email in email_destinos if email != "" and not verifica_erro_email(email)]
-
         email_service = CRUDEmailTestService()
         for email_destino in email_destinos_validos:
             email_service.build_and_send_msg(
@@ -573,6 +612,169 @@ def testa_regra_monitoramento_retrabalho(
             )
 
     return [False, True]
+
+
+##############################################################################
+# Callbacks para salvar a regra ##############################################
+##############################################################################
+
+# Callback para o botão de salvar a regra
+@callback(
+    [
+        Output("modal-erro-salvar-regra", "opened"),
+        Output("modal-sucesso-salvar-regra", "opened"),
+    ],
+    [
+        Input("btn-salvar-regra-monitoramento-criar-retrabalho", "n_clicks"),
+        Input("btn-close-modal-erro-salvar-regra", "n_clicks"),
+        Input("btn-close-modal-sucesso-salvar-regra", "n_clicks"),
+        Input("input-nome-regra-monitoramento-retrabalho", "value"),
+        Input("input-periodo-dias-monitoramento-regra-criar-retrabalho", "value"),
+        Input("input-select-dias-regra-criar-retrabalho", "value"),
+        Input("input-select-modelo-veiculos-regra-criar-retrabalho", "value"),
+        Input("input-select-oficina-regra-criar-retrabalho", "value"),
+        Input("input-select-secao-regra-criar-retrabalho", "value"),
+        Input("input-select-ordens-servico-regra-criar-retrabalho", "value"),
+        Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
+        Input("switch-enviar-email-regra-criar-retrabalho", "checked"),
+        Input("input-email-1-regra-criar-retrabalho", "value"),
+        Input("input-email-2-regra-criar-retrabalho", "value"),
+        Input("input-email-3-regra-criar-retrabalho", "value"),
+        Input("input-email-4-regra-criar-retrabalho", "value"),
+        Input("input-email-5-regra-criar-retrabalho", "value"),
+        Input("switch-enviar-wpp-regra-criar-retrabalho", "checked"),
+        Input("input-wpp-1-regra-criar-retrabalho", "value"),
+        Input("input-wpp-2-regra-criar-retrabalho", "value"),
+        Input("input-wpp-3-regra-criar-retrabalho", "value"),
+        Input("input-wpp-4-regra-criar-retrabalho", "value"),
+        Input("input-wpp-5-regra-criar-retrabalho", "value"),
+        Input("horario-envio-regra-criar-retrabalho", "value"),
+    ],
+    prevent_initial_call=True,
+    allow_duplicate=True,
+)
+def testa_regra_monitoramento_retrabalho(
+    n_clicks_btn_testar,
+    n_clicks_modal_erro,
+    n_clicks_modal_sucesso,
+    nome_regra,
+    data_periodo_regra,
+    min_dias,
+    lista_modelos,
+    lista_oficinas,
+    lista_secaos,
+    lista_os,
+    checklist_alvo,
+    email_ativo,
+    email_destino_1,
+    email_destino_2,
+    email_destino_3,
+    email_destino_4,
+    email_destino_5,
+    wpp_ativo,
+    wpp_telefone_1,
+    wpp_telefone_2,
+    wpp_telefone_3,
+    wpp_telefone_4,
+    wpp_telefone_5,
+    horario_envio,
+):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    # Checa se o trigger foi o botão de fechar o popup
+    if triggered_id == "btn-close-modal-erro-salvar-regra":
+        return [False, dash.no_update]
+    elif triggered_id == "btn-close-modal-sucesso-salvar-regra":
+        return [dash.no_update, False]
+    elif triggered_id != "btn-salvar-regra-monitoramento-criar-retrabalho":
+        return dash.no_update
+
+    # Botão clicado foi o de testar a regra
+
+    # Se o botão não foi clicado, não faz nada
+    if not n_clicks_btn_testar or n_clicks_btn_testar <= 0:
+        return dash.no_update
+
+    # Valida Resto do input
+    if not input_valido(
+        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ) or not target_os_valido(checklist_alvo) or not horario_valido(horario_envio):
+        return [True, False]
+
+    # Valida nome da regra
+    if not nome_regra:
+        return [True, False]
+
+    # Verifica se pelo menos um email ou wpp está ativo
+    if not email_ativo and not wpp_ativo:
+        return [True, False]
+    
+    # Valida se há pelo menos um telefone de whatsapp válido caso esteja ativo    
+    wpp_telefones = [wpp_telefone_1, wpp_telefone_2, wpp_telefone_3, wpp_telefone_4, wpp_telefone_5]
+    wpp_tel_validos = []
+    if wpp_ativo:
+        wpp_tel_validos = [wpp for wpp in wpp_telefones if wpp != "" and not verifica_erro_wpp(wpp)]
+        if len(wpp_tel_validos) == 0:
+            return [True, False]
+        
+    # Valida se há pelo menos um email válido caso esteja ativo
+    email_destinos = [email_destino_1, email_destino_2, email_destino_3, email_destino_4, email_destino_5]
+    email_destinos_validos = []
+    if email_ativo:
+        email_destinos_validos = [email for email in email_destinos if email != "" and not verifica_erro_email(email)]
+        if len(email_destinos_validos) == 0:
+            return [True, False]
+        
+    # Obtem os dados restantes para salvar a regra
+    target_nova_os_sem_retrabalho_previo = True if "nova_os_sem_retrabalho_anterior" in checklist_alvo else False
+    target_nova_os_com_retrabalho_previo = True if "nova_os_com_retrabalho_anterior" in checklist_alvo else False
+    target_retrabalho = True if "retrabalho" in checklist_alvo else False
+
+    target_wpp_telefones = [wpp_telefone_1, wpp_telefone_2, wpp_telefone_3, wpp_telefone_4, wpp_telefone_5]
+    target_wpp_telefones_validos = [wpp if wpp and not verifica_erro_wpp(wpp) else None for wpp in target_wpp_telefones]
+
+    target_email_destinos = [email_destino_1, email_destino_2, email_destino_3, email_destino_4, email_destino_5]
+    target_email_destinos_validos = [
+        email if email and not verifica_erro_email(email) else None for email in target_email_destinos
+    ]
+
+    payload = {
+        "nome": nome_regra,
+        "data_periodo_regra": data_periodo_regra,
+        "min_dias_retrabalho": min_dias,
+        "modelos_veiculos": lista_modelos,
+        "oficinas": lista_oficinas,
+        "secoes": lista_secaos,
+        "os": lista_os,
+        "target_nova_os_sem_retrabalho_previo": target_nova_os_sem_retrabalho_previo,
+        "target_nova_os_com_retrabalho_previo": target_nova_os_com_retrabalho_previo,
+        "target_retrabalho": target_retrabalho,
+        "target_email": email_ativo,
+        "target_email_dest1": target_email_destinos_validos[0],
+        "target_email_dest2": target_email_destinos_validos[1],
+        "target_email_dest3": target_email_destinos_validos[2],
+        "target_email_dest4": target_email_destinos_validos[3],
+        "target_email_dest5": target_email_destinos_validos[4],
+        "target_wpp": wpp_ativo,
+        "target_wpp_dest1": target_wpp_telefones_validos[0],
+        "target_wpp_dest2": target_wpp_telefones_validos[1],
+        "target_wpp_dest3": target_wpp_telefones_validos[2],
+        "target_wpp_dest4": target_wpp_telefones_validos[3],
+        "target_wpp_dest5": target_wpp_telefones_validos[4],
+        "hora_disparar": horario_envio,
+    }
+
+    regra_criada_com_sucesso = crud_regra_service.criar_regra_monitoramento(payload)
+
+    if regra_criada_com_sucesso:
+        return [False, True]
+    else:
+        return [True, False]
 
 
 ##############################################################################
@@ -631,7 +833,6 @@ layout = dbc.Container(
                                 id="btn-close-modal-erro-teste-regra",
                             ),
                         ],
-                        # justify="flex-end",
                     ),
                 ],
                 align="center",
@@ -662,6 +863,77 @@ layout = dbc.Container(
                                 color="green",
                                 variant="outline",
                                 id="btn-close-modal-sucesso-teste-regra",
+                            ),
+                        ],
+                    ),
+                ],
+                align="center",
+                gap="xl",
+            ),
+        ),
+        dmc.Modal(
+            # title="Erro ao carregar os dados",
+            id="modal-erro-salvar-regra",
+            centered=True,
+            radius="lg",
+            size="md",
+            children=dmc.Stack(
+                [
+                    dmc.ThemeIcon(
+                        radius="lg",
+                        size=128,
+                        color="red",
+                        variant="light",
+                        children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
+                    ),
+                    dmc.Title("Erro!", order=1),
+                    dmc.Text("Ocorreu um erro ao salvar a regra. Verifique se a regra possui:"),
+                    dmc.List(
+                        [
+                            dmc.ListItem("Nome da regra;"),
+                            dmc.ListItem("Pelo menos um alerta alvo (nova OS, retrabalho, etc);"),
+                            dmc.ListItem("Pelo menos um destino de email ou WhatsApp ativo."),
+                        ],
+                    ),
+                    dmc.Group(
+                        [
+                            dmc.Button(
+                                "Fechar",
+                                color="red",
+                                variant="outline",
+                                id="btn-close-modal-erro-salvar-regra",
+                            ),
+                        ],
+                    ),
+                ],
+                align="center",
+                gap="xl",
+            ),
+        ),
+        dmc.Modal(
+            # title="Erro ao carregar os dados",
+            id="modal-sucesso-salvar-regra",
+            centered=True,
+            radius="lg",
+            size="lg",
+            children=dmc.Stack(
+                [
+                    dmc.ThemeIcon(
+                        radius="xl",
+                        size=128,
+                        color="green",
+                        variant="light",
+                        children=DashIconify(icon="material-symbols:check-circle-rounded", width=128, height=128),
+                    ),
+                    dmc.Title("Sucesso!", order=1),
+                    dmc.Text("A regra foi salva com sucesso."),
+                    dmc.Group(
+                        [
+                            dmc.Button(
+                                "Fechar",
+                                color="green",
+                                variant="outline",
+                                id="btn-close-modal-sucesso-salvar-regra",
                             ),
                         ],
                         # justify="flex-end",
@@ -1056,7 +1328,24 @@ layout = dbc.Container(
                         ],
                         body=True,
                     ),
-                    md=12,
+                    md=6,
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Horário de envio:"),
+                                    dmc.TimeInput(
+                                        debounce=True, id="horario-envio-regra-criar-retrabalho", value="06:00"
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=6,
                 ),
             ]
         ),
@@ -1248,7 +1537,7 @@ layout = dbc.Container(
                 dbc.Col(
                     dbc.Button(
                         "Criar Regra",
-                        id="btn-criar-regra-monitoramento-criar-retrabalho",
+                        id="btn-salvar-regra-monitoramento-criar-retrabalho",
                         color="success",
                         className="me-1",
                         style={"padding": "1em", "width": "100%"},
@@ -1339,4 +1628,4 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Criar Regra", path="/criar-regra", icon="carbon:rule-draft", hide_page=True)
+dash.register_page(__name__, name="Criar Regra", path="/regra-criar", icon="carbon:rule-draft", hide_page=True)

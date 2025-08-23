@@ -8,16 +8,36 @@ import re
 import pandas as pd
 import numpy as np
 
+# Imports BD
+import sqlalchemy
+from sqlalchemy import create_engine, literal_column
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql import text
+
 # Imports auxiliares
 from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, subquery_modelos
 from modules.entities_utils import get_mecanicos
 from modules.service_utils import definir_status, definir_status_label, definir_emoji_status
 
-
 # Classe do serviço
 class CRUDRegraService:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
+
+
+    def criar_regra_monitoramento(self, payload):
+        """Função para criar uma regra de monitoramento"""
+        table = sqlalchemy.Table("regra_monitoramento_os", sqlalchemy.MetaData(), autoload_with=self.dbEngine)
+
+        try:
+            with self.dbEngine.begin() as conn:
+                stmt = insert(table).values(payload)
+                conn.execute(stmt)
+            
+            return True
+        except Exception as e:
+            print(f"Erro ao criar regra de monitoramento: {e}")
+            return False
 
     def subquery_checklist(self, checklist_alvo, prefix=""):
         query = ""
