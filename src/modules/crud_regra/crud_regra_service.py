@@ -25,6 +25,21 @@ class CRUDRegraService:
         self.dbEngine = dbEngine
 
 
+    def get_todas_regras(self):
+        """Função para obter todas as regras de monitoramento"""
+
+        # Query
+        query = """
+            SELECT * FROM regra_monitoramento_os
+            ORDER BY nome
+        """
+
+        # Executa a query
+        df = pd.read_sql(query, self.dbEngine)
+        
+        return df
+
+
     def criar_regra_monitoramento(self, payload):
         """Função para criar uma regra de monitoramento"""
         table = sqlalchemy.Table("regra_monitoramento_os", sqlalchemy.MetaData(), autoload_with=self.dbEngine)

@@ -44,9 +44,6 @@ import modules.crud_regra.graficos as crud_regra_graficos
 import modules.crud_regra.tabelas as crud_regra_tabelas
 import tema
 
-import modules.home.graficos as home_graficos
-import modules.home.tabelas as home_tabelas
-
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
 ##############################################################################
@@ -460,17 +457,39 @@ def tabela_previa_os_regra_criar(
 # Callbacks para o teste da regra ############################################
 ##############################################################################
 
+# Callback para o botão de testar a regra
+@callback(
+    Output("modal-erro-teste-regra", "opened", allow_duplicate=True),
+    Input("btn-close-modal-erro-teste-regra", "n_clicks"),
+    prevent_initial_call=True,
+)
+def fecha_modal_erro_teste_regra(n_clicks_btn_fechar):
+    if n_clicks_btn_fechar and n_clicks_btn_fechar > 0:
+        return False
+    else:
+        return dash.no_update
+
+# Callback para o botão de testar a regra
+@callback(
+    Output("modal-sucesso-teste-regra", "opened", allow_duplicate=True),
+    Input("btn-close-modal-sucesso-teste-regra", "n_clicks"),
+    prevent_initial_call=True,
+)
+def fecha_modal_sucesso_teste_regra(n_clicks_btn_fechar):
+    if n_clicks_btn_fechar and n_clicks_btn_fechar > 0:
+        return False
+    else:
+        return dash.no_update
+
 
 # Callback para o botão de testar a regra
 @callback(
     [
-        Output("modal-erro-teste-regra", "opened"),
-        Output("modal-sucesso-teste-regra", "opened"),
+        Output("modal-erro-teste-regra", "opened", allow_duplicate=True),
+        Output("modal-sucesso-teste-regra", "opened", allow_duplicate=True),
     ],
     [
         Input("btn-testar-regra-monitoramento-criar-retrabalho", "n_clicks"),
-        Input("btn-close-modal-erro-teste-regra", "n_clicks"),
-        Input("btn-close-modal-sucesso-teste-regra", "n_clicks"),
         Input("input-nome-regra-monitoramento-retrabalho", "value"),
         Input("input-periodo-dias-monitoramento-regra-criar-retrabalho", "value"),
         Input("input-select-dias-regra-criar-retrabalho", "value"),
@@ -493,12 +512,9 @@ def tabela_previa_os_regra_criar(
         Input("input-wpp-5-regra-criar-retrabalho", "value"),
     ],
     prevent_initial_call=True,
-    allow_duplicate=True,
 )
 def testa_regra_monitoramento_retrabalho(
     n_clicks_btn_testar,
-    n_clicks_modal_erro,
-    n_clicks_modal_sucesso,
     nome_regra,
     data_periodo_regra,
     min_dias,
@@ -528,18 +544,14 @@ def testa_regra_monitoramento_retrabalho(
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     # Checa se o trigger foi o botão de fechar o popup
-    if triggered_id == "btn-close-modal-erro-teste-regra":
-        return [False, dash.no_update]
-    elif triggered_id == "btn-close-modal-sucesso-teste-regra":
-        return [dash.no_update, False]
-    elif triggered_id != "btn-testar-regra-monitoramento-criar-retrabalho":
-        return dash.no_update
+    if triggered_id != "btn-testar-regra-monitoramento-criar-retrabalho":
+        return [dash.no_update, dash.no_update]
 
     # Botão clicado foi o de testar a regra
 
     # Se o botão não foi clicado, não faz nada
     if not n_clicks_btn_testar or n_clicks_btn_testar <= 0:
-        return dash.no_update
+        return [dash.no_update, dash.no_update]
 
     # Valida Resto do input
     if not input_valido(
@@ -577,7 +589,7 @@ def testa_regra_monitoramento_retrabalho(
     )
     num_os = len(df)
 
-    # Envia mensagem via WhatsApp se ativo
+    Envia mensagem via WhatsApp se ativo
     if wpp_ativo:
         wpp_service = CRUDWppTestService()
         for wpp_tel in wpp_tel_validos:
@@ -618,16 +630,42 @@ def testa_regra_monitoramento_retrabalho(
 # Callbacks para salvar a regra ##############################################
 ##############################################################################
 
+
+# Callback para o botão de testar a regra
+@callback(
+    Output("modal-erro-salvar-regra", "opened", allow_duplicate=True),
+    Input("btn-close-modal-erro-salvar-regra", "n_clicks"),
+    prevent_initial_call=True,
+)
+def fecha_modal_erro_salvar_regra(n_clicks_btn_fechar):
+    if n_clicks_btn_fechar and n_clicks_btn_fechar > 0:
+        return False
+    else:
+        return dash.no_update
+
+# Callback para o botão de testar a regra
+@callback(
+    [
+        Output("modal-sucesso-salvar-regra", "opened", allow_duplicate=True),
+        Output("url", "href", allow_duplicate=True),
+    ],
+    Input("btn-close-modal-sucesso-salvar-regra", "n_clicks"),
+    prevent_initial_call=True,
+)
+def fecha_modal_sucesso_salvar_regra(n_clicks_btn_fechar):
+    if n_clicks_btn_fechar and n_clicks_btn_fechar > 0:
+        return [False, "/regra-listar"]
+    else:
+        return [dash.no_update, dash.no_update]
+    
 # Callback para o botão de salvar a regra
 @callback(
     [
-        Output("modal-erro-salvar-regra", "opened"),
-        Output("modal-sucesso-salvar-regra", "opened"),
+        Output("modal-erro-salvar-regra", "opened", allow_duplicate=True),
+        Output("modal-sucesso-salvar-regra", "opened", allow_duplicate=True),
     ],
     [
         Input("btn-salvar-regra-monitoramento-criar-retrabalho", "n_clicks"),
-        Input("btn-close-modal-erro-salvar-regra", "n_clicks"),
-        Input("btn-close-modal-sucesso-salvar-regra", "n_clicks"),
         Input("input-nome-regra-monitoramento-retrabalho", "value"),
         Input("input-periodo-dias-monitoramento-regra-criar-retrabalho", "value"),
         Input("input-select-dias-regra-criar-retrabalho", "value"),
@@ -651,12 +689,9 @@ def testa_regra_monitoramento_retrabalho(
         Input("horario-envio-regra-criar-retrabalho", "value"),
     ],
     prevent_initial_call=True,
-    allow_duplicate=True,
 )
-def testa_regra_monitoramento_retrabalho(
-    n_clicks_btn_testar,
-    n_clicks_modal_erro,
-    n_clicks_modal_sucesso,
+def salvar_regra_monitoramento_retrabalho(
+    n_clicks_btn_salvar,
     nome_regra,
     data_periodo_regra,
     min_dias,
@@ -681,24 +716,18 @@ def testa_regra_monitoramento_retrabalho(
 ):
     ctx = callback_context  # Obtém o contexto do callback
     if not ctx.triggered:
-        return dash.no_update  # Evita execução desnecessária
+        return [dash.no_update, dash.no_update]  # Evita execução desnecessária
 
     # Verifica se o callback foi acionado pelo botão de download
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    # Checa se o trigger foi o botão de fechar o popup
-    if triggered_id == "btn-close-modal-erro-salvar-regra":
-        return [False, dash.no_update]
-    elif triggered_id == "btn-close-modal-sucesso-salvar-regra":
-        return [dash.no_update, False]
-    elif triggered_id != "btn-salvar-regra-monitoramento-criar-retrabalho":
-        return dash.no_update
-
-    # Botão clicado foi o de testar a regra
+    # Botão clicado foi o de salvar a regra?
+    if triggered_id != "btn-salvar-regra-monitoramento-criar-retrabalho":
+        return [dash.no_update, dash.no_update]
 
     # Se o botão não foi clicado, não faz nada
-    if not n_clicks_btn_testar or n_clicks_btn_testar <= 0:
-        return dash.no_update
+    if not n_clicks_btn_salvar or n_clicks_btn_salvar <= 0:
+        return [dash.no_update, dash.no_update]
 
     # Valida Resto do input
     if not input_valido(
@@ -735,10 +764,10 @@ def testa_regra_monitoramento_retrabalho(
     target_nova_os_com_retrabalho_previo = True if "nova_os_com_retrabalho_anterior" in checklist_alvo else False
     target_retrabalho = True if "retrabalho" in checklist_alvo else False
 
-    target_wpp_telefones = [wpp_telefone_1, wpp_telefone_2, wpp_telefone_3, wpp_telefone_4, wpp_telefone_5]
+    target_wpp_telefones = wpp_telefones
     target_wpp_telefones_validos = [wpp if wpp and not verifica_erro_wpp(wpp) else None for wpp in target_wpp_telefones]
 
-    target_email_destinos = [email_destino_1, email_destino_2, email_destino_3, email_destino_4, email_destino_5]
+    target_email_destinos = email_destinos
     target_email_destinos_validos = [
         email if email and not verifica_erro_email(email) else None for email in target_email_destinos
     ]

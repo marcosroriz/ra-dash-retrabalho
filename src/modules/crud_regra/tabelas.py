@@ -5,31 +5,31 @@
 
 # Tabela de regras existentes
 tbl_regras_existentes = [
-    {"field": "nome_regra", "headerName": "NOME DA REGRA", "minWidth": 250},
+    {"field": "nome", "headerName": "NOME DA REGRA", "minWidth": 250},
     {
-        "field": "data_criacao",
+        "field": "created_at",
         "headerName": "DATA DE CRIAÇÃO",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "minWidth": 120,
         "filter": "agDateColumnFilter",
         "valueFormatter": {
-            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
+            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) + ' ' + params.value.slice(11,16) : ''"
         },
     },
     {
-        "field": "data_atualizacao",
+        "field": "updated_at",
         "headerName": "DATA DE ATUALIZAÇÃO",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "minWidth": 200,
         "filter": "agDateColumnFilter",
         "valueFormatter": {
-            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
+            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) + ' ' + params.value.slice(11,16) : ''"
         },
     },
     {
-        "field": "relatorio",
+        "field": "acao_relatorio",
         "headerName": "VER RELATÓRIO",
         "cellRenderer": "Button",
         "floatingFilter": False,
@@ -37,7 +37,7 @@ tbl_regras_existentes = [
         "cellRendererParams": {"className": "btn btn-outline-primary btn-sm"},
     },
     {
-        "field": "editar",
+        "field": "acao_editar",
         "headerName": "EDITAR",
         "cellRenderer": "Button",
         "floatingFilter": False,
@@ -45,7 +45,7 @@ tbl_regras_existentes = [
         "cellRendererParams": {"className": "btn btn-outline-warning btn-sm"},
     },
     {
-        "field": "apagar",
+        "field": "acao_apagar",
         "headerName": "APAGAR",
         "cellRenderer": "Button",
         "floatingFilter": False,

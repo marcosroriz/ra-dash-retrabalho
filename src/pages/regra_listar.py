@@ -13,9 +13,7 @@ import re
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
-from dash import Dash, html, dcc, callback, Input, Output, State, callback_context
-import plotly.express as px
-import plotly.graph_objects as go
+from dash import html, callback, Input, Output, callback_context
 
 # Importar bibliotecas do bootstrap e ag-grid
 import dash_bootstrap_components as dbc
@@ -31,21 +29,10 @@ import locale_utils
 # Banco de Dados
 from db import PostgresSingleton
 
-# Imports gerais
-from modules.entities_utils import get_mecanicos, get_lista_os, get_oficinas, get_secoes, get_modelos, gerar_excel
-
 # Imports específicos
 from modules.crud_regra.crud_regra_service import CRUDRegraService
-from modules.crud_regra.crud_email_test import CRUDEmailTestService
-from modules.crud_regra.crud_wpp_test import CRUDWppTestService
-from modules.home.home_service import HomeService
-
-import modules.crud_regra.graficos as crud_regra_graficos
 import modules.crud_regra.tabelas as crud_regra_tabelas
-import tema
 
-import modules.home.graficos as home_graficos
-import modules.home.tabelas as home_tabelas
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -55,32 +42,19 @@ pgDB = PostgresSingleton.get_instance()
 pgEngine = pgDB.get_engine()
 
 # Cria o serviço
-home_service = HomeService(pgEngine)
 crud_regra_service = CRUDRegraService(pgEngine)
 
-# Modelos de veículos
-df_modelos_veiculos = get_modelos(pgEngine)
-lista_todos_modelos_veiculos = df_modelos_veiculos.to_dict(orient="records")
-lista_todos_modelos_veiculos.insert(0, {"MODELO": "TODOS"})
+# Função para preparar os dados para a tabela
+def prepara_dados_tabela(df_regras):
+    df_regras["acao_relatorio"] = "📋 Relatório"
+    df_regras["acao_editar"] = "✏️ Editar"
+    df_regras["acao_apagar"] = "❌ Apagar"
+    return df_regras
 
-# Obtem a lista de Oficinas
-df_oficinas = get_oficinas(pgEngine)
-lista_todas_oficinas = df_oficinas.to_dict(orient="records")
-lista_todas_oficinas.insert(0, {"LABEL": "TODAS"})
-
-# Obtem a lista de Seções
-df_secoes = get_secoes(pgEngine)
-lista_todas_secoes = df_secoes.to_dict(orient="records")
-lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
-
-# Colaboradores / Mecânicos
-df_mecanicos = get_mecanicos(pgEngine)
-
-# Obtem a lista de OS
-df_lista_os = get_lista_os(pgEngine)
-lista_todas_os = df_lista_os.to_dict(orient="records")
-lista_todas_os.insert(0, {"LABEL": "TODAS"})
-
+# Obtem todas as regras e prepara os dados para a tabela
+df_todas_regras = crud_regra_service.get_todas_regras()
+df_todas_regras = prepara_dados_tabela(df_todas_regras)
+lista_todas_regras = df_todas_regras.to_dict(orient="records")
 
 ##############################################################################
 # CALLBACKS ##################################################################
@@ -170,7 +144,6 @@ layout = dbc.Container(
                                 id="btn-close-modal-sucesso-teste-regra",
                             ),
                         ],
-                        # justify="flex-end",
                     ),
                 ],
                 align="center",
@@ -185,7 +158,8 @@ layout = dbc.Container(
                 dbc.Col(
                     html.H1(
                         [
-                            html.Strong("Regras de Monitoramento"),
+                            html.Strong("Regras"),
+                            "\u00a0 de Monitoramento",
                         ],
                         className="align-self-center",
                     ),
@@ -206,11 +180,11 @@ layout = dbc.Container(
         ),
         # dmc.Space(h=15),
         html.Hr(),
-        dmc.Space(h=40),
+        dmc.Space(h=20),
         dag.AgGrid(
             id="tabela-regras-existentes",
             columnDefs=crud_regra_tabelas.tbl_regras_existentes,
-            rowData=[],
+            rowData=lista_todas_regras,
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="responsiveSizeToFit",
             dashGridOptions={
