@@ -631,7 +631,7 @@ def testa_regra_monitoramento_retrabalho(
 ##############################################################################
 
 
-# Callback para o botão de testar a regra
+# Callback para o botão de fechar o modal de erro ao salvar a regra
 @callback(
     Output("modal-erro-salvar-regra", "opened", allow_duplicate=True),
     Input("btn-close-modal-erro-salvar-regra", "n_clicks"),
@@ -643,7 +643,7 @@ def fecha_modal_erro_salvar_regra(n_clicks_btn_fechar):
     else:
         return dash.no_update
 
-# Callback para o botão de testar a regra
+# Callback para o botão de fechar o modal de sucesso ao salvar a regra
 @callback(
     [
         Output("modal-sucesso-salvar-regra", "opened", allow_duplicate=True),
@@ -654,7 +654,7 @@ def fecha_modal_erro_salvar_regra(n_clicks_btn_fechar):
 )
 def fecha_modal_sucesso_salvar_regra(n_clicks_btn_fechar):
     if n_clicks_btn_fechar and n_clicks_btn_fechar > 0:
-        return [False, "/regra-listar"]
+        return [False, "/regra-gerenciar"]
     else:
         return [dash.no_update, dash.no_update]
     
@@ -813,8 +813,8 @@ layout = dbc.Container(
     [
         # Loading
         # dmc.LoadingOverlay(
-        #     visible=True,
-        #     id="loading-overlay-regra-criar",
+        #     visible=False,
+        #     id="loading-overlay-guia-criar-regra",
         #     loaderProps={"size": "xl"},
         #     overlayProps={
         #         "radius": "lg",
@@ -865,7 +865,7 @@ layout = dbc.Container(
                     ),
                 ],
                 align="center",
-                gap="xl",
+                gap="md",
             ),
         ),
         dmc.Modal(
@@ -897,7 +897,7 @@ layout = dbc.Container(
                     ),
                 ],
                 align="center",
-                gap="xl",
+                gap="md",
             ),
         ),
         dmc.Modal(
@@ -936,7 +936,7 @@ layout = dbc.Container(
                     ),
                 ],
                 align="center",
-                gap="xl",
+                gap="md",
             ),
         ),
         dmc.Modal(
@@ -969,7 +969,7 @@ layout = dbc.Container(
                     ),
                 ],
                 align="center",
-                gap="xl",
+                gap="md",
             ),
         ),
         dbc.Row(

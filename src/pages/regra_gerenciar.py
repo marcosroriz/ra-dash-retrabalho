@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# Tela para listar as regras existentes
+# Tela para gerenciar as regras existentes
 
 ##############################################################################
 # IMPORTS ####################################################################
@@ -54,16 +54,24 @@ def prepara_dados_tabela(df_regras):
     return df_regras
 
 
-# Obtem todas as regras e prepara os dados para a tabela
-df_todas_regras = crud_regra_service.get_todas_regras()
-df_todas_regras = prepara_dados_tabela(df_todas_regras)
-lista_todas_regras = df_todas_regras.to_dict(orient="records")
-
 
 ##############################################################################
 # CALLBACKS ##################################################################
 ##############################################################################
 
+# Callback para carregar as regras existentes
+@callback(
+    Output("tabela-regras-existentes", "rowData"),
+    Input("tabela-regras-existentes", "gridReady"),
+)
+def cb_carregar_regras_existentes(ready):
+    df_todas_regras = crud_regra_service.get_todas_regras()
+    lista_todas_regras = []
+    if not df_todas_regras.empty:
+        df_todas_regras = prepara_dados_tabela(df_todas_regras)
+        lista_todas_regras = df_todas_regras.to_dict(orient="records")
+
+    return lista_todas_regras
 
 # Callback botão criar regra
 @callback(
@@ -78,6 +86,7 @@ def cb_botao_criar_regra(n_clicks):
     return "/regra-criar"
 
 
+# Callback para o botão de cancelar apagar regra
 @callback(
     Output("modal-confirma-apagar-gerenciar-regra", "opened", allow_duplicate=True),
     Input("btn-cancelar-apagar-regra", "n_clicks"),
@@ -89,23 +98,52 @@ def cb_botao_cancelar_apagar_regra(n_clicks):
     else:
         return False
     
+# Callback para o botão de confirmar apagar regra
+# Saída: 
+# - Fecha o Modal de confirmação de apagar regra
+# - Abre o Modal de sucesso de apagar regra
+# - Atualiza tabela de regras existentes
 @callback(
-    Output("modal-confirma-apagar-gerenciar-regra", "opened", allow_duplicate=True),
+    [
+        Output("modal-confirma-apagar-gerenciar-regra", "opened", allow_duplicate=True),
+        Output("modal-sucesso-apagar-gerenciar-regra", "opened", allow_duplicate=True),
+        Output("tabela-regras-existentes", "rowData", allow_duplicate=True),
+    ],
     Input("btn-confirma-apagar-regra", "n_clicks"),
     Input("nome-regra-apagar-gerenciar-regra", "children"),
     prevent_initial_call=True,
+    running=[(Output("loading-overlay-guia-gerenciar-regra", "visible"), True, False)],
 )
 def cb_botao_confirma_apagar_regra(n_clicks, nome_regra):
     if n_clicks is None or n_clicks == 0:
-        return dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update
     else:
         match = re.search(r"ID:\s*(\d+)", nome_regra)
         id_regra = int(match.group(1))
 
         # Apagar a regra
         crud_regra_service.apagar_regra(id_regra)
-        return False
 
+        # Atualiza a tabela
+        df_todas_regras = crud_regra_service.get_todas_regras()
+        lista_todas_regras = []
+        if not df_todas_regras.empty:
+            df_todas_regras = prepara_dados_tabela(df_todas_regras)
+            lista_todas_regras = df_todas_regras.to_dict(orient="records")
+
+        return False, True, lista_todas_regras
+    
+# Callback para fechar o modal de sucesso de apagar regra
+@callback(
+    Output("modal-sucesso-apagar-gerenciar-regra", "opened", allow_duplicate=True),
+    Input("btn-close-modal-sucesso-apagar-gerenciar-regra", "n_clicks"),
+    prevent_initial_call=True,
+)
+def cb_botao_close_modal_sucesso_apagar_regra(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        return dash.no_update
+    else:
+        return False
 
 # Callback para acessar o botão apertado da tabela e guardar no estado
 @callback(
@@ -125,7 +163,6 @@ def cb_botao_apagar_regra(linha, linha_virtual):
     # Verifica se o callback foi acionado pelo botão de visualização
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
 
-    print(f"triggered_id: {triggered_id}")
     if triggered_id != "cellRendererData":
         return dash.no_update, dash.no_update
 
@@ -151,6 +188,23 @@ def cb_botao_apagar_regra(linha, linha_virtual):
 ##############################################################################
 layout = dbc.Container(
     [
+    # Loading
+        dmc.LoadingOverlay(
+            visible=False,
+            id="loading-overlay-guia-gerenciar-regra",
+            loaderProps={"size": "xl"},
+            overlayProps={
+                "radius": "lg",
+                "blur": 2,
+                "style": {
+                    "top": 0,  # Start from the top of the viewport
+                    "left": 0,  # Start from the left of the viewport
+                    "width": "100vw",  # Cover the entire width of the viewport
+                    "height": "100vh",  # Cover the entire height of the viewport
+                },
+            },
+            zIndex=10,
+        ),
         dmc.Modal(
             id="modal-confirma-apagar-gerenciar-regra",
             centered=True,
@@ -196,6 +250,39 @@ layout = dbc.Container(
                 gap="md",
             ),
         ),
+        dmc.Modal(
+            id="modal-sucesso-apagar-gerenciar-regra",
+            centered=True,
+            radius="lg",
+            size="lg",
+            opened=False,
+            children=dmc.Stack(
+                [
+                    dmc.ThemeIcon(
+                        radius="xl",
+                        size=128,
+                        color="green",
+                        variant="light",
+                        children=DashIconify(icon="material-symbols:check-circle-rounded", width=128, height=128),
+                    ),
+                    dmc.Title("Sucesso!", order=1),
+                    dmc.Text("A regra foi apagada com sucesso."),
+                    dmc.Group(
+                        [
+                            dmc.Button(
+                                "Fechar",
+                                color="green",
+                                variant="outline",
+                                id="btn-close-modal-sucesso-apagar-gerenciar-regra",
+                            ),
+                        ],
+                    ),
+                ],
+                align="center",
+                gap="md",
+            ),
+        ),
+
         # Cabeçalho e Inputs
         html.Hr(),
         dbc.Row(
@@ -230,7 +317,7 @@ layout = dbc.Container(
         dag.AgGrid(
             id="tabela-regras-existentes",
             columnDefs=crud_regra_tabelas.tbl_regras_existentes,
-            rowData=lista_todas_regras,
+            rowData=[],
             defaultColDef={"filter": True, "floatingFilter": True},
             columnSize="responsiveSizeToFit",
             dashGridOptions={
@@ -248,4 +335,4 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Regras", path="/regra-listar", icon="carbon:rule")
+dash.register_page(__name__, name="Regras", path="/regra-gerenciar", icon="carbon:rule")

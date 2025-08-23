@@ -24,7 +24,6 @@ class CRUDRegraService:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
 
-
     def get_todas_regras(self):
         """Função para obter todas as regras de monitoramento"""
 
@@ -46,8 +45,6 @@ class CRUDRegraService:
         query = f"""
             DELETE FROM regra_monitoramento_os WHERE id = {id_regra}
         """
-
-        print(f"Query: {query}")
 
         try:    
             # Executa a query
