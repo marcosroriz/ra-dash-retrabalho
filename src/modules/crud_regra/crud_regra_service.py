@@ -295,6 +295,7 @@ class CRUDRegraService:
         df["total_valor"] = df["total_valor"].fillna(0)
         df["pecas_valor_str"] = df["pecas_valor_str"].fillna("0")
         df["pecas_trocadas_str"] = df["pecas_trocadas_str"].fillna("Nenhuma / Não inserida ainda")
+        df["nome_colaborador"] = df["nome_colaborador"].fillna("Não inserido ainda")
 
         # Campos da LLM
         df["SCORE_SYMPTOMS_TEXT_QUALITY"] = df["SCORE_SYMPTOMS_TEXT_QUALITY"].fillna("-")

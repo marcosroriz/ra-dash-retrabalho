@@ -57,12 +57,12 @@ tbl_regras_existentes = [
 # Tabela detalhamento do problema/OS que envolve a regra
 tbl_detalhamento_problema_regra = [
     {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 200},
-    {"field": "cod_colaborador", "headerName": "CÓDIGO DO COLABORADOR", "minWidth": 150},
+    {"field": "NUMERO DA OS", "headerName": "OS", "minWidth": 150, "pinned": "left"},
+    {"field": "COLABORADOR QUE EXECUTOU O SERVICO", "headerName": "CÓDIGO DO COLABORADOR", "minWidth": 150},
     {"field": "nome_colaborador", "headerName": "COLABORADOR", "minWidth": 200},
     {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "minWidth": 250},
     {"field": "DESCRICAO DO MODELO", "headerName": "MODELO"},
     {"field": "CODIGO DO VEICULO", "headerName": "VEÍCULO", "maxWidth": 150},
-    {"field": "NUMERO DA OS", "headerName": "OS", "minWidth": 150},
     {
         "headerName": "DATA DE ABERTURA DA OS",
         "field": "DATA DA ABERTURA DA OS DT",
