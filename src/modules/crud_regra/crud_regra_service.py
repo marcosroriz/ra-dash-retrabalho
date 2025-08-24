@@ -10,7 +10,7 @@ import numpy as np
 
 # Imports BD
 import sqlalchemy
-from sqlalchemy import create_engine, literal_column
+from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
 
@@ -19,10 +19,25 @@ from modules.sql_utils import subquery_oficinas, subquery_secoes, subquery_os, s
 from modules.entities_utils import get_mecanicos
 from modules.service_utils import definir_status, definir_status_label, definir_emoji_status
 
+
 # Classe do serviço
 class CRUDRegraService:
     def __init__(self, dbEngine):
         self.dbEngine = dbEngine
+
+    def get_regra_by_id(self, id_regra):
+        """Função para obter uma regra de monitoramento pelo ID"""
+
+        # Query
+        query = f"""
+            SELECT * FROM regra_monitoramento_os WHERE id = {id_regra}
+            ORDER BY nome
+        """
+
+        # Executa a query
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
 
     def get_todas_regras(self):
         """Função para obter todas as regras de monitoramento"""
@@ -35,7 +50,7 @@ class CRUDRegraService:
 
         # Executa a query
         df = pd.read_sql(query, self.dbEngine)
-        
+
         return df
 
     def apagar_regra(self, id_regra):
@@ -46,11 +61,11 @@ class CRUDRegraService:
             DELETE FROM regra_monitoramento_os WHERE id = {id_regra}
         """
 
-        try:    
+        try:
             # Executa a query
             with self.dbEngine.begin() as conn:
                 conn.execute(text(query))
-        
+
             return True
         except Exception as e:
             print(f"Erro ao apagar regra: {e}")
@@ -64,10 +79,24 @@ class CRUDRegraService:
             with self.dbEngine.begin() as conn:
                 stmt = insert(table).values(payload)
                 conn.execute(stmt)
-            
+
             return True
         except Exception as e:
             print(f"Erro ao criar regra de monitoramento: {e}")
+            return False
+
+    def atualizar_regra_monitoramento(self, id_regra, payload):
+        """Função para atualizar uma regra de monitoramento"""
+        table = sqlalchemy.Table("regra_monitoramento_os", sqlalchemy.MetaData(), autoload_with=self.dbEngine)
+
+        try:
+            with self.dbEngine.begin() as conn:
+                stmt = update(table).where(table.c.id == id_regra).values(payload)
+                conn.execute(stmt)
+
+            return True
+        except Exception as e:
+            print(f"Erro ao atualizar regra de monitoramento: {e}")
             return False
 
     def subquery_checklist(self, checklist_alvo, prefix=""):

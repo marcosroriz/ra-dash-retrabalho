@@ -147,40 +147,48 @@ def cb_botao_close_modal_sucesso_apagar_regra(n_clicks):
 
 # Callback para acessar o botão apertado da tabela e guardar no estado
 @callback(
+    Output("url", "href", allow_duplicate=True),
     Output("modal-confirma-apagar-gerenciar-regra", "opened"),
     Output("nome-regra-apagar-gerenciar-regra", "children"),
     # Output("id-regra-apagar-gerenciar-regra", "children"),
     Input("tabela-regras-existentes", "cellRendererData"),
     Input("tabela-regras-existentes", "virtualRowData"),
+    prevent_initial_call=True,
 )
 def cb_botao_apagar_regra(linha, linha_virtual):
     # Obtém o contexto do callback
     ctx = callback_context
     if not ctx.triggered:
         # Evita execução desnecessária
-        return dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update
 
     # Verifica se o callback foi acionado pelo botão de visualização
     triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
 
     if triggered_id != "cellRendererData":
-        return dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update
 
+    # Verifica se a linha é valida
+    if linha is None or linha_virtual is None:
+        return dash.no_update, dash.no_update, dash.no_update
+    
     # Pega os dados da regra clicada
     dados_regra = linha_virtual[linha["rowIndex"]]
+    nome_regra = dados_regra["nome"]
+    id_regra = dados_regra["id"]
 
     # Extraí a ação a ser feita
     acao = linha["colId"]
 
     if acao == "acao_relatorio":
-        return dash.no_update, dash.no_update
+        return f"/regra-relatorio?id_regra={id_regra}", dash.no_update, dash.no_update
     elif acao == "acao_editar":
-        return dash.no_update, dash.no_update
+        return f"/regra-editar?id_regra={id_regra}", dash.no_update, dash.no_update
     elif acao == "acao_apagar":
-        nome_regra = f"{dados_regra["nome"]} (ID: {dados_regra["id"]})"
-        return True, nome_regra
+        nome_regra = f"{nome_regra} (ID: {id_regra})"
+        return dash.no_update, True, nome_regra
     else:
-        return dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update   
 
 
 ##############################################################################
@@ -241,7 +249,6 @@ layout = dbc.Container(
                                 id="btn-confirma-apagar-regra",
                             ),
                         ],
-                        # mt="lg",
                         justify="flex-end",
                     ),
                     dmc.Space(h=20),
