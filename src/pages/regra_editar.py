@@ -84,7 +84,6 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 # Callbacks para os inputs via URL ###########################################
 ##############################################################################
 
-
 @callback(
     [
         Output("store-input-id-editar-regra", "data"),
@@ -112,6 +111,7 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
         Output("horario-envio-regra-editar-retrabalho", "value"),
     ],
     Input("url", "href"),
+    running=[(Output("loading-overlay-guia-editar-regra", "visible"), True, False)],
 )
 def callback_receber_campos_via_url_editar_regra(href):
     # Store da regra padrao
@@ -988,6 +988,23 @@ layout = dbc.Container(
     [
         # Estado
         dcc.Store(id="store-input-id-editar-regra"),
+        # Loading
+        dmc.LoadingOverlay(
+            visible=True,
+            id="loading-overlay-guia-editar-regra",
+            loaderProps={"size": "xl"},
+            overlayProps={
+                "radius": "lg",
+                "blur": 2,
+                "style": {
+                    "top": 0,  # Start from the top of the viewport
+                    "left": 0,  # Start from the left of the viewport
+                    "width": "100vw",  # Cover the entire width of the viewport
+                    "height": "100vh",  # Cover the entire height of the viewport
+                },
+            },
+            zIndex=10,
+        ),
         # Modais
         dmc.Modal(
             id="modal-erro-carregar-dados-editar-regra",
@@ -1160,136 +1177,6 @@ layout = dbc.Container(
                 align="center",
                 gap="md",
             ),
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        dbc.Alert(
-                            [
-                                dbc.Row(
-                                    [
-                                        dbc.Col(
-                                            DashIconify(icon="material-symbols:date-range", width=45), width="auto"
-                                        ),
-                                        dbc.Col(
-                                            html.P(
-                                                [
-                                                    html.Strong("Período de monitoramento:"),
-                                                    #     """
-                                                    # período em que as OSs estarão ativas para os filtros da regra de monitoramento contínuo.
-                                                    # """,
-                                                    """
-                                                intervalo em que as OSs serão analisadas pelos filtros da regra de 
-                                                monitoramento contínuo. Esse valor é diferente do período de retrabalho,
-                                                que define o número mínimo de dias entre OS para que uma nova OS não 
-                                                seja considerada retrabalho. Exemplo: um monitoramento de 2 dias com
-                                                período de retrabalho de 30 dias irá avaliar continuamente 
-                                                as OSs dos dois últimos dias para identificar retrabalhos.
-                                                """,
-                                                ]
-                                            ),
-                                            className="mt-2",
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                            ],
-                            dismissable=True,
-                            color="secondary",
-                        ),
-                    ],
-                    md=12,
-                ),
-                dbc.Col(
-                    [
-                        dbc.Alert(
-                            [
-                                dbc.Row(
-                                    [
-                                        dbc.Col(DashIconify(icon="mdi:new-box", width=45), width="auto"),
-                                        dbc.Col(
-                                            html.P(
-                                                [
-                                                    html.Strong("Nova OS, sem retrabalho prévio:"),
-                                                    """
-                                                não há OS anterior no período de retrabalho
-                                                """,
-                                                ]
-                                            ),
-                                            className="mt-2",
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                            ],
-                            dismissable=True,
-                            color="info",
-                        ),
-                    ],
-                    md=4,
-                ),
-                dbc.Col(
-                    [
-                        dbc.Alert(
-                            [
-                                dbc.Row(
-                                    [
-                                        dbc.Col(DashIconify(icon="mdi:alert-decagram-outline", width=45), width="auto"),
-                                        dbc.Col(
-                                            html.P(
-                                                [
-                                                    html.Strong("Nova OS, com retrabalho prévio:"),
-                                                    """
-                                                possui OS dentro do intervalo de retrabalho
-                                                """,
-                                                ]
-                                            ),
-                                            className="mt-2",
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                            ],
-                            dismissable=True,
-                            color="warning",
-                        ),
-                    ],
-                    md=4,
-                ),
-                dbc.Col(
-                    [
-                        dbc.Alert(
-                            [
-                                dbc.Row(
-                                    [
-                                        dbc.Col(DashIconify(icon="pepicons-pop:rewind-time", width=45), width="auto"),
-                                        dbc.Col(
-                                            html.P(
-                                                [
-                                                    html.Strong("Retrabalho:"),
-                                                    """
-                                                OS de retrabalho confirmada dentro do período de monitoramento
-                                                """,
-                                                ]
-                                            ),
-                                            className="mt-2",
-                                            width=True,
-                                        ),
-                                    ],
-                                    align="center",
-                                ),
-                            ],
-                            dismissable=True,
-                            color="danger",
-                        ),
-                    ],
-                    md=4,
-                ),
-            ]
         ),
         # Cabeçalho e Inputs
         html.Hr(),
