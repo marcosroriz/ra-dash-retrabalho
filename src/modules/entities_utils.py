@@ -130,6 +130,17 @@ def get_veiculos(dbEngine):
     )
 
 
+def get_regras_monitoramento_os(dbEngine):
+    # Lista de regras
+    return pd.read_sql(
+        """
+        SELECT nome as "label", id as "value" FROM regra_monitoramento_os
+        ORDER BY nome;
+        """,
+        dbEngine,
+    )
+
+
 def gerar_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:

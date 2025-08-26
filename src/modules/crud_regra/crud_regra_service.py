@@ -98,6 +98,18 @@ class CRUDRegraService:
         except Exception as e:
             print(f"Erro ao atualizar regra de monitoramento: {e}")
             return False
+        
+
+    def get_ultima_data_regra(self, id_regra):
+        """Função para obter a última data de uma regra de monitoramento"""
+        query = f"""
+            SELECT id_regra, MAX(dia) AS ultimo_dia
+            FROM relatorio_regra_monitoramento_os
+            WHERE id_regra = {id_regra}
+            GROUP BY id_regra
+        """
+        df = pd.read_sql(query, self.dbEngine)
+        return df
 
     def subquery_checklist(self, checklist_alvo, prefix=""):
         query = ""
@@ -296,6 +308,7 @@ class CRUDRegraService:
         df["pecas_valor_str"] = df["pecas_valor_str"].fillna("0")
         df["pecas_trocadas_str"] = df["pecas_trocadas_str"].fillna("Nenhuma / Não inserida ainda")
         df["nome_colaborador"] = df["nome_colaborador"].fillna("Não inserido ainda")
+        df["nome_colaborador"] = df["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)    )
 
         # Campos da LLM
         df["SCORE_SYMPTOMS_TEXT_QUALITY"] = df["SCORE_SYMPTOMS_TEXT_QUALITY"].fillna("-")
