@@ -5,14 +5,14 @@
 
 # Tabela detalhamento do problema/OS
 tbl_detalhamento_problema_os = [
-    {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 200},
+    {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 250},
     {"field": "problem_no", "headerName": "PROBLEMA", "minWidth": 150},
     {
-        "field": "cod_colaborador",
+        "field": "COLABORADOR QUE EXECUTOU O SERVICO",
         "headerName": "CÓDIGO DO COLABORADOR",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
-        "minWidth": 100,
+        "maxWidth": 150,
     },
     {"field": "nome_colaborador", "headerName": "COLABORADOR", "minWidth": 200},
     {"field": "NUMERO DA OS", "headerName": "OS", "minWidth": 120},
@@ -25,18 +25,18 @@ tbl_detalhamento_problema_os = [
         "valueFormatter": {
             "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) + ' ' + params.value.slice(11,13) + ':' + params.value.slice(14,16) : ''"
         },
+        "sort": "desc",
         "sortable": True,
     },
     {
         "headerName": "DATA DO FECHAMENTO DA OS",
-        "field": "DATA DO FECHAMENTO DA OS DT",
+        "field": "DATA DO FECHAMENTO LABEL",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 200,
-        "valueFormatter": {
-            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
-        },
-        "sort": "desc",
+        # "valueFormatter": {
+        #     "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
+        # },
         "sortable": True,
     },
     {
@@ -45,9 +45,7 @@ tbl_detalhamento_problema_os = [
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "maxWidth": 180,
-        "valueFormatter": {"function": "params.value !== null ? params.value + ' dias' : '0 dias'"},
-        "filter": "agNumberColumnFilter",
-        "type": ["numericColumn"],
+        "valueFormatter": {"function": "params.value !== null ? params.value + ' dias' : 'NÃO HÁ'"},
     },
     {
         "field": "SINTOMA",
@@ -63,8 +61,7 @@ tbl_detalhamento_problema_os = [
         "headerName": "NOTA SINTOMA (LLM)",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
-        "filter": "agNumberColumnFilter",
-        "type": ["numericColumn"],
+        "valueFormatter": {"function": "params.value !== null ? params.value : 'NÃO CLASSIFICADO'"},
         "minWidth": 180,
     },
     {
@@ -81,8 +78,7 @@ tbl_detalhamento_problema_os = [
         "headerName": "NOTA SOLUÇÃO (LLM)",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
-        "filter": "agNumberColumnFilter",
-        "type": ["numericColumn"],
+        "valueFormatter": {"function": "params.value !== null ? params.value : 'NÃO CLASSIFICADO'"},
         "minWidth": 180,
     },
     {

@@ -102,21 +102,35 @@ class OSService:
         ORDER BY
             os."DATA DO FECHAMENTO DA OS" DESC
         """
-        print("------")
-        print(query)
         df_os_detalhada = pd.read_sql(query, self.pgEngine)
 
+
+        # Formata datas de abertura
         df_os_detalhada["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_os_detalhada["DATA DA ABERTURA DA OS"])
-        df_os_detalhada["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_os_detalhada["DATA DO FECHAMENTO DA OS"])
         df_os_detalhada["DATA DA ABERTURA LABEL"] = df_os_detalhada["DATA DA ABERTURA DA OS DT"].dt.strftime(
             "%d/%m/%Y %H:%M"
         )
-        df_os_detalhada["DATA DO FECHAMENTO LABEL"] = df_os_detalhada["DATA DO FECHAMENTO DA OS DT"].dt.strftime(
+
+        # Formata datas de fechamento 
+        # Cria máscara para valores válidos (pois pode ter valores nulos - OS que não foram fechadas)
+        mask = df_os_detalhada["DATA DO FECHAMENTO DA OS"].notna() & (df_os_detalhada["DATA DO FECHAMENTO DA OS"] != "")
+
+        # Converte apenas os válidos
+        df_os_detalhada.loc[mask, "DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(
+            df_os_detalhada.loc[mask, "DATA DO FECHAMENTO DA OS"], errors="coerce"
+        )
+
+        # Formata os válidos
+        df_os_detalhada.loc[mask, "DATA DO FECHAMENTO LABEL"] = df_os_detalhada.loc[mask, "DATA DO FECHAMENTO DA OS DT"].dt.strftime(
             "%d/%m/%Y %H:%M"
         )
 
+        # Para os inválidos (NaN ou vazio), seta o label fixo
+        df_os_detalhada.loc[~mask, "DATA DO FECHAMENTO LABEL"] = "Ainda não foi fechada"
+
         # Preenche valores nulos do colaborador
         df_os_detalhada["nome_colaborador"] = df_os_detalhada["nome_colaborador"].fillna("Não Informado")
+        df_os_detalhada["nome_colaborador"] = df_os_detalhada["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)    )
 
         # Preenche valores nulos de peças
         df_os_detalhada["total_valor"] = df_os_detalhada["total_valor"].fillna(0)
