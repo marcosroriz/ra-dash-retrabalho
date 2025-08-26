@@ -86,45 +86,48 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 
 @callback(
     [
-        Output("store-input-id-editar-regra", "data"),
-        Output("modal-erro-carregar-dados-editar-regra", "opened"),
-        Output("input-nome-regra-monitoramento-retrabalho", "value"),
-        Output("input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
-        Output("input-select-dias-regra-editar-retrabalho", "value"),
-        Output("input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
-        Output("input-select-oficina-regra-editar-retrabalho", "value"),
-        Output("input-select-secao-regra-editar-retrabalho", "value"),
-        Output("input-select-ordens-servico-regra-editar-retrabalho", "value"),
-        Output("checklist-alertar-alvo-regra-editar-retrabalho", "value"),
-        Output("switch-enviar-email-regra-editar-retrabalho", "checked"),
-        Output("input-email-1-regra-editar-retrabalho", "value"),
-        Output("input-email-2-regra-editar-retrabalho", "value"),
-        Output("input-email-3-regra-editar-retrabalho", "value"),
-        Output("input-email-4-regra-editar-retrabalho", "value"),
-        Output("input-email-5-regra-editar-retrabalho", "value"),
-        Output("switch-enviar-wpp-regra-editar-retrabalho", "checked"),
-        Output("input-wpp-1-regra-editar-retrabalho", "value"),
-        Output("input-wpp-2-regra-editar-retrabalho", "value"),
-        Output("input-wpp-3-regra-editar-retrabalho", "value"),
-        Output("input-wpp-4-regra-editar-retrabalho", "value"),
-        Output("input-wpp-5-regra-editar-retrabalho", "value"),
-        Output("horario-envio-regra-editar-retrabalho", "value"),
+        Output("store-editar-input-id-editar-regra", "data"),
+        Output("editar-modalerro-carregar-dados-editar-regra", "opened"),
+        Output("editar-input-nome-regra-monitoramento-retrabalho", "value"),
+        Output("editar-input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
+        Output("editar-input-select-dias-regra-editar-retrabalho", "value"),
+        Output("editar-input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
+        Output("editar-input-select-oficina-regra-editar-retrabalho", "value"),
+        Output("editar-input-select-secao-regra-editar-retrabalho", "value"),
+        Output("editar-input-select-ordens-servico-regra-editar-retrabalho", "value"),
+        Output("editar-checklist-alertar-alvo-regra-editar-retrabalho", "value"),
+        Output("editar-switch-enviar-email-regra-editar-retrabalho", "checked"),
+        Output("editar-input-email-1-regra-editar-retrabalho", "value"),
+        Output("editar-input-email-2-regra-editar-retrabalho", "value"),
+        Output("editar-input-email-3-regra-editar-retrabalho", "value"),
+        Output("editar-input-email-4-regra-editar-retrabalho", "value"),
+        Output("editar-input-email-5-regra-editar-retrabalho", "value"),
+        Output("editar-switch-enviar-wpp-regra-editar-retrabalho", "checked"),
+        Output("editar-input-wpp-1-regra-editar-retrabalho", "value"),
+        Output("editar-input-wpp-2-regra-editar-retrabalho", "value"),
+        Output("editar-input-wpp-3-regra-editar-retrabalho", "value"),
+        Output("editar-input-wpp-4-regra-editar-retrabalho", "value"),
+        Output("editar-input-wpp-5-regra-editar-retrabalho", "value"),
+        Output("editar-horario-envio-regra-editar-retrabalho", "value"),
     ],
     Input("url", "href"),
     running=[(Output("loading-overlay-guia-editar-regra", "visible"), True, False)],
 )
 def callback_receber_campos_via_url_editar_regra(href):
-    # Store da regra padrao
-    store_id_regra = {"id_regra": -1, "valido": False}
-    # Resposta padrão
-    resposta_padrao = [store_id_regra, True] + [dash.no_update] * 21
-
     if not href:
-        return resposta_padrao
+        raise dash.exceptions.PreventUpdate
 
     # Faz o parse dos parâmetros da url
     parsed_url = urlparse(href)
     query_params = parse_qs(parsed_url.query)
+
+    if not parsed_url.path.startswith("/regra-editar"):
+        raise dash.exceptions.PreventUpdate
+
+    # Store da regra padrao
+    store_id_regra = {"id_regra": -1, "valido": False}
+    # Resposta padrão
+    resposta_padrao = [store_id_regra, True] + [dash.no_update] * 21
 
     id_regra = query_params.get("id_regra", [0])[0]
 
@@ -214,7 +217,7 @@ def callback_receber_campos_via_url_editar_regra(href):
 
 @callback(
     Output("url", "href", allow_duplicate=True),
-    Input("btn-close-modal-erro-carregar-dados-editar-regra", "n_clicks"),
+    Input("btn-close-editar-modalerro-carregar-dados-editar-regra", "n_clicks"),
     prevent_initial_call=True,
 )
 def cb_botao_close_modal_erro_carregar_dados_editar_regra(n_clicks):
@@ -295,8 +298,8 @@ def corrige_input_editar_regra(lista, termo_all="TODAS"):
 
 
 @callback(
-    Output("input-select-modelo-veiculos-regra-editar-retrabalho", "value", allow_duplicate=True),
-    Input("input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
+    Output("editar-input-select-modelo-veiculos-regra-editar-retrabalho", "value", allow_duplicate=True),
+    Input("editar-input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
     prevent_initial_call=True,
 )
 def corrige_input_modelos_editar_regra(lista_modelos):
@@ -304,8 +307,8 @@ def corrige_input_modelos_editar_regra(lista_modelos):
 
 
 @callback(
-    Output("input-select-oficina-regra-editar-retrabalho", "value", allow_duplicate=True),
-    Input("input-select-oficina-regra-editar-retrabalho", "value"),
+    Output("editar-input-select-oficina-regra-editar-retrabalho", "value", allow_duplicate=True),
+    Input("editar-input-select-oficina-regra-editar-retrabalho", "value"),
     prevent_initial_call=True,
 )
 def corrige_input_oficina_editar_regra(lista_oficinas):
@@ -313,8 +316,8 @@ def corrige_input_oficina_editar_regra(lista_oficinas):
 
 
 @callback(
-    Output("input-select-secao-regra-editar-retrabalho", "value", allow_duplicate=True),
-    Input("input-select-secao-regra-editar-retrabalho", "value"),
+    Output("editar-input-select-secao-regra-editar-retrabalho", "value", allow_duplicate=True),
+    Input("editar-input-select-secao-regra-editar-retrabalho", "value"),
     prevent_initial_call=True,
 )
 def corrige_input_secao_editar_regra(lista_secaos):
@@ -323,12 +326,12 @@ def corrige_input_secao_editar_regra(lista_secaos):
 
 @callback(
     [
-        Output("input-select-ordens-servico-regra-editar-retrabalho", "options"),
-        Output("input-select-ordens-servico-regra-editar-retrabalho", "value", allow_duplicate=True),
+        Output("editar-input-select-ordens-servico-regra-editar-retrabalho", "options"),
+        Output("editar-input-select-ordens-servico-regra-editar-retrabalho", "value", allow_duplicate=True),
     ],
     [
-        Input("input-select-ordens-servico-regra-editar-retrabalho", "value"),
-        Input("input-select-secao-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-ordens-servico-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-secao-regra-editar-retrabalho", "value"),
     ],
     prevent_initial_call=True,
 )
@@ -355,8 +358,8 @@ def corrige_input_ordem_servico_editar_regra(lista_os, lista_secaos):
 
 # Função para mostrar o input de email de destino
 @callback(
-    Output("input-email-destino-container-regra-editar-retrabalho", "style"),
-    Input("switch-enviar-email-regra-editar-retrabalho", "checked"),
+    Output("editar-input-email-destino-container-regra-editar-retrabalho", "style"),
+    Input("editar-switch-enviar-email-regra-editar-retrabalho", "checked"),
 )
 def mostra_input_email_destino_editar_regra(email_ativo):
     if email_ativo:
@@ -367,8 +370,8 @@ def mostra_input_email_destino_editar_regra(email_ativo):
 
 # Função para mostrar o input de WhatsApp de destino
 @callback(
-    Output("input-wpp-destino-container-regra-editar-retrabalho", "style"),
-    Input("switch-enviar-wpp-regra-editar-retrabalho", "checked"),
+    Output("editar-input-wpp-destino-container-regra-editar-retrabalho", "style"),
+    Input("editar-switch-enviar-wpp-regra-editar-retrabalho", "checked"),
 )
 def mostra_input_wpp_destino_editar_regra(wpp_ativo):
     if wpp_ativo:
@@ -391,40 +394,40 @@ def verifica_erro_email_editar_regra(email_destino):
 
 
 @callback(
-    Output("input-email-1-regra-editar-retrabalho", "error"),
-    Input("input-email-1-regra-editar-retrabalho", "value"),
+    Output("editar-input-email-1-regra-editar-retrabalho", "error"),
+    Input("editar-input-email-1-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_email_1_editar_regra(email_destino):
     return verifica_erro_email_editar_regra(email_destino)
 
 
 @callback(
-    Output("input-email-2-regra-editar-retrabalho", "error"),
-    Input("input-email-2-regra-editar-retrabalho", "value"),
+    Output("editar-input-email-2-regra-editar-retrabalho", "error"),
+    Input("editar-input-email-2-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_email_2_editar_regra(email_destino):
     return verifica_erro_email_editar_regra(email_destino)
 
 
 @callback(
-    Output("input-email-3-regra-editar-retrabalho", "error"),
-    Input("input-email-3-regra-editar-retrabalho", "value"),
+    Output("editar-input-email-3-regra-editar-retrabalho", "error"),
+    Input("editar-input-email-3-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_email_3_editar_regra(email_destino):
     return verifica_erro_email_editar_regra(email_destino)
 
 
 @callback(
-    Output("input-email-4-regra-editar-retrabalho", "error"),
-    Input("input-email-4-regra-editar-retrabalho", "value"),
+    Output("editar-input-email-4-regra-editar-retrabalho", "error"),
+    Input("editar-input-email-4-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_email_4_editar_regra(email_destino):
     return verifica_erro_email_editar_regra(email_destino)
 
 
 @callback(
-    Output("input-email-5-regra-editar-retrabalho", "error"),
-    Input("input-email-5-regra-editar-retrabalho", "value"),
+    Output("editar-input-email-5-regra-editar-retrabalho", "error"),
+    Input("editar-input-email-5-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_email_5_editar_regra(email_destino):
     return verifica_erro_email_editar_regra(email_destino)
@@ -454,40 +457,40 @@ def verifica_erro_wpp_editar_regra(wpp_telefone):
 
 
 @callback(
-    Output("input-wpp-1-regra-editar-retrabalho", "error"),
-    Input("input-wpp-1-regra-editar-retrabalho", "value"),
+    Output("editar-input-wpp-1-regra-editar-retrabalho", "error"),
+    Input("editar-input-wpp-1-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_wpp_1_editar_regra(wpp_telefone):
     return verifica_erro_wpp_editar_regra(wpp_telefone)
 
 
 @callback(
-    Output("input-wpp-2-regra-editar-retrabalho", "error"),
-    Input("input-wpp-2-regra-editar-retrabalho", "value"),
+    Output("editar-input-wpp-2-regra-editar-retrabalho", "error"),
+    Input("editar-input-wpp-2-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_wpp_2_editar_regra(wpp_telefone):
     return verifica_erro_wpp_editar_regra(wpp_telefone)
 
 
 @callback(
-    Output("input-wpp-3-regra-editar-retrabalho", "error"),
-    Input("input-wpp-3-regra-editar-retrabalho", "value"),
+    Output("editar-input-wpp-3-regra-editar-retrabalho", "error"),
+    Input("editar-input-wpp-3-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_wpp_3_editar_regra(wpp_telefone):
     return verifica_erro_wpp_editar_regra(wpp_telefone)
 
 
 @callback(
-    Output("input-wpp-4-regra-editar-retrabalho", "error"),
-    Input("input-wpp-4-regra-editar-retrabalho", "value"),
+    Output("editar-input-wpp-4-regra-editar-retrabalho", "error"),
+    Input("editar-input-wpp-4-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_wpp_4_editar_regra(wpp_telefone):
     return verifica_erro_wpp_editar_regra(wpp_telefone)
 
 
 @callback(
-    Output("input-wpp-5-regra-editar-retrabalho", "error"),
-    Input("input-wpp-5-regra-editar-retrabalho", "value"),
+    Output("editar-input-wpp-5-regra-editar-retrabalho", "error"),
+    Input("editar-input-wpp-5-regra-editar-retrabalho", "value"),
 )
 def verifica_erro_wpp_5_editar_regra(wpp_telefone):
     return verifica_erro_wpp_editar_regra(wpp_telefone)
@@ -501,17 +504,17 @@ def verifica_erro_wpp_5_editar_regra(wpp_telefone):
 # Callback para o grafico de síntese de todas as OS no período monitorado
 @callback(
     [
-        Output("graph-pizza-sintese-retrabalho-regra-editar", "figure"),
-        Output("graph-pizza-filtro-retrabalho-regra-editar", "figure"),
+        Output("editar-graph-pizza-sintese-retrabalho-regra-editar", "figure"),
+        Output("editar-graph-pizza-filtro-retrabalho-regra-editar", "figure"),
     ],
     [
-        Input("input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
-        Input("input-select-dias-regra-editar-retrabalho", "value"),
-        Input("input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
-        Input("input-select-oficina-regra-editar-retrabalho", "value"),
-        Input("input-select-secao-regra-editar-retrabalho", "value"),
-        Input("input-select-ordens-servico-regra-editar-retrabalho", "value"),
-        Input("checklist-alertar-alvo-regra-editar-retrabalho", "value"),
+        Input("editar-input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-dias-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-oficina-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-secao-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-ordens-servico-regra-editar-retrabalho", "value"),
+        Input("editar-checklist-alertar-alvo-regra-editar-retrabalho", "value"),
     ],
 )
 def plota_grafico_pizza_sintese_editar_regra(
@@ -576,13 +579,13 @@ def plota_grafico_pizza_sintese_editar_regra(
 @callback(
     Output("tabela-previa-os-regra-editar", "rowData"),
     [
-        Input("input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
-        Input("input-select-dias-regra-editar-retrabalho", "value"),
-        Input("input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
-        Input("input-select-oficina-regra-editar-retrabalho", "value"),
-        Input("input-select-secao-regra-editar-retrabalho", "value"),
-        Input("input-select-ordens-servico-regra-editar-retrabalho", "value"),
-        Input("checklist-alertar-alvo-regra-editar-retrabalho", "value"),
+        Input("editar-input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-dias-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-oficina-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-secao-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-ordens-servico-regra-editar-retrabalho", "value"),
+        Input("editar-checklist-alertar-alvo-regra-editar-retrabalho", "value"),
     ],
 )
 def tabela_previa_os_regra_editar_regra(
@@ -609,8 +612,8 @@ def tabela_previa_os_regra_editar_regra(
 
 # Callback para o botão de fechar o modal de erro ao testar a regra
 @callback(
-    Output("modal-erro-teste-editar-regra", "opened", allow_duplicate=True),
-    Input("btn-close-modal-erro-teste-editar-regra", "n_clicks"),
+    Output("editar-modalerro-teste-editar-regra", "opened", allow_duplicate=True),
+    Input("btn-close-editar-modalerro-teste-editar-regra", "n_clicks"),
     prevent_initial_call=True,
 )
 def fecha_modal_erro_teste_regra_editar_regra(n_clicks_btn_fechar):
@@ -622,8 +625,8 @@ def fecha_modal_erro_teste_regra_editar_regra(n_clicks_btn_fechar):
 
 # Callback para o botão de fechar o modal de sucesso ao testar a regra
 @callback(
-    Output("modal-sucesso-teste-editar-regra", "opened", allow_duplicate=True),
-    Input("btn-close-modal-sucesso-teste-editar-regra", "n_clicks"),
+    Output("editar-modalsucesso-teste-editar-regra", "opened", allow_duplicate=True),
+    Input("btn-close-editar-modalsucesso-teste-editar-regra", "n_clicks"),
     prevent_initial_call=True,
 )
 def fecha_modal_sucesso_teste_regra_editar_regra(n_clicks_btn_fechar):
@@ -636,31 +639,31 @@ def fecha_modal_sucesso_teste_regra_editar_regra(n_clicks_btn_fechar):
 # Callback para o botão de testar a regra
 @callback(
     [
-        Output("modal-erro-teste-editar-regra", "opened", allow_duplicate=True),
-        Output("modal-sucesso-teste-editar-regra", "opened", allow_duplicate=True),
+        Output("editar-modalerro-teste-editar-regra", "opened", allow_duplicate=True),
+        Output("editar-modalsucesso-teste-editar-regra", "opened", allow_duplicate=True),
     ],
     [
         Input("btn-testar-regra-monitoramento-editar-retrabalho", "n_clicks"),
-        Input("input-nome-regra-monitoramento-retrabalho", "value"),
-        Input("input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
-        Input("input-select-dias-regra-editar-retrabalho", "value"),
-        Input("input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
-        Input("input-select-oficina-regra-editar-retrabalho", "value"),
-        Input("input-select-secao-regra-editar-retrabalho", "value"),
-        Input("input-select-ordens-servico-regra-editar-retrabalho", "value"),
-        Input("checklist-alertar-alvo-regra-editar-retrabalho", "value"),
-        Input("switch-enviar-email-regra-editar-retrabalho", "checked"),
-        Input("input-email-1-regra-editar-retrabalho", "value"),
-        Input("input-email-2-regra-editar-retrabalho", "value"),
-        Input("input-email-3-regra-editar-retrabalho", "value"),
-        Input("input-email-4-regra-editar-retrabalho", "value"),
-        Input("input-email-5-regra-editar-retrabalho", "value"),
-        Input("switch-enviar-wpp-regra-editar-retrabalho", "checked"),
-        Input("input-wpp-1-regra-editar-retrabalho", "value"),
-        Input("input-wpp-2-regra-editar-retrabalho", "value"),
-        Input("input-wpp-3-regra-editar-retrabalho", "value"),
-        Input("input-wpp-4-regra-editar-retrabalho", "value"),
-        Input("input-wpp-5-regra-editar-retrabalho", "value"),
+        Input("editar-input-nome-regra-monitoramento-retrabalho", "value"),
+        Input("editar-input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-dias-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-oficina-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-secao-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-ordens-servico-regra-editar-retrabalho", "value"),
+        Input("editar-checklist-alertar-alvo-regra-editar-retrabalho", "value"),
+        Input("editar-switch-enviar-email-regra-editar-retrabalho", "checked"),
+        Input("editar-input-email-1-regra-editar-retrabalho", "value"),
+        Input("editar-input-email-2-regra-editar-retrabalho", "value"),
+        Input("editar-input-email-3-regra-editar-retrabalho", "value"),
+        Input("editar-input-email-4-regra-editar-retrabalho", "value"),
+        Input("editar-input-email-5-regra-editar-retrabalho", "value"),
+        Input("editar-switch-enviar-wpp-regra-editar-retrabalho", "checked"),
+        Input("editar-input-wpp-1-regra-editar-retrabalho", "value"),
+        Input("editar-input-wpp-2-regra-editar-retrabalho", "value"),
+        Input("editar-input-wpp-3-regra-editar-retrabalho", "value"),
+        Input("editar-input-wpp-4-regra-editar-retrabalho", "value"),
+        Input("editar-input-wpp-5-regra-editar-retrabalho", "value"),
     ],
     prevent_initial_call=True,
 )
@@ -786,8 +789,8 @@ def testa_regra_monitoramento_retrabalho_editar_regra(
 
 # Callback para o botão de fechar o modal de erro ao salvar a regra
 @callback(
-    Output("modal-erro-atualizar-editar-regra", "opened", allow_duplicate=True),
-    Input("btn-close-modal-erro-atualizar-editar-regra", "n_clicks"),
+    Output("editar-modalerro-atualizar-editar-regra", "opened", allow_duplicate=True),
+    Input("btn-close-editar-modalerro-atualizar-editar-regra", "n_clicks"),
     prevent_initial_call=True,
 )
 def fecha_modal_erro_atualizar_regra_editar_regra(n_clicks_btn_fechar):
@@ -800,10 +803,10 @@ def fecha_modal_erro_atualizar_regra_editar_regra(n_clicks_btn_fechar):
 # Callback para o botão de fechar o modal de sucesso ao salvar a regra
 @callback(
     [
-        Output("modal-sucesso-atualizar-editar-regra", "opened", allow_duplicate=True),
+        Output("editar-modalsucesso-atualizar-editar-regra", "opened", allow_duplicate=True),
         Output("url", "href", allow_duplicate=True),
     ],
-    Input("btn-close-modal-sucesso-atualizar-editar-regra", "n_clicks"),
+    Input("btn-close-editar-modalsucesso-atualizar-editar-regra", "n_clicks"),
     prevent_initial_call=True,
 )
 def fecha_modal_sucesso_atualizar_regra_editar_regra(n_clicks_btn_fechar):
@@ -816,33 +819,33 @@ def fecha_modal_sucesso_atualizar_regra_editar_regra(n_clicks_btn_fechar):
 # Callback para o botão de salvar a regra
 @callback(
     [
-        Output("modal-erro-atualizar-editar-regra", "opened", allow_duplicate=True),
-        Output("modal-sucesso-atualizar-editar-regra", "opened", allow_duplicate=True),
+        Output("editar-modalerro-atualizar-editar-regra", "opened", allow_duplicate=True),
+        Output("editar-modalsucesso-atualizar-editar-regra", "opened", allow_duplicate=True),
     ],
     [
-        Input("store-input-id-editar-regra", "data"),
+        Input("store-editar-input-id-editar-regra", "data"),
         Input("btn-editar-regra-monitoramento-atualizar-retrabalho", "n_clicks"),
-        Input("input-nome-regra-monitoramento-retrabalho", "value"),
-        Input("input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
-        Input("input-select-dias-regra-editar-retrabalho", "value"),
-        Input("input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
-        Input("input-select-oficina-regra-editar-retrabalho", "value"),
-        Input("input-select-secao-regra-editar-retrabalho", "value"),
-        Input("input-select-ordens-servico-regra-editar-retrabalho", "value"),
-        Input("checklist-alertar-alvo-regra-editar-retrabalho", "value"),
-        Input("switch-enviar-email-regra-editar-retrabalho", "checked"),
-        Input("input-email-1-regra-editar-retrabalho", "value"),
-        Input("input-email-2-regra-editar-retrabalho", "value"),
-        Input("input-email-3-regra-editar-retrabalho", "value"),
-        Input("input-email-4-regra-editar-retrabalho", "value"),
-        Input("input-email-5-regra-editar-retrabalho", "value"),
-        Input("switch-enviar-wpp-regra-editar-retrabalho", "checked"),
-        Input("input-wpp-1-regra-editar-retrabalho", "value"),
-        Input("input-wpp-2-regra-editar-retrabalho", "value"),
-        Input("input-wpp-3-regra-editar-retrabalho", "value"),
-        Input("input-wpp-4-regra-editar-retrabalho", "value"),
-        Input("input-wpp-5-regra-editar-retrabalho", "value"),
-        Input("horario-envio-regra-editar-retrabalho", "value"),
+        Input("editar-input-nome-regra-monitoramento-retrabalho", "value"),
+        Input("editar-input-periodo-dias-monitoramento-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-dias-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-modelo-veiculos-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-oficina-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-secao-regra-editar-retrabalho", "value"),
+        Input("editar-input-select-ordens-servico-regra-editar-retrabalho", "value"),
+        Input("editar-checklist-alertar-alvo-regra-editar-retrabalho", "value"),
+        Input("editar-switch-enviar-email-regra-editar-retrabalho", "checked"),
+        Input("editar-input-email-1-regra-editar-retrabalho", "value"),
+        Input("editar-input-email-2-regra-editar-retrabalho", "value"),
+        Input("editar-input-email-3-regra-editar-retrabalho", "value"),
+        Input("editar-input-email-4-regra-editar-retrabalho", "value"),
+        Input("editar-input-email-5-regra-editar-retrabalho", "value"),
+        Input("editar-switch-enviar-wpp-regra-editar-retrabalho", "checked"),
+        Input("editar-input-wpp-1-regra-editar-retrabalho", "value"),
+        Input("editar-input-wpp-2-regra-editar-retrabalho", "value"),
+        Input("editar-input-wpp-3-regra-editar-retrabalho", "value"),
+        Input("editar-input-wpp-4-regra-editar-retrabalho", "value"),
+        Input("editar-input-wpp-5-regra-editar-retrabalho", "value"),
+        Input("editar-horario-envio-regra-editar-retrabalho", "value"),
     ],
     prevent_initial_call=True,
 )
@@ -987,7 +990,7 @@ def atualizar_regra_monitoramento_retrabalho_editar_regra(
 layout = dbc.Container(
     [
         # Estado
-        dcc.Store(id="store-input-id-editar-regra"),
+        dcc.Store(id="store-editar-input-id-editar-regra"),
         # Loading
         dmc.LoadingOverlay(
             visible=True,
@@ -1007,7 +1010,7 @@ layout = dbc.Container(
         ),
         # Modais
         dmc.Modal(
-            id="modal-erro-carregar-dados-editar-regra",
+            id="editar-modalerro-carregar-dados-editar-regra",
             centered=True,
             radius="lg",
             size="md",
@@ -1030,7 +1033,7 @@ layout = dbc.Container(
                                 "Fechar",
                                 color="red",
                                 variant="outline",
-                                id="btn-close-modal-erro-carregar-dados-editar-regra",
+                                id="btn-close-editar-modalerro-carregar-dados-editar-regra",
                             ),
                         ],
                     ),
@@ -1041,7 +1044,7 @@ layout = dbc.Container(
             ),
         ),
         dmc.Modal(
-            id="modal-erro-teste-editar-regra",
+            id="editar-modalerro-teste-editar-regra",
             centered=True,
             radius="lg",
             size="md",
@@ -1069,7 +1072,7 @@ layout = dbc.Container(
                                 "Fechar",
                                 color="red",
                                 variant="outline",
-                                id="btn-close-modal-erro-teste-editar-regra",
+                                id="btn-close-editar-modalerro-teste-editar-regra",
                             ),
                         ],
                     ),
@@ -1079,7 +1082,7 @@ layout = dbc.Container(
             ),
         ),
         dmc.Modal(
-            id="modal-sucesso-teste-editar-regra",
+            id="editar-modalsucesso-teste-editar-regra",
             centered=True,
             radius="lg",
             size="lg",
@@ -1100,7 +1103,7 @@ layout = dbc.Container(
                                 "Fechar",
                                 color="green",
                                 variant="outline",
-                                id="btn-close-modal-sucesso-teste-editar-regra",
+                                id="btn-close-editar-modalsucesso-teste-editar-regra",
                             ),
                         ],
                     ),
@@ -1110,7 +1113,7 @@ layout = dbc.Container(
             ),
         ),
         dmc.Modal(
-            id="modal-erro-atualizar-editar-regra",
+            id="editar-modalerro-atualizar-editar-regra",
             centered=True,
             radius="lg",
             size="md",
@@ -1138,7 +1141,7 @@ layout = dbc.Container(
                                 "Fechar",
                                 color="red",
                                 variant="outline",
-                                id="btn-close-modal-erro-atualizar-editar-regra",
+                                id="btn-close-editar-modalerro-atualizar-editar-regra",
                             ),
                         ],
                     ),
@@ -1148,7 +1151,7 @@ layout = dbc.Container(
             ),
         ),
         dmc.Modal(
-            id="modal-sucesso-atualizar-editar-regra",
+            id="editar-modalsucesso-atualizar-editar-regra",
             centered=True,
             radius="lg",
             size="lg",
@@ -1169,7 +1172,7 @@ layout = dbc.Container(
                                 "Fechar",
                                 color="green",
                                 variant="outline",
-                                id="btn-close-modal-sucesso-atualizar-editar-regra",
+                                id="btn-close-editar-modalsucesso-atualizar-editar-regra",
                             ),
                         ],
                     ),
@@ -1207,7 +1210,7 @@ layout = dbc.Container(
                             [
                                 dbc.Label("Nome da Regra de Monitoramento"),
                                 dbc.Input(
-                                    id="input-nome-regra-monitoramento-retrabalho",
+                                    id="editar-input-nome-regra-monitoramento-retrabalho",
                                     type="text",
                                     placeholder="Ex: Retrabalho OS 'Motor Esquentando' nos últimos 5 dias...",
                                     value="",
@@ -1232,7 +1235,7 @@ layout = dbc.Container(
                                 dbc.InputGroup(
                                     [
                                         dbc.Input(
-                                            id="input-periodo-dias-monitoramento-regra-editar-retrabalho",
+                                            id="editar-input-periodo-dias-monitoramento-regra-editar-retrabalho",
                                             type="number",
                                             placeholder="Dias",
                                             value=3,
@@ -1263,7 +1266,7 @@ layout = dbc.Container(
                                 [
                                     dbc.Label("Tempo (em dias) entre OS para retrabalho"),
                                     dcc.Dropdown(
-                                        id="input-select-dias-regra-editar-retrabalho",
+                                        id="editar-input-select-dias-regra-editar-retrabalho",
                                         options=[
                                             {"label": "10 dias", "value": 10},
                                             {"label": "15 dias", "value": 15},
@@ -1299,7 +1302,7 @@ layout = dbc.Container(
                                 [
                                     dbc.Label("Modelos de Veículos"),
                                     dcc.Dropdown(
-                                        id="input-select-modelo-veiculos-regra-editar-retrabalho",
+                                        id="editar-input-select-modelo-veiculos-regra-editar-retrabalho",
                                         options=[
                                             {
                                                 "label": os["MODELO"],
@@ -1326,7 +1329,7 @@ layout = dbc.Container(
                                 [
                                     dbc.Label("Oficinas"),
                                     dcc.Dropdown(
-                                        id="input-select-oficina-regra-editar-retrabalho",
+                                        id="editar-input-select-oficina-regra-editar-retrabalho",
                                         options=[
                                             {"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_oficinas
                                         ],
@@ -1354,7 +1357,7 @@ layout = dbc.Container(
                                 [
                                     dbc.Label("Seções (categorias) de manutenção"),
                                     dcc.Dropdown(
-                                        id="input-select-secao-regra-editar-retrabalho",
+                                        id="editar-input-select-secao-regra-editar-retrabalho",
                                         options=[
                                             {"label": sec["LABEL"], "value": sec["LABEL"]} for sec in lista_todas_secoes
                                         ],
@@ -1377,7 +1380,7 @@ layout = dbc.Container(
                                 [
                                     dbc.Label("Ordens de Serviço"),
                                     dcc.Dropdown(
-                                        id="input-select-ordens-servico-regra-editar-retrabalho",
+                                        id="editar-input-select-ordens-servico-regra-editar-retrabalho",
                                         options=[{"label": os["LABEL"], "value": os["LABEL"]} for os in lista_todas_os],
                                         multi=True,
                                         value=["TODAS"],
@@ -1424,7 +1427,7 @@ layout = dbc.Container(
                                             # },
                                         ],
                                         value=["nova_os_com_retrabalho_anterior", "retrabalho"],
-                                        id="checklist-alertar-alvo-regra-editar-retrabalho",
+                                        id="editar-checklist-alertar-alvo-regra-editar-retrabalho",
                                         inline=True,
                                     ),
                                 ],
@@ -1442,7 +1445,7 @@ layout = dbc.Container(
                                 [
                                     dbc.Label("Horário de envio:"),
                                     dmc.TimeInput(
-                                        debounce=True, id="horario-envio-regra-editar-retrabalho", value="06:00"
+                                        debounce=True, id="editar-horario-envio-regra-editar-retrabalho", value="06:00"
                                     ),
                                 ],
                                 className="dash-bootstrap",
@@ -1463,7 +1466,7 @@ layout = dbc.Container(
                             [
                                 dbc.Col(
                                     dmc.Switch(
-                                        id="switch-enviar-email-regra-editar-retrabalho",
+                                        id="editar-switch-enviar-email-regra-editar-retrabalho",
                                         label="Enviar email",
                                         checked=False,
                                         size="md",
@@ -1480,7 +1483,7 @@ layout = dbc.Container(
                                             ),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-email-1-regra-editar-retrabalho",
+                                                    id="editar-input-email-1-regra-editar-retrabalho",
                                                     placeholder="email1@odilonsantos.com",
                                                     value="",
                                                     leftSection=DashIconify(icon="mdi:email"),
@@ -1490,7 +1493,7 @@ layout = dbc.Container(
                                             dmc.Space(h=10),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-email-2-regra-editar-retrabalho",
+                                                    id="editar-input-email-2-regra-editar-retrabalho",
                                                     placeholder="email2@odilonsantos.com",
                                                     value="",
                                                     leftSection=DashIconify(icon="mdi:email"),
@@ -1500,7 +1503,7 @@ layout = dbc.Container(
                                             dmc.Space(h=10),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-email-3-regra-editar-retrabalho",
+                                                    id="editar-input-email-3-regra-editar-retrabalho",
                                                     placeholder="email3@odilonsantos.com",
                                                     value="",
                                                     leftSection=DashIconify(icon="mdi:email"),
@@ -1510,7 +1513,7 @@ layout = dbc.Container(
                                             dmc.Space(h=10),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-email-4-regra-editar-retrabalho",
+                                                    id="editar-input-email-4-regra-editar-retrabalho",
                                                     placeholder="email4@odilonsantos.com",
                                                     value="",
                                                     leftSection=DashIconify(icon="mdi:email"),
@@ -1520,7 +1523,7 @@ layout = dbc.Container(
                                             dmc.Space(h=10),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-email-5-regra-editar-retrabalho",
+                                                    id="editar-input-email-5-regra-editar-retrabalho",
                                                     placeholder="email5@odilonsantos.com",
                                                     value="",
                                                     leftSection=DashIconify(icon="mdi:email"),
@@ -1530,7 +1533,7 @@ layout = dbc.Container(
                                         ],
                                         align="center",
                                     ),
-                                    id="input-email-destino-container-regra-editar-retrabalho",
+                                    id="editar-input-email-destino-container-regra-editar-retrabalho",
                                     md=12,
                                 ),
                             ],
@@ -1546,7 +1549,7 @@ layout = dbc.Container(
                             [
                                 dbc.Col(
                                     dmc.Switch(
-                                        id="switch-enviar-wpp-regra-editar-retrabalho",
+                                        id="editar-switch-enviar-wpp-regra-editar-retrabalho",
                                         label="Enviar WhatsApp",
                                         checked=False,
                                         size="md",
@@ -1563,7 +1566,7 @@ layout = dbc.Container(
                                             ),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-wpp-1-regra-editar-retrabalho",
+                                                    id="editar-input-wpp-1-regra-editar-retrabalho",
                                                     placeholder="(62) 99999-9999",
                                                     value="",
                                                     leftSection=DashIconify(icon="logos:whatsapp-icon"),
@@ -1573,7 +1576,7 @@ layout = dbc.Container(
                                             dmc.Space(h=10),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-wpp-2-regra-editar-retrabalho",
+                                                    id="editar-input-wpp-2-regra-editar-retrabalho",
                                                     placeholder="(62) 99999-9999",
                                                     value="",
                                                     leftSection=DashIconify(icon="logos:whatsapp-icon"),
@@ -1583,7 +1586,7 @@ layout = dbc.Container(
                                             dmc.Space(h=10),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-wpp-3-regra-editar-retrabalho",
+                                                    id="editar-input-wpp-3-regra-editar-retrabalho",
                                                     placeholder="(62) 99999-9999",
                                                     value="",
                                                     leftSection=DashIconify(icon="logos:whatsapp-icon"),
@@ -1593,7 +1596,7 @@ layout = dbc.Container(
                                             dmc.Space(h=10),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-wpp-4-regra-editar-retrabalho",
+                                                    id="editar-input-wpp-4-regra-editar-retrabalho",
                                                     placeholder="(62) 99999-9999",
                                                     value="",
                                                     leftSection=DashIconify(icon="logos:whatsapp-icon"),
@@ -1603,7 +1606,7 @@ layout = dbc.Container(
                                             dmc.Space(h=10),
                                             dbc.Col(
                                                 dmc.TextInput(
-                                                    id="input-wpp-5-regra-editar-retrabalho",
+                                                    id="editar-input-wpp-5-regra-editar-retrabalho",
                                                     placeholder="(62) 99999-9999",
                                                     value="",
                                                     leftSection=DashIconify(icon="logos:whatsapp-icon"),
@@ -1613,7 +1616,7 @@ layout = dbc.Container(
                                         ],
                                         align="center",
                                     ),
-                                    id="input-wpp-destino-container-regra-editar-retrabalho",
+                                    id="editar-input-wpp-destino-container-regra-editar-retrabalho",
                                     md=12,
                                 ),
                             ],
@@ -1669,7 +1672,7 @@ layout = dbc.Container(
                             dbc.Col(html.H1("Total de OS no período", className="align-self-center"), width=True),
                             dmc.Space(h=15),
                             html.Hr(),
-                            dbc.Row(dcc.Graph(id="graph-pizza-sintese-retrabalho-regra-editar")),
+                            dbc.Row(dcc.Graph(id="editar-graph-pizza-sintese-retrabalho-regra-editar")),
                         ]
                     ),
                     md=6,
@@ -1686,7 +1689,7 @@ layout = dbc.Container(
                             dbc.Col(html.H1("OSs filtradas", className="align-self-center"), width=True),
                             dmc.Space(h=15),
                             html.Hr(),
-                            dbc.Row(dcc.Graph(id="graph-pizza-filtro-retrabalho-regra-editar")),
+                            dbc.Row(dcc.Graph(id="editar-graph-pizza-filtro-retrabalho-regra-editar")),
                         ]
                     ),
                     md=6,
