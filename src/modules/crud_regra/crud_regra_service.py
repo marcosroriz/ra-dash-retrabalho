@@ -53,6 +53,39 @@ class CRUDRegraService:
 
         return df
 
+    def existe_execucao_regra_no_dia(self, id_regra, dia):
+        """Função para verificar se uma regra já foi executada no dia"""
+        query = f"""
+            SELECT * FROM relatorio_regra_monitoramento_os WHERE id_regra = {id_regra} AND dia = '{dia}'
+        """
+        df = pd.read_sql(query, self.dbEngine)
+
+        if df.empty:
+            return False
+        else:
+            return True
+
+    def get_resultado_regra(self, id_regra, dia_execucao):
+        """Função para obter o resultado de uma regra de monitoramento"""
+        query = f"""
+            SELECT *
+            FROM relatorio_regra_monitoramento_os r 
+            LEFT JOIN os_dados od 
+            ON r.os_key_hash = od."KEY_HASH" 
+            WHERE r.id_regra = {id_regra} AND r.dia = '{dia_execucao}'
+        """
+        df = pd.read_sql(query, self.dbEngine)
+
+        # Aplica a função para definir o status de cada OS
+        df["status_os"] = df.apply(definir_status, axis=1)
+        df["status_os_label"] = df.apply(definir_status_label, axis=1)
+        df["status_os_emoji"] = df.apply(definir_emoji_status, axis=1)
+
+        # Ordena por serviço e por status_os
+        df = df.sort_values(by=["DESCRICAO DO SERVICO", "status_os", "CODIGO DO VEICULO"], ascending=[True, False, True])
+
+        return df
+
     def apagar_regra(self, id_regra):
         """Função para apagar uma regra de monitoramento"""
 
@@ -98,7 +131,6 @@ class CRUDRegraService:
         except Exception as e:
             print(f"Erro ao atualizar regra de monitoramento: {e}")
             return False
-        
 
     def get_ultima_data_regra(self, id_regra):
         """Função para obter a última data de uma regra de monitoramento"""
@@ -308,7 +340,7 @@ class CRUDRegraService:
         df["pecas_valor_str"] = df["pecas_valor_str"].fillna("0")
         df["pecas_trocadas_str"] = df["pecas_trocadas_str"].fillna("Nenhuma / Não inserida ainda")
         df["nome_colaborador"] = df["nome_colaborador"].fillna("Não inserido ainda")
-        df["nome_colaborador"] = df["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)    )
+        df["nome_colaborador"] = df["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x))
 
         # Campos da LLM
         df["SCORE_SYMPTOMS_TEXT_QUALITY"] = df["SCORE_SYMPTOMS_TEXT_QUALITY"].fillna("-")

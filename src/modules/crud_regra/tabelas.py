@@ -54,7 +54,7 @@ tbl_regras_existentes = [
     },
 ]
 
-# Tabela detalhamento do problema/OS que envolve a regra
+# Tabela detalhamento do problema/OS que envolve a regra (página de criar e editar)
 tbl_detalhamento_problema_regra = [
     {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 200},
     {"field": "NUMERO DA OS", "headerName": "OS", "minWidth": 150, "pinned": "left"},
@@ -160,5 +160,48 @@ tbl_detalhamento_problema_regra = [
         "wrapText": True,
         "minWidth": 550,
         "cellRenderer": "BulletViaStringRenderer",
+    },
+]
+
+
+# Tabela detalhamento do problema/OS que envolve a regra
+tbl_detalhamento_relatorio_regra = [
+    {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 200},
+    {"field": "DESCRICAO DO SERVICO", "headerName": "PROBLEMA", "sortable": True, "sort": "asc", "minWidth": 250},
+    {"field": "NUMERO DA OS", "headerName": "OS", "minWidth": 130},
+    {
+        "field": "acao",
+        "headerName": "Analisar",
+        "cellRenderer": "Button",
+        "cellRendererParams": {"className": "btn btn-outline-primary btn-sm"},
+        "minWidth": 150,
+        "pinned": "left",
+    },
+    {"field": "DESCRICAO DA OFICINA", "headerName": "OFICINA", "minWidth": 200},
+
+    {"field": "CODIGO DO VEICULO", "headerName": "VEÍCULO", "maxWidth": 150},
+    # {"field": "DESCRICAO DO MODELO", "headerName": "MODELO", "minWidth": 300},
+    {
+        "headerName": "DATA DE ABERTURA DA OS",
+        "field": "DATA DA ABERTURA DA OS DT",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 220,
+        "valueFormatter": {
+            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
+        },
+        "sort": "asc",
+        "sortable": True,
+    },
+    {
+        "headerName": "DATA DO FECHAMENTO DA OS",
+        "field": "DATA DO FECHAMENTO DA OS DT",
+        "wrapHeaderText": True,
+        "autoHeaderHeight": True,
+        "maxWidth": 220,
+        "valueFormatter": {
+            "function": "params.value ? params.value.slice(8,10) + '/' + params.value.slice(5,7) + '/' + params.value.slice(0,4) : ''"
+        },
+        "sortable": True,
     },
 ]

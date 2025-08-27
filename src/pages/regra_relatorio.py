@@ -3,6 +3,11 @@
 
 # Tela para apresentar relatório de uma regra para detecção de retrabalho
 
+
+import plotly.express as px
+import plotly.graph_objects as go
+
+
 ##############################################################################
 # IMPORTS ####################################################################
 ##############################################################################
@@ -137,6 +142,7 @@ def callback_receber_campos_via_url_relatorio_regra(href):
 # Sincroniza o store com os valores dos inputs
 @callback(
     [
+        Output("store-relatorio-relatorio-regra", "data"),
         Output("relatorio-card-input-select-regra-retrabalho", "style"),
         Output("relatorio-card-input-data-relatorio-regra-retrabalho", "style"),
         Output("relatorio-input-select-regra-retrabalho-error", "style"),
@@ -145,10 +151,13 @@ def callback_receber_campos_via_url_relatorio_regra(href):
     Input("relatorio-input-select-regra-retrabalho", "value"),
     Input("relatorio-input-data-relatorio-regra-retrabalho", "value"),
 )
-def callback_sincroniza_input_store_relatorio_regra(regra_value, data_value):
+def callback_sincroniza_input_store_relatorio_regra(id_regra, dia_execucao):
     # Flags para validação
     input_regra_valido = True
-    input_data_valido = False
+    input_data_valido = True
+
+    # Store padrão
+    store_payload = { "valido": False }
 
     # Validação muda a borda e também mostra campo de erro
     # Estilos das bordas dos inputs
@@ -170,20 +179,108 @@ def callback_sincroniza_input_store_relatorio_regra(regra_value, data_value):
     style_campo_erro_input_data = style_campo_erro_visivel
 
     # Valida primeiro se há regra
-    if regra_value:
+    if id_regra:
         style_borda_input_regra = style_borda_ok
         style_campo_erro_input_regra = style_campo_erro_oculto
     else:
         input_regra_valido = False
 
-    # Valida primeiro a data
-    if data_value:
+    # Valida a data
+    if dia_execucao and crud_regra_service.existe_execucao_regra_no_dia(id_regra, dia_execucao):
         style_borda_input_data = style_borda_ok
         style_campo_erro_input_data = style_campo_erro_oculto
     else:
         input_data_valido = False
 
-    return style_borda_input_regra, style_borda_input_data, style_campo_erro_input_regra, style_campo_erro_input_data
+    if input_regra_valido and input_data_valido:
+        # Pega os campos da regra
+        df_regra = crud_regra_service.get_regra_by_id(id_regra)
+        dados_regra = df_regra.to_dict(orient="records")[0]
+
+        id_regra = dados_regra["id"]
+        nome_regra = dados_regra["nome"]
+        min_dias_retrabalho = dados_regra["min_dias_retrabalho"]
+
+        # Pega o resultado da regra
+        df_resultado_regra = crud_regra_service.get_resultado_regra(id_regra, dia_execucao)
+        
+        # Adiciona min_dias para facilitar o clique no botão para detalhamento de OS
+        df_resultado_regra["min_dias_retrabalho"] = min_dias_retrabalho
+
+        # Ação de visualização
+        df_resultado_regra["acao"] = "🔍 Detalhar"
+
+        # Atualiza o store
+        store_payload = {
+            "valido": input_regra_valido and input_data_valido and not df_resultado_regra.empty,
+            "id_regra": id_regra,
+            "nome_regra": nome_regra,
+            "min_dias_retrabalho": min_dias_retrabalho,
+            "df_resultado_regra": df_resultado_regra.to_dict(orient="records"),
+        }
+
+    print(store_payload)
+
+    return store_payload, style_borda_input_regra, style_borda_input_data, style_campo_erro_input_regra, style_campo_erro_input_data
+
+##############################################################################
+# Callbacks para a tabela #####################################################
+##############################################################################
+
+@callback(
+    Output("tabela-relatorio-regra", "rowData"),
+    Input("store-relatorio-relatorio-regra", "data"),
+)
+def tabela_relatorio_regra(store_relatorio_regra):
+    # Valida input
+    if store_relatorio_regra and store_relatorio_regra["valido"]:
+        df = pd.DataFrame(store_relatorio_regra["df_resultado_regra"])
+
+        # Datas aberturas (converte para DT) 
+        df["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df["DATA DA ABERTURA DA OS"])
+        df["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df["DATA DO FECHAMENTO DA OS"])
+
+        return df.to_dict(orient="records")
+    else:
+        return []
+
+##############################################################################
+# Callbacks para o gráfico #####################################################
+##############################################################################
+@callback(
+    Output("graph-relatorio-regra-por-servico", "figure"),
+    Input("store-relatorio-relatorio-regra", "data"),
+)
+def graph_relatorio_regra_por_servico(store_relatorio_regra):
+    if store_relatorio_regra and store_relatorio_regra["valido"]:
+        df = pd.DataFrame(store_relatorio_regra["df_resultado_regra"])
+        
+        df_agg = df.groupby("DESCRICAO DO SERVICO").size().reset_index(name="count").sort_values(by="count", ascending=False)
+        # Top 10
+        df_agg_top_10 = df_agg.head(10)
+
+        # Soma do restante
+        total_outros = df_agg.iloc[10:]["count"].sum()
+
+        # Cria linha "Outros"
+        df_demais_problemas = pd.DataFrame({
+            "DESCRICAO DO SERVICO": ["Outros"],
+            "count": [total_outros]
+        })
+
+        # Junta
+        df_agg_top_10 = pd.concat([df_agg_top_10, df_demais_problemas], ignore_index=True)
+
+        bar_chart = px.bar(
+        df_agg_top_10,
+        x="DESCRICAO DO SERVICO",
+        y="count"
+            )
+        return bar_chart
+
+    else:
+        return go.Figure()
+
 
 
 
@@ -193,7 +290,7 @@ def callback_sincroniza_input_store_relatorio_regra(regra_value, data_value):
 layout = dbc.Container(
     [
         # Estado
-        dcc.Store(id="store-relatorio-input-id-relatorio-regra"),
+        dcc.Store(id="store-relatorio-relatorio-regra"),
         # Loading
         dmc.LoadingOverlay(
             # visible=True,
@@ -463,8 +560,61 @@ layout = dbc.Container(
                 ),
             ]
         ),
-        dmc.Space(h=10),
         dmc.Space(h=40),
+        # Gráfico da Regra por Serviço
+        dmc.Space(h=30),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:fleet", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Quantitativo da frota que teve problema e retrabalho por modelo",
+                                className="align-self-center",
+                            ),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-relatorio-regra-por-servico"),
+        dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "OSs filtradas pela regra",
+                                className="align-self-center",
+                            ),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=40),
+        dag.AgGrid(
+            id="tabela-relatorio-regra",
+            columnDefs=crud_regra_tabelas.tbl_detalhamento_relatorio_regra,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                "enableCellTextSelection": True,
+                "ensureDomOrder": True,
+            },
+            style={"height": 500, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+        ),
+        dmc.Space(h=40),
+
     ]
 )
 
