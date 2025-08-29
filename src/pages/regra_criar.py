@@ -457,6 +457,7 @@ def tabela_previa_os_regra_criar(
 # Callbacks para o teste da regra ############################################
 ##############################################################################
 
+
 # Callback para o botão de testar a regra
 @callback(
     Output("modal-erro-teste-regra", "opened", allow_duplicate=True),
@@ -468,6 +469,7 @@ def fecha_modal_erro_teste_regra(n_clicks_btn_fechar):
         return False
     else:
         return dash.no_update
+
 
 # Callback para o botão de testar a regra
 @callback(
@@ -566,15 +568,15 @@ def testa_regra_monitoramento_retrabalho(
     # Verifica se pelo menos um email ou wpp está ativo
     if not email_ativo and not wpp_ativo:
         return [True, False]
-    
-    # Valida se há pelo menos um telefone de whatsapp válido caso esteja ativo    
+
+    # Valida se há pelo menos um telefone de whatsapp válido caso esteja ativo
     wpp_telefones = [wpp_telefone_1, wpp_telefone_2, wpp_telefone_3, wpp_telefone_4, wpp_telefone_5]
     wpp_tel_validos = []
     if wpp_ativo:
         wpp_tel_validos = [wpp for wpp in wpp_telefones if wpp != "" and not verifica_erro_wpp(wpp)]
         if len(wpp_tel_validos) == 0:
             return [True, False]
-        
+
     # Valida se há pelo menos um email válido caso esteja ativo
     email_destinos = [email_destino_1, email_destino_2, email_destino_3, email_destino_4, email_destino_5]
     email_destinos_validos = []
@@ -582,7 +584,7 @@ def testa_regra_monitoramento_retrabalho(
         email_destinos_validos = [email for email in email_destinos if email != "" and not verifica_erro_email(email)]
         if len(email_destinos_validos) == 0:
             return [True, False]
-    
+
     # Obtem os dados
     df = crud_regra_service.get_previa_os_regra_detalhada(
         data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
@@ -599,10 +601,6 @@ def testa_regra_monitoramento_retrabalho(
                 nome_regra,
                 data_periodo_regra,
                 min_dias,
-                lista_modelos,
-                lista_oficinas,
-                lista_secaos,
-                lista_os,
                 wpp_tel,
             )
 
@@ -616,10 +614,6 @@ def testa_regra_monitoramento_retrabalho(
                 nome_regra,
                 data_periodo_regra,
                 min_dias,
-                lista_modelos,
-                lista_oficinas,
-                lista_secaos,
-                lista_os,
                 email_destino,
             )
 
@@ -643,6 +637,7 @@ def fecha_modal_erro_salvar_regra(n_clicks_btn_fechar):
     else:
         return dash.no_update
 
+
 # Callback para o botão de fechar o modal de sucesso ao salvar a regra
 @callback(
     [
@@ -657,7 +652,8 @@ def fecha_modal_sucesso_salvar_regra(n_clicks_btn_fechar):
         return [False, "/regra-gerenciar"]
     else:
         return [dash.no_update, dash.no_update]
-    
+
+
 # Callback para o botão de salvar a regra
 @callback(
     [
@@ -730,9 +726,11 @@ def salvar_regra_monitoramento_retrabalho(
         return [dash.no_update, dash.no_update]
 
     # Valida Resto do input
-    if not input_valido(
-        data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
-    ) or not target_os_valido(checklist_alvo) or not horario_valido(horario_envio):
+    if (
+        not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
+        or not target_os_valido(checklist_alvo)
+        or not horario_valido(horario_envio)
+    ):
         return [True, False]
 
     # Valida nome da regra
@@ -742,15 +740,15 @@ def salvar_regra_monitoramento_retrabalho(
     # Verifica se pelo menos um email ou wpp está ativo
     if not email_ativo and not wpp_ativo:
         return [True, False]
-    
-    # Valida se há pelo menos um telefone de whatsapp válido caso esteja ativo    
+
+    # Valida se há pelo menos um telefone de whatsapp válido caso esteja ativo
     wpp_telefones = [wpp_telefone_1, wpp_telefone_2, wpp_telefone_3, wpp_telefone_4, wpp_telefone_5]
     wpp_tel_validos = []
     if wpp_ativo:
         wpp_tel_validos = [wpp for wpp in wpp_telefones if wpp != "" and not verifica_erro_wpp(wpp)]
         if len(wpp_tel_validos) == 0:
             return [True, False]
-        
+
     # Valida se há pelo menos um email válido caso esteja ativo
     email_destinos = [email_destino_1, email_destino_2, email_destino_3, email_destino_4, email_destino_5]
     email_destinos_validos = []
@@ -758,7 +756,7 @@ def salvar_regra_monitoramento_retrabalho(
         email_destinos_validos = [email for email in email_destinos if email != "" and not verifica_erro_email(email)]
         if len(email_destinos_validos) == 0:
             return [True, False]
-        
+
     # Obtem os dados restantes para salvar a regra
     target_nova_os_sem_retrabalho_previo = True if "nova_os_sem_retrabalho_anterior" in checklist_alvo else False
     target_nova_os_com_retrabalho_previo = True if "nova_os_com_retrabalho_anterior" in checklist_alvo else False

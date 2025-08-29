@@ -44,7 +44,21 @@ class CRUDRegraService:
 
         # Query
         query = """
-            SELECT * FROM regra_monitoramento_os
+            SELECT 
+                *,
+                (
+                    SELECT MAX(dia)
+                    FROM relatorio_regra_monitoramento_os
+                    WHERE id_regra = regra.id
+                    GROUP BY id_regra
+                ) AS "dia_ultimo_relatorio",
+                (
+                    SELECT MAX(executed_at)
+                    FROM relatorio_regra_monitoramento_os
+                    WHERE id_regra = regra.id
+                    GROUP BY id_regra
+                ) AS "executed_at"
+            FROM regra_monitoramento_os regra
             ORDER BY nome
         """
 
@@ -56,7 +70,7 @@ class CRUDRegraService:
     def existe_execucao_regra_no_dia(self, id_regra, dia):
         """Função para verificar se uma regra já foi executada no dia"""
         query = f"""
-            SELECT * FROM relatorio_regra_monitoramento_os WHERE id_regra = {id_regra} AND dia = '{dia}'
+            SELECT 1 AS "EXISTE" FROM relatorio_regra_monitoramento_os WHERE id_regra = {id_regra} AND dia = '{dia}'
         """
         df = pd.read_sql(query, self.dbEngine)
 

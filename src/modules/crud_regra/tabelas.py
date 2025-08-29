@@ -18,8 +18,8 @@ tbl_regras_existentes = [
         },
     },
     {
-        "field": "updated_at",
-        "headerName": "DATA DE ATUALIZAÇÃO",
+        "field": "executed_at",
+        "headerName": "ÚLTIMO RELATÓRIO",
         "wrapHeaderText": True,
         "autoHeaderHeight": True,
         "minWidth": 200,

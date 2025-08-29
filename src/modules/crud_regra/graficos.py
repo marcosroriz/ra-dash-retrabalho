@@ -449,3 +449,32 @@ def gerar_grafico_evolucao_retrabalho_por_custo_por_mes(df):
     fig.for_each_xaxis(lambda axis: axis.update(title_standoff=90))
 
     return fig
+
+
+def gerar_grafico_top_10_problemas_relatorio_regras(df):
+    """Gera o gráfico de barras referentes aos 10 problemas mais frequentes"""
+
+    fig = px.bar(
+        df,
+        x="DESCRICAO DO SERVICO",
+        y="count"
+    )
+
+    fig.update_traces(
+        texttemplate="%{y} (%{customdata:.1f}%)",
+        customdata=df["PERC_TOTAL_OS"],
+        textposition="auto",
+    )
+
+    # Renomeia o eixo y
+    fig.update_layout(
+        yaxis=dict(
+            title="Total de OSs",
+            tickmode="auto",
+            automargin=True,
+        ),
+        margin=dict(b=200),
+    )
+
+    return fig
+

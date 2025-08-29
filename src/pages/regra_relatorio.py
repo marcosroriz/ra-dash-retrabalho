@@ -95,11 +95,6 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 # Callbacks para os inputs via URL ###########################################
 ##############################################################################
 
-
-##############################################################################
-# Callbacks para os inputs ###################################################
-##############################################################################
-
 # Converte para int, se não for possível, retorna None
 def safe_int(value):
     try:
@@ -150,6 +145,7 @@ def callback_receber_campos_via_url_relatorio_regra(href):
     ],
     Input("relatorio-input-select-regra-retrabalho", "value"),
     Input("relatorio-input-data-relatorio-regra-retrabalho", "value"),
+    running=[(Output("loading-overlay-guia-relatorio-regra", "visible"), True, False)],
 )
 def callback_sincroniza_input_store_relatorio_regra(id_regra, dia_execucao):
     # Flags para validação
@@ -217,14 +213,176 @@ def callback_sincroniza_input_store_relatorio_regra(id_regra, dia_execucao):
             "nome_regra": nome_regra,
             "min_dias_retrabalho": min_dias_retrabalho,
             "df_resultado_regra": df_resultado_regra.to_dict(orient="records"),
+            "dados_regra": dados_regra,
         }
-
-    print(store_payload)
 
     return store_payload, style_borda_input_regra, style_borda_input_data, style_campo_erro_input_regra, style_campo_erro_input_data
 
 ##############################################################################
-# Callbacks para a tabela #####################################################
+# Callbacks para os indicadores ##############################################
+##############################################################################
+
+
+@callback(
+    [
+        Output("card-regra-nome", "children"),
+        Output("card-regra-periodo-monitoramento", "children"),
+        Output("card-regra-min-dias-retrabalho", "children"),
+        Output("card-regra-modelos", "children"),
+        Output("card-regra-secoes", "children"),
+        Output("card-regra-oficinas", "children"),
+        Output("card-regra-os", "children"),
+        Output("card-regra-alvos-alerta", "children"),
+        Output("card-regra-horario-envio", "children"),
+        Output("card-regra-alvos-email", "children"),
+        Output("card-regra-alvos-whatsapp", "children"),
+    ],
+    Input("store-relatorio-relatorio-regra", "data"),
+)
+def atualiza_dados_card_descricao_regra_relatorio(store_relatorio_regra):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not store_relatorio_regra or not store_relatorio_regra["valido"]:
+        return [
+            "🔍 Nome da regra: Não Informado",
+            "🕒 Período de monitoramento: Não Informado",
+            "🔄 Mínimo de dias de retrabalho: Não Informado",
+            "🚗 Modelos: Não Informado",
+            "🛠️ Seções: Não Informado",
+            "🏢 Oficinas: Não Informado",
+            "🚨 OSs: Não Informado",
+            "🔔 Alvos de alerta: Não Informado",
+            "🕒 Horário de disparo: Não Informado",
+            "📧 Alvos de email: Não Informado",
+            "📱 Alvos de WhatsApp: Não Informado",
+        ]
+
+    # Obtem os dados da regra
+    dados_regra = store_relatorio_regra["dados_regra"]
+
+    html_nome_regra = f"🔍 Nome da regra: {dados_regra['nome']}"
+    html_periodo_monitoramento = f"🕒 Período de monitoramento: {dados_regra['data_periodo_regra']}"
+    html_min_dias_retrabalho = f"🔄 Mínimo de dias de retrabalho: {dados_regra['min_dias_retrabalho']}"
+    # html_modelos = html.Div([html.Span("🚗 Modelos:"), html.Ul([html.Li(m) for m in dados_regra["modelos_veiculos"]])])
+    html_modelos = "🚗 Modelos: " + ", ".join(dados_regra["modelos_veiculos"])
+    # html_oficinas = html.Div([html.Span("🏢 Oficinas:"), html.Ul([html.Li(o) for o in dados_regra["oficinas"]])])
+    html_oficinas = "🏢 Oficinas: " + ", ".join(dados_regra["oficinas"])
+    # html_secoes = html.Div([html.Span("🛠️ Seções:"), html.Ul([html.Li(s) for s in dados_regra["secoes"]])])
+    html_secoes = "🛠️ Seções: " + ", ".join(dados_regra["secoes"])
+    # html_os = html.Div([html.Span("🚨 OSs:"), html.Ul([html.Li(o) for o in dados_regra["os"]])])
+    html_os = "🚨 OSs: " + ", ".join(dados_regra["os"])
+
+    alvos_alerta = [
+        "✅ Nova OS COM retrabalho" if dados_regra["target_nova_os_com_retrabalho_previo"] else "❌ Nova OS COM retrabalho",
+        "✅ Nova OS SEM retrabalho" if dados_regra["target_nova_os_sem_retrabalho_previo"] else "❌ Nova OS SEM retrabalho",
+        "✅ Retrabalho" if dados_regra["target_retrabalho"] else "❌ Retrabalho",
+    ]
+    html_alvos_alerta = html.Div([html.Span("🔔 Alvos de alerta:"), html.Ul([html.Li(a) for a in alvos_alerta])])
+    
+    html_horario_disparo = f"🕒 Horário de disparo: {dados_regra['hora_disparar']}"
+
+    html_email = "📧 Alvos de email: Não Informado"
+    if dados_regra["target_email"]:
+        email_destinos = []
+        email_destinos.append(dados_regra["target_email_dest1"])
+        email_destinos.append(dados_regra["target_email_dest2"])
+        email_destinos.append(dados_regra["target_email_dest3"])
+        email_destinos.append(dados_regra["target_email_dest4"])
+        email_destinos.append(dados_regra["target_email_dest5"])
+    
+        html_email = html.Div([html.Span("📧 Alvos de email:"), html.Ul([html.Li(e) for e in email_destinos if e])])
+
+    html_whatsapp = "📱 Alvos de WhatsApp: Não Informado"
+    if dados_regra["target_wpp"]:
+        wpp_destinos = []
+        wpp_destinos.append(dados_regra["target_wpp_dest1"])
+        wpp_destinos.append(dados_regra["target_wpp_dest2"])
+        wpp_destinos.append(dados_regra["target_wpp_dest3"])
+        wpp_destinos.append(dados_regra["target_wpp_dest4"])
+        wpp_destinos.append(dados_regra["target_wpp_dest5"])
+        
+        html_whatsapp = html.Div([html.Span("📱 Alvos de WhatsApp:"), html.Ul([html.Li(w) for w in wpp_destinos if w])])
+
+    return [
+        html_nome_regra,
+        html_periodo_monitoramento,
+        html_min_dias_retrabalho,
+        html_modelos,
+        html_oficinas,
+        html_secoes,
+        html_os,
+        html_alvos_alerta,
+        html_horario_disparo,
+        html_email,
+        html_whatsapp,
+    ]
+
+
+
+@callback(
+    [
+        Output("card-relatorio-resultado-total-os-detectadas", "children"),
+        Output("card-relatorio-resultado-total-problemas-detectados", "children"),
+        Output("card-relatorio-resultado-hora-execucao-regra", "children"),
+        Output("card-relatorio-resultado-modelos", "children"),
+        Output("card-relatorio-resultado-secoes", "children"),
+        Output("card-relatorio-resultado-oficinas", "children"),
+        # Output("card-relatorio-resultado-os", "children"),
+    ],
+    Input("store-relatorio-relatorio-regra", "data"),
+)
+def atualiza_dados_card_resultado_regra_relatorio(store_relatorio_regra):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not store_relatorio_regra or not store_relatorio_regra["valido"]:
+        return [
+            "⚡ Total de OSs detectadas: Não Informado",
+            "💣 Total de problemas detectados: Não Informado",
+            "🕒 Horário de execução: Não Informado",
+            "🚗 Modelos: Não Informado",
+            "🛠️ Seções: Não Informado",
+            "🏢 Oficinas: Não Informado",
+            # "🚨 OSs: Não Informado",
+        ]
+
+    # Obtem o resultado da regra
+    df_resultado_regra = pd.DataFrame(store_relatorio_regra["df_resultado_regra"])
+
+    # Obtem os dados do dataframe
+    total_os_detectadas = df_resultado_regra["os_num"].nunique()
+    html_total_os_detectadas = html.Div([html.Span("⚡ Total de OSs detectadas: "), html.Strong(total_os_detectadas)])
+
+    total_problemas = df_resultado_regra["DESCRICAO DO SERVICO"].nunique()
+    html_total_problemas = html.Div([html.Span("💣 Total de problemas detectados: "), html.Strong(total_problemas)])
+
+    data_execucao = pd.to_datetime(df_resultado_regra["executed_at"].max()).strftime("%d/%m/%Y %H:%M")
+    html_hora_execucao = html.Div([html.Span("🕒 Horário de execução: "), html.Strong(data_execucao)])
+
+    df_modelos = df_resultado_regra.groupby("DESCRICAO DO MODELO").size().reset_index(name="total")
+    df_modelos["PERC_TOTAL_OS"] = (df_modelos["total"] / df_modelos["total"].sum()) * 100
+    html_modelos = html.Div([html.Span("🚗 Modelos:"), html.Ul([html.Li(f"{m} = {t} ({p:.1f}%)") for m, t, p in zip(df_modelos["DESCRICAO DO MODELO"], df_modelos["total"], df_modelos["PERC_TOTAL_OS"])])])
+
+    df_secoes = df_resultado_regra.groupby("DESCRICAO DA SECAO").size().reset_index(name="total")
+    df_secoes["PERC_TOTAL_OS"] = (df_secoes["total"] / df_secoes["total"].sum()) * 100
+    html_secoes = html.Div([html.Span("🛠️ Seções:"), html.Ul([html.Li(f"{s} = {t} ({p:.1f}%)") for s, t, p in zip(df_secoes["DESCRICAO DA SECAO"], df_secoes["total"], df_secoes["PERC_TOTAL_OS"])])])
+
+    df_oficinas = df_resultado_regra.groupby("DESCRICAO DA OFICINA").size().reset_index(name="total")
+    df_oficinas["PERC_TOTAL_OS"] = (df_oficinas["total"] / df_oficinas["total"].sum()) * 100
+    html_oficinas = html.Div([html.Span("🏢 Oficinas:"), html.Ul([html.Li(f"{o} = {t} ({p:.1f}%)") for o, t, p in zip(df_oficinas["DESCRICAO DA OFICINA"], df_oficinas["total"], df_oficinas["PERC_TOTAL_OS"])])])
+
+    # df_os = df_resultado_regra.groupby("DESCRICAO DO SERVICO").size().reset_index(name="total")
+    # html_os = html.Div([html.Span("🚨 OSs:"), html.Ul([html.Li(f"{o} = {t}") for o, t in zip(df_os["DESCRICAO DO SERVICO"], df_os["total"])])])
+
+    return [
+        html_total_os_detectadas,
+        html_total_problemas,
+        html_hora_execucao,
+        html_modelos,
+        html_secoes,
+        html_oficinas,
+        # html_os,
+    ]
+
+##############################################################################
+# Callbacks para a tabela ####################################################
 ##############################################################################
 
 @callback(
@@ -243,6 +401,51 @@ def tabela_relatorio_regra(store_relatorio_regra):
         return df.to_dict(orient="records")
     else:
         return []
+    
+
+##############################################################################
+# Callbacks para o botão de detalhamento #####################################
+##############################################################################
+
+@callback(
+    Output("url", "href", allow_duplicate=True),
+    Input("tabela-relatorio-regra", "cellRendererData"),
+    Input("tabela-relatorio-regra", "virtualRowData"),
+    Input("store-relatorio-relatorio-regra", "data"),
+    prevent_initial_call=True,
+)
+def callback_botao_relatorio_detalhamento_regra(
+    linha, linha_virtual, store_relatorio_regra
+):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de visualização
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
+
+    if triggered_id != "cellRendererData":
+        return dash.no_update
+    
+    # Valida inputs (tabela e store)
+    if linha is None or linha_virtual is None:
+        return dash.no_update
+
+    if not store_relatorio_regra or not store_relatorio_regra["valido"]:
+        return dash.no_update
+    
+    # Pega a linha alvo
+    linha_alvo = linha_virtual[linha["rowIndex"]]
+    os_num = linha_alvo["os_num"]
+    min_dias_retrabalho = store_relatorio_regra["min_dias_retrabalho"]
+
+    url_params = [
+        f"os={os_num}",
+        f"mindiasretrabalho={min_dias_retrabalho}",
+    ]
+    url_params_str = "&".join(url_params)
+
+    return f"/retrabalho-por-os?{url_params_str}"
 
 ##############################################################################
 # Callbacks para o gráfico #####################################################
@@ -255,7 +458,12 @@ def graph_relatorio_regra_por_servico(store_relatorio_regra):
     if store_relatorio_regra and store_relatorio_regra["valido"]:
         df = pd.DataFrame(store_relatorio_regra["df_resultado_regra"])
         
+        # Agrega por problema
         df_agg = df.groupby("DESCRICAO DO SERVICO").size().reset_index(name="count").sort_values(by="count", ascending=False)
+
+        # Calcula o percentual de cada problema
+        df_agg["PERC_TOTAL_OS"] = (df_agg["count"] / df_agg["count"].sum()) * 100
+
         # Top 10
         df_agg_top_10 = df_agg.head(10)
 
@@ -265,19 +473,14 @@ def graph_relatorio_regra_por_servico(store_relatorio_regra):
         # Cria linha "Outros"
         df_demais_problemas = pd.DataFrame({
             "DESCRICAO DO SERVICO": ["Outros"],
-            "count": [total_outros]
+            "count": [total_outros],
+            "PERC_TOTAL_OS": (total_outros / df_agg["count"].sum()) * 100
         })
 
         # Junta
         df_agg_top_10 = pd.concat([df_agg_top_10, df_demais_problemas], ignore_index=True)
 
-        bar_chart = px.bar(
-        df_agg_top_10,
-        x="DESCRICAO DO SERVICO",
-        y="count"
-            )
-        return bar_chart
-
+        return crud_regra_graficos.gerar_grafico_top_10_problemas_relatorio_regras(df_agg_top_10)
     else:
         return go.Figure()
 
@@ -489,7 +692,7 @@ layout = dbc.Container(
                 dbc.Col(
                     html.H1(
                         [
-                            "Relatório de \u00a0",
+                            "Relatório da \u00a0",
                             html.Strong("regra"),
                             "\u00a0 de monitoramento do retrabalho",
                         ],
@@ -561,6 +764,95 @@ layout = dbc.Container(
             ]
         ),
         dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            dbc.Row(
+                                [
+                                    dbc.Col(DashIconify(icon="wpf:statistics", width=45), width="auto"),
+                                    dbc.Col(
+                                        dbc.Row(
+                                            [
+                                                html.H4(
+                                                    "Resumo da Regra",
+                                                    className="align-self-center",
+                                                ),
+                                            ]
+                                        ),
+                                        width=True,
+                                    ),
+                                ],
+                            ),
+                            dmc.Space(h=40),
+                            dbc.Row(
+                                [
+                                    dbc.ListGroup(
+                                        [
+                                            dbc.ListGroupItem("", id="card-regra-nome", active=True),
+                                            dbc.ListGroupItem("", id="card-regra-periodo-monitoramento"),
+                                            dbc.ListGroupItem("", id="card-regra-min-dias-retrabalho"),
+                                            dbc.ListGroupItem("", id="card-regra-modelos"),
+                                            dbc.ListGroupItem("", id="card-regra-secoes"),
+                                            dbc.ListGroupItem("", id="card-regra-oficinas"),
+                                            dbc.ListGroupItem("", id="card-regra-os"),
+                                            dbc.ListGroupItem("", id="card-regra-alvos-alerta"),
+                                            dbc.ListGroupItem("", id="card-regra-horario-envio"),
+                                            dbc.ListGroupItem("", id="card-regra-alvos-email"),
+                                            dbc.ListGroupItem("", id="card-regra-alvos-whatsapp"),
+                                        ]
+                                    )
+                                ]
+                            ),
+                        ],
+                        className="m-1",
+                    ),
+                    md=6,
+                ),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            dbc.Row(
+                                [
+                                    dbc.Col(DashIconify(icon="mdi:bomb", width=45), width="auto"),
+                                    dbc.Col(
+                                        dbc.Row(
+                                            [
+                                                html.H4(
+                                                    "Resumo do relatório",
+                                                    className="align-self-center",
+                                                ),
+                                            ]
+                                        ),
+                                        width=True,
+                                    ),
+                                ],
+                            ),
+                            dmc.Space(h=40),
+                            dbc.Row(
+                                [
+                                    dbc.ListGroup(
+                                        [
+                                            dbc.ListGroupItem("", id="card-relatorio-resultado-total-os-detectadas", active=True),
+                                            dbc.ListGroupItem("", id="card-relatorio-resultado-total-problemas-detectados"),
+                                            dbc.ListGroupItem("", id="card-relatorio-resultado-hora-execucao-regra"),
+                                            dbc.ListGroupItem("", id="card-relatorio-resultado-modelos"),
+                                            dbc.ListGroupItem("", id="card-relatorio-resultado-secoes"),
+                                            dbc.ListGroupItem("", id="card-relatorio-resultado-oficinas"),
+                                            # dbc.ListGroupItem("", id="card-relatorio-resultado-os"),
+                                        ]
+                                    ),
+                                ]
+                            ),
+                        ],
+                        className="m-1",
+                    ),
+                    md=6,
+                ),
+            ],
+        ),
+        dmc.Space(h=40),
         # Gráfico da Regra por Serviço
         dmc.Space(h=30),
         dbc.Row(
@@ -570,7 +862,7 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "Quantitativo da frota que teve problema e retrabalho por modelo",
+                                "Top 10 problemas detectados pela regra",
                                 className="align-self-center",
                             ),
                         ]
@@ -589,7 +881,7 @@ layout = dbc.Container(
                     dbc.Row(
                         [
                             html.H4(
-                                "OSs filtradas pela regra",
+                                "OSs detectadas pela regra",
                                 className="align-self-center",
                             ),
                         ]

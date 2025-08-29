@@ -176,12 +176,13 @@ def cb_botao_apagar_regra(linha, linha_virtual):
     dados_regra = linha_virtual[linha["rowIndex"]]
     nome_regra = dados_regra["nome"]
     id_regra = dados_regra["id"]
+    dia_ultimo_relatorio = dados_regra["dia_ultimo_relatorio"]
 
     # Extraí a ação a ser feita
     acao = linha["colId"]
 
     if acao == "acao_relatorio":
-        return f"/regra-relatorio?id_regra={id_regra}", dash.no_update, dash.no_update
+        return f"/regra-relatorio?id_regra={id_regra}&data_relatorio={dia_ultimo_relatorio}", dash.no_update, dash.no_update
     elif acao == "acao_editar":
         return f"/regra-editar?id_regra={id_regra}", dash.no_update, dash.no_update
     elif acao == "acao_apagar":

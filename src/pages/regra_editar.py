@@ -755,10 +755,6 @@ def testa_regra_monitoramento_retrabalho_editar_regra(
                 nome_regra,
                 data_periodo_regra,
                 min_dias,
-                lista_modelos,
-                lista_oficinas,
-                lista_secaos,
-                lista_os,
                 wpp_tel,
             )
 
@@ -772,10 +768,6 @@ def testa_regra_monitoramento_retrabalho_editar_regra(
                 nome_regra,
                 data_periodo_regra,
                 min_dias,
-                lista_modelos,
-                lista_oficinas,
-                lista_secaos,
-                lista_os,
                 email_destino,
             )
 
@@ -1127,7 +1119,7 @@ layout = dbc.Container(
                         children=DashIconify(icon="material-symbols:error-rounded", width=128, height=128),
                     ),
                     dmc.Title("Erro!", order=1),
-                    dmc.Text("Ocorreu um erro ao salvar a regra. Verifique se a regra possui:"),
+                    dmc.Text("Ocorreu um erro ao atualizar a regra. Verifique se a regra possui:"),
                     dmc.List(
                         [
                             dmc.ListItem("Nome da regra;"),
@@ -1165,7 +1157,7 @@ layout = dbc.Container(
                         children=DashIconify(icon="material-symbols:check-circle-rounded", width=128, height=128),
                     ),
                     dmc.Title("Sucesso!", order=1),
-                    dmc.Text("A regra foi salva com sucesso."),
+                    dmc.Text("A regra foi atualizada com sucesso."),
                     dmc.Group(
                         [
                             dmc.Button(

@@ -20,6 +20,7 @@ WP_ZAPI_URL = os.getenv("WP_ZAPI_URL")
 WP_ZAPI_SEND_TEXT_URL = f"{WP_ZAPI_URL}/send-text"
 WP_ZAPI_SEND_LINK_URL = f"{WP_ZAPI_URL}/send-link"
 WP_ZAPI_TOKEN = os.getenv("WP_ZAPI_TOKEN")
+WP_ZAPI_LINK_IMAGE_URL = os.getenv("WP_ZAPI_LINK_IMAGE_URL")
 
 DASHBOARD_URL = os.getenv("DASHBOARD_URL")
 
@@ -52,22 +53,51 @@ def formatar_telefone(numero_br):
 # Classe do serviço
 class CRUDWppTestService(object):
 
-    def get_wpp_header(
-        self, nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
-    ):
-        regra_str = f"""
-----
-🚨 *REGRA*: {nome_regra}
-* Período da Regra: {data_periodo_regra}
-* Mínimo de dias para Retrabalho: {min_dias}
-* Modelos: {", ".join(lista_modelos)}
-* Oficinas: {", ".join(lista_oficinas)}
-* Seções: {", ".join(lista_secaos)}
-* OS: {", ".join(lista_os)}
-* Total de OS detectadas: {num_os}
-----
+    def build_msg_header(self, df, nome_regra, num_os, data_periodo_regra, min_dias):
+        # Mensagem Inicial
+        msg_str = f"""----------
+⚡ *REGRA*: {nome_regra}
+----------
+🕒 Período de análise da regra: {data_periodo_regra}
+🔄 Mínimo de dias para retrabalho: {min_dias}
+🚨 Total de OS detectadas: {num_os}
 """
-        return regra_str
+
+        # Computa o número de OS por status
+        df_status_agg = df.groupby("status_os").size().reset_index(name="total")
+        df_status_agg["PERC_TOTAL_OS"] = (df_status_agg["total"] / df_status_agg["total"].sum()) * 100
+
+        for _, row in df_status_agg.iterrows():
+            status_os = row["status_os"]
+            total = row["total"]
+            perc_total_os = row["PERC_TOTAL_OS"]
+            msg_str += f"* {status_os}: {total} ({perc_total_os:.1f}%)\n"
+
+        return msg_str
+    
+
+    def build_msg_top_10_problemas(self, df, nome_regra, num_os, data_periodo_regra, min_dias):
+        # Top 10 problemas
+        msg_str = "----------\n"
+        msg_str += "💣 Top 10 Problemas Encontrados:\n"
+        msg_str += "----------\n"
+        
+        df_problema_agg = df.groupby("DESCRICAO DO SERVICO").size().reset_index(name="total").sort_values(by="total", ascending=False)
+        df_problema_agg["PERC_TOTAL_OS"] = (df_problema_agg["total"] / df_problema_agg["total"].sum()) * 100
+        df_problema_agg = df_problema_agg.head(10)
+        for _, row in df_problema_agg.iterrows():
+            problema = row["DESCRICAO DO SERVICO"]
+            total = row["total"]
+            perc_total_os = row["PERC_TOTAL_OS"]
+            msg_str += f"* {problema}: {total} ({perc_total_os:.1f}%)\n"
+
+        return msg_str
+    
+    def build_msg_link_relatorio(self):
+        link_url = f"{DASHBOARD_URL}/regra-relatorio?id_regra=DEFINIR_AO_CRIAR=dia=DEFINIR_AO_EXECUTAR"
+        msg_str = f"🔗 Relatório: {link_url}"
+        
+        return msg_str, link_url
 
     def get_wpp_problema_header(self, nome_problema, numero_os):
         secao_str = f"""💣 Problema: {nome_problema} / Total de OS: {numero_os}"""
@@ -101,20 +131,20 @@ class CRUDWppTestService(object):
         self,
         msg_str,
         title_str,
-        link_description_str,
         link_str,
+        link_description_str,
         telefone_destino,
     ):
         payload = {
             "phone": telefone_destino,
             "message": msg_str,
+            "image": WP_ZAPI_LINK_IMAGE_URL,
             "title": title_str,
+            "linkUrl": link_str,
             "linkDescription": link_description_str,
-            "link": link_str,
         }
 
         payload_json = json.dumps(payload)
-        print("MANDANDO MENSAGEM:")
         print(payload_json)
         response = requests.post(WP_ZAPI_SEND_LINK_URL, headers=headers, data=payload_json)
 
@@ -127,29 +157,16 @@ class CRUDWppTestService(object):
         nome_regra,
         data_periodo_regra,
         min_dias,
-        lista_modelos,
-        lista_oficinas,
-        lista_secaos,
-        lista_os,
         telefone_destino,
     ):
-        cabecalho_str = self.get_wpp_header(
-            nome_regra, num_os, data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
-        )
+        # Constrói a mensagem
+        msg_header = self.build_msg_header(df, nome_regra, num_os, data_periodo_regra, min_dias)
+        msg_top_10_problemas = self.build_msg_top_10_problemas(df, nome_regra, num_os, data_periodo_regra, min_dias)
+        msg_link_relatorio, link_relatorio_url = self.build_msg_link_relatorio()
+        title_link = f"Relatório da Regra {nome_regra}"
+        link_description_link = f"Acessar relatório"
 
-        # Envia o cabeçalho
-        self.__wpp_send_text(cabecalho_str, telefone_destino)
-
-        # Analisa cada problema
-        lista_problemas = df["DESCRICAO DO SERVICO"].unique()
-        for problema in lista_problemas:
-            df_problema = df[df["DESCRICAO DO SERVICO"] == problema]
-            problema_str = self.get_wpp_problema_header(problema, len(df_problema))
-
-            # Envia o problema
-            self.__wpp_send_text(problema_str, telefone_destino)
-
-            # Envia o conteúdo de cada OS
-            for _, row in df_problema.iterrows():
-                os_str, title_str, link_description_str, link_str = self.get_wpp_problema_content(row, min_dias)
-                self.__wpp_send_link(os_str, title_str, link_description_str, link_str, telefone_destino)
+        # Envia a mensagem
+        self.__wpp_send_text(msg_header, telefone_destino)
+        self.__wpp_send_text(msg_top_10_problemas, telefone_destino)
+        self.__wpp_send_link(msg_link_relatorio, title_link, link_relatorio_url, link_description_link, telefone_destino)
