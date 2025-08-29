@@ -372,7 +372,7 @@ def atualiza_dados_card_detalhamento_problema(data):
     df_problema_os_alvo = df_os[(df_os["problem_no"] == problem_no)]
 
     # Total de OS no problema
-    txt_total_os_no_problema = df_problema_os_alvo.shape[0]
+    txt_total_os_no_problema = df_problema_os_alvo["NUMERO DA OS"].nunique()
 
     # Data do início e fim do problema, primeiro arruma datas
     df_problema_os_alvo["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DA ABERTURA DA OS DT"], errors="coerce")
@@ -441,47 +441,117 @@ def preencher_timeline(data):
         return []
 
     os_numero = data["os_numero"]
-    min_dias = data["min_dias_retrabalho"]
     df_os = pd.DataFrame(data["df_os"]).copy()
 
     # Preenche a linha do tempo somente com o problema da OS atual
     problem_no = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["problem_no"].values[0]
     df_problema_os_alvo = df_os[(df_os["problem_no"] == problem_no)]
-    # df_problema_os_alvo_anterior = df_os[(df_os["problem_no"] == problem_no - 1)]
 
     problemas_ativos = df_problema_os_alvo.shape[0]
 
     # Problema atual (vem com line solid)
     timeline_items = []
-    for index, row in df_problema_os_alvo.iterrows():
-        titulo_item = dmc.Text(f"OS {row['NUMERO DA OS']}", size="lg")
+    lista_os_problema_alvo = df_problema_os_alvo["NUMERO DA OS"].unique()
+
+    for os in lista_os_problema_alvo:
+        df_os_do_problema = df_os[df_os["NUMERO DA OS"] == os]
+
+        os_status_os_emoji = df_os_do_problema["status_os_emoji"].values[0]
+        os_colaborador = ", ".join(df_os_do_problema["nome_colaborador"].unique())
+        os_total_colaboradores = len(df_os_do_problema["nome_colaborador"].unique())
+        os_data_inicio = df_os_do_problema["DATA DA ABERTURA LABEL"].values[0]
+
+        # Remove "Ainda não foi fechada" de lista_data_fim_problema
+        lista_os_data_fim_problema = df_os_do_problema["DATA DO FECHAMENTO LABEL"].unique()
+        lista_os_data_fim_problema = [d for d in lista_os_data_fim_problema if d != "Ainda não foi fechada"]
+        os_data_fim = "Ainda não foi fechada"
+        if len(lista_os_data_fim_problema) > 0:
+            os_data_fim = lista_os_data_fim_problema[0]
+
+        # Mesma lógica para o sintoma
+        lista_os_sintoma_problema = df_os_do_problema["SINTOMA"].unique()
+        lista_os_sintoma_valida = [s for s in lista_os_sintoma_problema if s != "Não Informado"]
+        os_sintoma = "Não Informado"
+        if len(lista_os_sintoma_valida) > 0:
+            os_sintoma = ", ".join(lista_os_sintoma_valida)
+
+        # Mesma lógica para a correção
+        lista_os_correcao_problema = df_os_do_problema["CORRECAO"].unique()
+        lista_os_correcao_valida = [c for c in lista_os_correcao_problema if c != "Não Informado"]
+        os_correcao = "Não Informado"
+        if len(lista_os_correcao_valida) > 0:
+            os_correcao = ", ".join(lista_os_correcao_valida)
+
+        titulo_item = dmc.Text(f"OS {os_numero}", size="lg")
         item_body = dbc.Row(
             [
-                # dmc.Text(row["status_os"], size="sm", className="text-muted"),
-                dmc.Text("🧑‍🔧 Colaborador: " + row["nome_colaborador"], size="sm", className="text-muted"),
-                dmc.Text("🚩 Início: " + row["DATA DA ABERTURA LABEL"], size="sm", className="text-muted"),
-                dmc.Text("📌 Fim: " + row["DATA DO FECHAMENTO LABEL"], size="sm", className="text-muted"),
-                dmc.Text("💬 Correção: " + row["CORRECAO"], size="sm", className="text-muted"),
+                dmc.Text("🧑‍🔧 Colaborador: " + os_colaborador, size="sm", className="text-muted"),
+                dmc.Text("👥 Total de colaboradores: " + str(os_total_colaboradores), size="sm", className="text-muted"),
+                dmc.Text("🚩 Início: " + os_data_inicio, size="sm", className="text-muted"),
+                dmc.Text("📌 Fim: " + os_data_fim, size="sm", className="text-muted"),
+                dmc.Text("💡 Sintoma: " + os_sintoma, size="sm", className="text-muted"),
+                dmc.Text("💬 Correção: " + os_correcao, size="sm", className="text-muted"),
             ]
         )
 
         dmc_timeline_item = dmc.TimelineItem(
-            bullet=row["status_os_emoji"],
+            bullet=os_status_os_emoji,
             title=titulo_item,
             lineVariant="solid",
             children=item_body,
         )
 
         # Se for a OS atual, adiciona um highlight especial
-        if row["NUMERO DA OS"] == int(os_numero):
+        if int(os_numero) == int(os):
             dmc_timeline_item = dmc.TimelineItem(
-                bullet=row["status_os_emoji"],
+                bullet=os_status_os_emoji,
                 title=titulo_item,
                 lineVariant="solid",
                 children=dmc.Paper(withBorder=True, radius="lg", p="md", style={"backgroundColor": "#fff8e1"}, children=item_body),
             )
 
         timeline_items.append(dmc_timeline_item)
+
+        # # Pega as peças trocadas
+        # lista_pecas_problema = []
+        # for pecas_os in df_os_do_problema["pecas_trocadas_str"].unique():
+        #     if pecas_os != "Nenhuma":
+        #         lista_pecas_problema.extend(pecas_os.split("__SEP__"))
+
+        # Remove "Nenhuma" from lista_pecas_problema se houver alguma peca diferente de "Nenhuma"
+        # lista_pecas_problema_final = []
+        # lista_pecas_problema_sem_nenhuma = [p for p in lista_pecas_problema if p != "Nenhuma"]
+
+
+    # for index, row in df_problema_os_alvo.iterrows():
+    #     titulo_item = dmc.Text(f"OS {row['NUMERO DA OS']}", size="lg")
+    #     item_body = dbc.Row(
+    #         [
+    #             # dmc.Text(row["status_os"], size="sm", className="text-muted"),
+    #             dmc.Text("🧑‍🔧 Colaborador: " + row["nome_colaborador"], size="sm", className="text-muted"),
+    #             dmc.Text("🚩 Início: " + row["DATA DA ABERTURA LABEL"], size="sm", className="text-muted"),
+    #             dmc.Text("📌 Fim: " + row["DATA DO FECHAMENTO LABEL"], size="sm", className="text-muted"),
+    #             dmc.Text("💬 Correção: " + row["CORRECAO"], size="sm", className="text-muted"),
+    #         ]
+    #     )
+
+    #     dmc_timeline_item = dmc.TimelineItem(
+    #         bullet=row["status_os_emoji"],
+    #         title=titulo_item,
+    #         lineVariant="solid",
+    #         children=item_body,
+    #     )
+
+    #     # Se for a OS atual, adiciona um highlight especial
+    #     if row["NUMERO DA OS"] == int(os_numero):
+    #         dmc_timeline_item = dmc.TimelineItem(
+    #             bullet=row["status_os_emoji"],
+    #             title=titulo_item,
+    #             lineVariant="solid",
+    #             children=dmc.Paper(withBorder=True, radius="lg", p="md", style={"backgroundColor": "#fff8e1"}, children=item_body),
+    #         )
+
+    #     timeline_items.append(dmc_timeline_item)
 
     # Problema anterior (vem com line)
     # for index, row in df_problema_os_alvo_anterior.iterrows():

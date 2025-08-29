@@ -122,7 +122,7 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os(df, problem_no, buffe
 
 
 # Rotinas para gerar o gráfico de gantt
-def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, problem_no, buffer_dias=2):
+def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, problem_no, buffer_dias=1):
     """Gera o gráfico de gantt com o histórico do problema da OS"""
 
     # Adiciona categoria
@@ -135,11 +135,15 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
     # Seta colunas como dt
     df["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df["DATA DA ABERTURA DA OS DT"])
     df["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df["DATA DO FECHAMENTO DA OS DT"])
+    # Seta apenas das OS que não tem data de fechamento válida
+    # Porém, apenas para o caso em que não há outro tempo válido
+    mask_os_all_nat = df.groupby("NUMERO DA OS")["DATA DO FECHAMENTO DA OS DT"].transform(lambda grp: grp.isna().all())
+    df.loc[mask_os_all_nat, "DATA DO FECHAMENTO DA OS DT"] = pd.Timestamp.today().normalize()
 
     # Duração da OS
     df["duracao_dias"] = (df["DATA DO FECHAMENTO DA OS DT"] - df["DATA DA ABERTURA DA OS DT"]).dt.days
 
-    # Adiciona uma borda de 2 dias para facilitar a visualização
+    # Adiciona uma borda para facilitar a visualização
     border = pd.Timedelta(days=buffer_dias)
     df["DATA DA ABERTURA PAD"] = df["DATA DA ABERTURA DA OS DT"] - border
     df["DATA DO FECHAMENTO PAD"] = df["DATA DO FECHAMENTO DA OS DT"] + border
@@ -148,8 +152,32 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
     df_os_escolhida = df[df["NUMERO DA OS"] == int(os_numero)].copy()
     df_os_escolhida["CATEGORIA"] = "OS EM ANÁLISE"
 
+    # Agrega por número de OS
+    df_agg_os = (
+        df.groupby("NUMERO DA OS").agg(
+            {
+                "DATA DA ABERTURA DA OS DT": "min",
+                "DATA DO FECHAMENTO DA OS DT": "max",
+                "problem_no": "count",  # count how many rows
+            }
+        )
+        .rename(columns={"problem_no": "os_count"})
+        .reset_index()
+    )
+    border = pd.Timedelta(days=buffer_dias)
+    df_agg_os["DATA DA ABERTURA PAD"] = df_agg_os["DATA DA ABERTURA DA OS DT"] - border
+    df_agg_os["DATA DO FECHAMENTO PAD"] = df_agg_os["DATA DO FECHAMENTO DA OS DT"] + border
+
+    # Adiciona labels e duração
+    df_agg_os["problem_no_label"] = "OS " + df_agg_os["NUMERO DA OS"].astype(str)
+    df_agg_os["duracao_dias"] = (df_agg_os["DATA DO FECHAMENTO DA OS DT"] - df_agg_os["DATA DA ABERTURA DA OS DT"]).dt.days
+
+    # Adiciona categoria
+    df_agg_os["CATEGORIA"] = "OS DOS CASOS"
+    df_agg_os["TARGET"] = "CASOS"
+
     # Agrega por problema e calcula a data de início e fim
-    df_agg = (
+    df_agg_problema = (
         df.groupby("problem_no")
         .agg(
             {
@@ -164,19 +192,19 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
 
     # Adiciona uma borda de 2 dias + 1 dia (para não sobrepor) para facilitar a visualização
     border = pd.Timedelta(days=buffer_dias + 1)
-    df_agg["DATA DA ABERTURA PAD"] = df_agg["DATA DA ABERTURA DA OS DT"] - border
-    df_agg["DATA DO FECHAMENTO PAD"] = df_agg["DATA DO FECHAMENTO DA OS DT"] + border
+    df_agg_problema["DATA DA ABERTURA PAD"] = df_agg_problema["DATA DA ABERTURA DA OS DT"] - border
+    df_agg_problema["DATA DO FECHAMENTO PAD"] = df_agg_problema["DATA DO FECHAMENTO DA OS DT"] + border
 
     # Adiciona labels e duração
-    df_agg["problem_no_label"] = "Caso " + df_agg["problem_no"].astype(str)
-    df_agg["duracao_dias"] = (df_agg["DATA DO FECHAMENTO DA OS DT"] - df_agg["DATA DA ABERTURA DA OS DT"]).dt.days
+    df_agg_problema["problem_no_label"] = "Caso " + df_agg_problema["problem_no"].astype(str)
+    df_agg_problema["duracao_dias"] = (df_agg_problema["DATA DO FECHAMENTO DA OS DT"] - df_agg_problema["DATA DA ABERTURA DA OS DT"]).dt.days
 
     # Adiciona categoria
-    df_agg["CATEGORIA"] = "DURAÇÃO DO CASO"
-    df_agg["TARGET"] = "CASOS"
+    df_agg_problema["CATEGORIA"] = "DURAÇÃO DO CASO"
+    df_agg_problema["TARGET"] = "CASOS"
 
     # Merge
-    df_merge = pd.concat([df_os_escolhida, df, df_agg])
+    df_merge = pd.concat([df_os_escolhida, df_agg_os, df_agg_problema])
 
     # Seta 1 para os casos que não tem total de OS
     df_merge["os_count"] = df_merge["os_count"].fillna(1)
@@ -218,8 +246,8 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
             )
         else:
             tr.hovertemplate = (
-                "CASO: %{customdata[0]}<br>"
                 "OS: %{customdata[5]}<br>"
+                "TOTAL DE OS: %{customdata[3]}<br>"
                 "INÍCIO: %{customdata[1]|%H:%M %d/%m/%Y}<br>"
                 "FIM: %{customdata[2]|%H:%M %d/%m/%Y}<br>"
                 "<extra></extra>"

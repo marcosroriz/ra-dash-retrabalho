@@ -100,13 +100,13 @@ class OSService:
         ON 
             os."COLABORADOR QUE EXECUTOU O SERVICO" = cfo.cod_colaborador
         ORDER BY
-            os."DATA DO FECHAMENTO DA OS" DESC
+            os."DATA DA ABERTURA DA OS" DESC
         """
         df_os_detalhada = pd.read_sql(query, self.pgEngine)
 
 
         # Formata datas de abertura
-        df_os_detalhada["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_os_detalhada["DATA DA ABERTURA DA OS"])
+        df_os_detalhada["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_os_detalhada["DATA DA ABERTURA DA OS"], errors="coerce")
         df_os_detalhada["DATA DA ABERTURA LABEL"] = df_os_detalhada["DATA DA ABERTURA DA OS DT"].dt.strftime(
             "%d/%m/%Y %H:%M"
         )
