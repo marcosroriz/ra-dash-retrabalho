@@ -11,118 +11,14 @@ import numpy as np
 # Imports gráficos
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Imports do tema
 import tema
 
 
-# Rotinas para gerar os Gráficos
-def gerar_grafico_gantt_historico_problema_detalhamento_os(df, problem_no, buffer_dias=2):
-    """Gera o gráfico de gantt com o histórico do problema da OS"""
-
-    # Seta colunas como dt
-    df["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df["DATA DA ABERTURA DA OS DT"])
-    df["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df["DATA DO FECHAMENTO DA OS DT"])
-
-    # Agrega por problema e calcula a data de início e fim
-    df_agg = (
-        df.groupby("problem_no")
-        .agg(
-            {
-                "DATA DA ABERTURA DA OS DT": "min",
-                "DATA DO FECHAMENTO DA OS DT": "max",
-                "problem_no": "count",  # count how many rows
-            }
-        )
-        .rename(columns={"problem_no": "os_count"})
-        .reset_index()
-    )
-
-    # Adiciona labels e duração
-    df_agg["problem_no_label"] = "Problema " + df_agg["problem_no"].astype(str)
-    df_agg["duracao_dias"] = (df_agg["DATA DO FECHAMENTO DA OS DT"] - df_agg["DATA DA ABERTURA DA OS DT"]).dt.days
-
-    # Adiciona uma borda de 2 dias para facilitar a visualização
-    border = pd.Timedelta(days=buffer_dias)
-    df_agg["DATA DA ABERTURA PAD"] = df_agg["DATA DA ABERTURA DA OS DT"] - border
-    df_agg["DATA DO FECHAMENTO PAD"] = df_agg["DATA DO FECHAMENTO DA OS DT"] + border
-
-    # Gerá o gráfico
-    # Ver + aqui: https://plotly.com/python/gantt/
-    fig = px.timeline(
-        df_agg,
-        x_start="DATA DA ABERTURA PAD",
-        x_end="DATA DO FECHAMENTO PAD",
-        y="problem_no_label",
-        color="problem_no_label",
-        color_discrete_sequence=tema.PALETA_CORES_DISCRETA,
-        custom_data=[
-            "problem_no",
-            "DATA DA ABERTURA DA OS DT",
-            "DATA DO FECHAMENTO DA OS DT",
-            "os_count",
-            "duracao_dias",
-        ],
-    )
-
-    fig.update_traces(
-        hovertemplate=(
-            "Problema: %{customdata[0]}<br>"
-            "Início: %{customdata[1]|%H:%M %d/%m/%Y}<br>"
-            "Fim: %{customdata[2]|%H:%M %d/%m/%Y}<br>"
-            "Total de OS: %{customdata[3]}<br>"
-            "Duração: %{customdata[4]} dias"
-            "<extra></extra>"
-        ),
-    )
-
-    fig.update_yaxes(
-        autorange="reversed",
-        title="",
-        # showticklabels=False
-    )
-
-    # # abre um “respiro” à esquerda e à direita para evitar sobreposição com o eixo y
-    # pad_label = pd.Timedelta(days=5)
-    # xmin = df_agg["DATA DA ABERTURA PAD"].min() - pad_label
-    # xmax = df_agg["DATA DO FECHAMENTO PAD"].max() + pad_label
-    # fig.update_xaxes(range=[xmin, xmax])
-
-    # deixa com cara de gantt e ajusta margens
-    fig.update_layout(
-        # margin=dict(l=240),
-        legend_title_text="Legenda"
-    )  # aumenta a margem esquerda se ainda estiver apertado
-
-    # Destaca o problema mencionado
-    target_label = f"Problema {problem_no}"
-    for tr in fig.data:
-        if tr.name == target_label:
-            tr.update(marker_line=dict(width=3, color="black"))
-            break
-
-    # get start/end from your aggregated dataframe
-    row = df_agg.loc[df_agg["problem_no"] == problem_no].iloc[0]
-    x0 = row["DATA DA ABERTURA PAD"]
-    x1 = row["DATA DO FECHAMENTO PAD"]
-    y_label = row["problem_no_label"]
-
-    # add label next to the bar
-    fig.add_annotation(
-        x=x1 + pd.Timedelta(days=1),  # 1 day to the right of end
-        y=y_label,
-        text="<em>Problema da OS</em>",
-        showarrow=False,
-        align="left",
-        xanchor="left",
-        yanchor="middle",
-    )
-
-    return fig
-
-
 # Rotinas para gerar o gráfico de gantt
-def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, problem_no, buffer_dias=1):
+def gerar_grafico_gantt_historico_problema_detalhamento_os(df, os_numero, problem_no, buffer_dias=1):
     """Gera o gráfico de gantt com o histórico do problema da OS"""
 
     # Adiciona categoria
@@ -154,7 +50,8 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
 
     # Agrega por número de OS
     df_agg_os = (
-        df.groupby("NUMERO DA OS").agg(
+        df.groupby("NUMERO DA OS")
+        .agg(
             {
                 "DATA DA ABERTURA DA OS DT": "min",
                 "DATA DO FECHAMENTO DA OS DT": "max",
@@ -170,7 +67,9 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
 
     # Adiciona labels e duração
     df_agg_os["problem_no_label"] = "OS " + df_agg_os["NUMERO DA OS"].astype(str)
-    df_agg_os["duracao_dias"] = (df_agg_os["DATA DO FECHAMENTO DA OS DT"] - df_agg_os["DATA DA ABERTURA DA OS DT"]).dt.days
+    df_agg_os["duracao_dias"] = (
+        df_agg_os["DATA DO FECHAMENTO DA OS DT"] - df_agg_os["DATA DA ABERTURA DA OS DT"]
+    ).dt.days
 
     # Adiciona categoria
     df_agg_os["CATEGORIA"] = "OS DOS CASOS"
@@ -197,7 +96,9 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
 
     # Adiciona labels e duração
     df_agg_problema["problem_no_label"] = "Caso " + df_agg_problema["problem_no"].astype(str)
-    df_agg_problema["duracao_dias"] = (df_agg_problema["DATA DO FECHAMENTO DA OS DT"] - df_agg_problema["DATA DA ABERTURA DA OS DT"]).dt.days
+    df_agg_problema["duracao_dias"] = (
+        df_agg_problema["DATA DO FECHAMENTO DA OS DT"] - df_agg_problema["DATA DA ABERTURA DA OS DT"]
+    ).dt.days
 
     # Adiciona categoria
     df_agg_problema["CATEGORIA"] = "DURAÇÃO DO CASO"
@@ -258,7 +159,7 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
 
     # Tamanho das barras no eixo Y
     fig.update_traces(width=0.3)
-    
+
     # Define o título da legenda
     fig.update_layout(
         legend_title_text="Legenda",
@@ -273,144 +174,190 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df, os_numero, pro
     return fig
 
 
-# Rotinas para gerar os Gráficos
-def gerar_grafico_gantt_historico_problema_detalhamento_os_v3(df, problem_no, buffer_dias=2):
-    """Gera o gráfico de gantt com o histórico do problema da OS"""
+def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, df_odometro, df_marcha_lenta):
+    """Gera o gráfico de histórico de eventos do problema da OS"""
 
-    # Adiciona categoria para as OS normais
-    df["CATEGORIA"] = "OS"
+    # Cria o gráfico de subplots
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        # subplot_titles=("Timeline", "Odômetro", "Marcha Lenta", "Uso Indevido do Pedal"),
+        # row_heights=[0.3, 0.23, 0.23, 0.23],
+        # specs=[[{"type": "xy"}], [{"type": "xy"}], [{"type": "xy"}], [{"type": "xy"}]],
+    )
 
-    # Adiciona labels
-    df["problem_no_label"] = "Caso " + df["problem_no"].astype(str)
-
-    # Seta colunas como dt
-    df["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df["DATA DA ABERTURA DA OS DT"])
-    df["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df["DATA DO FECHAMENTO DA OS DT"])
-
-    # Duração da OS
-    df["duracao_dias"] = (df["DATA DO FECHAMENTO DA OS DT"] - df["DATA DA ABERTURA DA OS DT"]).dt.days
-
-    # Adiciona uma borda de 2 dias para facilitar a visualização
-    border = pd.Timedelta(days=buffer_dias)
-    df["DATA DA ABERTURA PAD"] = df["DATA DA ABERTURA DA OS DT"] - border
-    df["DATA DO FECHAMENTO PAD"] = df["DATA DO FECHAMENTO DA OS DT"] + border
-
-    # Agrega por problema e calcula a data de início e fim
-    # df_agg vai ser a duração do caso, agregando todas as OS que compõe o caso
-    df_agg = (
-        df.groupby("problem_no")
-        .agg(
-            {
-                "DATA DA ABERTURA DA OS DT": "min",
-                "DATA DO FECHAMENTO DA OS DT": "max",
-                "problem_no": "count",  # count how many rows
-            }
+    # Adiciona dados do problema
+    for _, r in df_problema.iterrows():
+        fig.add_trace(
+            go.Scatter(
+                x=[r["DATA DA ABERTURA DA OS DT"], r["DATA DO FECHAMENTO DA OS DT"]],
+                y=[r["CLASSE"], r["CLASSE"]],
+                mode="markers+lines",
+                line=dict(width=48, color="#ccb271" if r["NUMERO DA OS"] != int(numero_os) else "#16707d"),
+                showlegend=False,
+                hoverinfo="text",
+                text=f"OS: {r['NUMERO DA OS']}<br>Abertura: {r['DATA DA ABERTURA DA OS DT']}<br>Fechamento: {r['DATA DO FECHAMENTO DA OS DT']}",
+            ),
+            row=1,
+            col=1,
         )
-        .rename(columns={"problem_no": "os_count"})
-        .reset_index()
-    )
 
-    # Adiciona labels e duração
-    df_agg["problem_no_label"] = "Caso " + df_agg["problem_no"].astype(str)
-    df_agg["duracao_dias"] = (df_agg["DATA DO FECHAMENTO DA OS DT"] - df_agg["DATA DA ABERTURA DA OS DT"]).dt.days
-
-    # Adiciona uma borda de 2 dias para facilitar a visualização
-    border = pd.Timedelta(days=buffer_dias)
-    df_agg["DATA DA ABERTURA PAD"] = df_agg["DATA DA ABERTURA DA OS DT"] - border
-    df_agg["DATA DO FECHAMENTO PAD"] = df_agg["DATA DO FECHAMENTO DA OS DT"] + border
-
-    # Adiciona categoria
-    df_agg["CATEGORIA"] = "DURAÇÃO DO CASO"
-
-    # Merge
-    df_merge = pd.concat([df, df_agg])
-
-    # Ordena
-    df_merge = df_merge.sort_values(by=["CATEGORIA", "problem_no_label"])
-
-    # Gerá o gráfico
-    # Ver + aqui: https://plotly.com/python/gantt/
-    fig = px.timeline(
-        df_merge,
-        x_start="DATA DA ABERTURA PAD",
-        x_end="DATA DO FECHAMENTO PAD",
-        y="problem_no_label",
-        color="CATEGORIA",
-        color_discrete_sequence=["#f8e8be", "#ccb271"],
-        custom_data=[
-            "problem_no",
-            "DATA DA ABERTURA DA OS DT",
-            "DATA DO FECHAMENTO DA OS DT",
-            "os_count",
-            "duracao_dias",
-            "NUMERO DA OS",
-        ],
-    )
-
-    fig.update_traces(
-        hovertemplate=(
-            "Caso: %{customdata[0]}<br>"
-            "Início: %{customdata[1]|%H:%M %d/%m/%Y}<br>"
-            "Fim: %{customdata[2]|%H:%M %d/%m/%Y}<br>"
-            "Total de OS: %{customdata[3]}<br>"
-            "Duração: %{customdata[4]} dias"
-            "<extra></extra>"
+    # Adiciona dados do odômetro
+    df_odometro["travel_date"] = pd.to_datetime(df_odometro["travel_date"])
+    fig.add_trace(
+        go.Scatter(
+            x=df_odometro["travel_date"],
+            y=df_odometro["CLASSE"],
+            mode="markers+text",
+            marker=dict(
+                size=df_odometro["distance_km"],  # Proportional size
+                sizemode="area",
+                sizeref=2.0 * max(df_odometro["distance_km"]) / (40.0**2),
+                sizemin=5,
+                color="lightblue",
+                # line=dict(width=1, color='darkblue')
+            ),
+            text=[f"{d:.0f}" for d in df_odometro["distance_km"]],
+            textposition="middle center",
+            hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
         ),
+        row=2,
+        col=1,
     )
 
-    fig.update_yaxes(
-        # autorange="reversed",
-        title="",
-        # showticklabels=False
+    # Adiciona dados do evento
+    df_marcha_lenta["travel_date"] = pd.to_datetime(df_marcha_lenta["travel_date"])
+    
+    fig.add_trace(
+        go.Scatter(
+            x=df_marcha_lenta["travel_date"],
+            y=df_marcha_lenta["CLASSE"],
+            mode="markers+text",
+            marker=dict(
+                size=df_marcha_lenta["total_evts"],  # Proportional size
+                sizemode="area",
+                sizeref=2.0 * max(df_marcha_lenta["total_evts"]) / (40.0**2),
+                sizemin=5,
+                color="lightblue",
+                # line=dict(width=1, color='darkblue')
+            ),
+            text=[f"{d}" for d in df_marcha_lenta["total_evts"]],
+            textposition="middle center",
+            hovertemplate="Data: %{x}<br>Total de Eventos: %{text}<extra></extra>",
+        ),
+        row=3,
+        col=1,
     )
 
-    # # abre um “respiro” à esquerda e à direita para evitar sobreposição com o eixo y
-    # pad_label = pd.Timedelta(days=5)
-    # xmin = df_agg["DATA DA ABERTURA PAD"].min() - pad_label
-    # xmax = df_agg["DATA DO FECHAMENTO PAD"].max() + pad_label
-    # fig.update_xaxes(range=[xmin, xmax])
 
-    # deixa com cara de gantt e ajusta margens
     fig.update_layout(
-        # margin=dict(l=240),
-        legend_title_text="Legenda"
-    )  # aumenta a margem esquerda se ainda estiver apertado
-
-    # Destaca o problema mencionado
-    # fig.update_traces(marker_line=dict(width=1, color="black"))
-
-    # target_label = f"Caso {problem_no}"
-    for tr in fig.data:
-        if tr.name == "DURAÇÃO DO CASO":  # só na categoria desejada
-            # Cria um array de linhas padrão
-            line_colors = ["rgba(0,0,0,0)"] * len(tr.x)
-            line_widths = [0] * len(tr.x)
-
-            # Marca só o ponto correspondente
-            for i, d in enumerate(tr.customdata):
-                if d[0] == problem_no:  # customdata[0] = problem_no
-                    line_colors[i] = "black"
-                    line_widths[i] = 3
-
-            # Aplica individualmente
-            tr.marker.line.color = line_colors
-            tr.marker.line.width = line_widths
-
-    # get start/end from your aggregated dataframe
-    row = df_agg.loc[df_agg["problem_no"] == problem_no].iloc[0]
-    x0 = row["DATA DA ABERTURA PAD"]
-    x1 = row["DATA DO FECHAMENTO PAD"]
-    y_label = row["problem_no_label"]
-
-    # add label next to the bar
-    fig.add_annotation(
-        x=x1 + pd.Timedelta(days=1),  # 1 day to the right of end
-        y=y_label,
-        text="<em>Caso da OS</em>",
-        showarrow=False,
-        align="left",
-        xanchor="left",
-        yanchor="middle",
+        height=600,
+        margin=dict(l=150),  # ← margem esquerda aumentada
+        # xaxis=dict(
+        #     title="Data",
+        #     showline=True,
+        #     showgrid=True,
+        #     zeroline=False,
+        # ),
     )
+
+    # Ajuste dos eixos para garantir alinhamento
+    # fig.update_yaxes(matches='y', row=1, col=1)
+    # fig.update_yaxes(matches='y', row=2, col=1)
+
+    
+    fig.update_layout(showlegend=False)
+
+    
+    # # Ajustes de layout
+    # fig.update_layout(
+    #     height=800,
+    #     margin=dict(t=40, b=80),  # margem inferior aumentada para evitar corte
+    #     xaxis=dict(
+    #         title="Data",
+    #         showline=True,
+    #         showgrid=True,
+    #         zeroline=False,
+    #     ),
+    # )
+
+    # # Garante que o eixo X seja visível em todos os subplots compartilhados
+    # fig.update_xaxes(
+    #     showline=True,
+    #     linewidth=1,
+    #     linecolor='black',
+    #     showgrid=True,
+    #     zeroline=False
+    # )
 
     return fig
+
+
+#     fig.add_trace(
+#         go.Scatter(
+#             x=df["travel_date"],
+#             y=["Odômetro"] * len(df),  # Constant y to align dots on the same line
+#             mode="markers+text",
+#             marker=dict(
+#                 size=df["distance_km"],  # Proportional size
+#                 sizemode="area",
+#                 sizeref=2.0 * max(df["distance_km"]) / (40.0**2),  # scale for reasonable max dot size
+#                 sizemin=5,
+#                 color="lightblue",
+#                 # line=dict(width=1, color='darkblue')
+#             ),
+#             text=[f"{d:.2f}km" for d in df["distance_km"]],
+#             textposition="middle center",
+#             hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
+#         ),
+#         row=2,
+#         col=1,
+#     )
+
+#     fig.add_trace(
+#         go.Scatter(
+#             x=df_marcha_lenta["travel_date"],
+#             y=["Marcha Lenta"] * len(df_marcha_lenta),  # Constant y to align dots on the same line
+#             mode="markers+text",
+#             marker=dict(
+#                 size=df_marcha_lenta["count"],  # Proportional size
+#                 sizemode="area",
+#                 sizeref=2.0 * max(df_marcha_lenta["count"]) / (40.0**2),  # scale for reasonable max dot size
+#                 sizemin=5,
+#                 color="orange",
+#                 # line=dict(width=1, color='darkblue')
+#             ),
+#             text=[f"{d}" for d in df_marcha_lenta["count"]],
+#             textposition="middle center",
+#             hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
+#         ),
+#         row=3,
+#         col=1,
+#     )
+
+#     fig.add_trace(
+#         go.Scatter(
+#             x=df_2["travel_date"],
+#             y=["USO INDEVIDO DO PEDAL"] * len(df_2),  # Constant y to align dots on the same line
+#             mode="markers+text",
+#             marker=dict(
+#                 size=df_2["count"],  # Proportional size
+#                 sizemode="area",
+#                 sizeref=2.0 * max(df_2["count"]) / (40.0**2),  # scale for reasonable max dot size
+#                 sizemin=5,
+#                 color="orange",
+#                 # line=dict(width=1, color='darkblue')
+#             ),
+#             text=[f"{d}" for d in df_2["count"]],
+#             textposition="middle center",
+#             hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
+#         ),
+#         row=4,
+#         col=1,
+#     )
+#     fig.update_layout(showlegend=False)
+
+
+#     fig

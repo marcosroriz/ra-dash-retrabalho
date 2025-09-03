@@ -210,6 +210,9 @@ def callback_recupera_os_armazena_store_output(data):
     saida["modelo_veiculo"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["DESCRICAO DO MODELO"].values[0]
     saida["problema_veiculo"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["DESCRICAO DO SERVICO"].values[0]
     saida["num_problema_os"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["problem_no"].values[0]
+    
+    # Asset ID (útil para acelerar as queries)
+    saida["vec_asset_id"] = str(os_service.obtem_asset_id_veiculo(saida["codigo_veiculo"]))
 
     return saida
 
@@ -597,7 +600,7 @@ def preencher_tabela(data):
 
 
 ##############################################################################
-# Callbacks para o gantt #####################################################
+# Callbacks para os gráficos #################################################
 ##############################################################################
 
 
@@ -606,7 +609,7 @@ def preencher_tabela(data):
     Output("graph-gantt-historico-problema-detalhamento-os", "figure"),
     Input("store-output-dados-detalhamento-os", "data"),
 )
-def preencher_gantt(data):
+def plota_grafico_gantt_retrabalho_os(data):
     # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
     if not data or not data["sucesso"]:
         return go.Figure()
@@ -617,7 +620,78 @@ def preencher_gantt(data):
     problem_no = data["num_problema_os"]
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_gantt_historico_problema_detalhamento_os_v2(df_os, os_numero, problem_no)
+    fig = os_graficos.gerar_grafico_gantt_historico_problema_detalhamento_os(df_os, os_numero, problem_no)
+
+    return fig
+
+
+def preenche_dias_sem_eventos(df, data_inicio_problema, data_fim_problema, vec_asset_id, clazz):
+    lista_dias_evt = df['travel_date'].astype(str).unique()
+    print(lista_dias_evt)
+    for dia in pd.date_range(data_inicio_problema, data_fim_problema, freq='D'):
+        dia_str = dia.strftime("%Y-%m-%d")
+        print(dia_str, dia_str in lista_dias_evt)
+        if dia_str not in lista_dias_evt:
+            # Adiciona linha com zero
+            df_linha = pd.DataFrame({"AssetId": [vec_asset_id], "travel_date": [dia_str], "total_evts": [0], "CLASSE": [clazz]})
+            df = pd.concat([df, df_linha], ignore_index=True)
+
+    print(df)
+    return df
+
+
+# Preenche o gráfico de eventos com os dados do store
+@callback(
+    Output("graph-historico-eventos-detalhamento-os", "figure"),
+    Input("store-output-dados-detalhamento-os", "data"),
+)
+def plota_grafico_eventos_retrabalho_os(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["sucesso"]:
+        return go.Figure()
+
+    # Obtem os dados do estado
+    df_os = pd.DataFrame(data["df_os"])
+    codigo_veiculo = data["codigo_veiculo"]
+    os_numero = data["os_numero"]
+    problem_no = data["num_problema_os"]
+    vec_asset_id = data["vec_asset_id"]
+
+    # Pega as OS do problema atual
+    df_problema_os_alvo = os_service.obtem_os_problema_atual(df_os, problem_no)
+
+    # Pega o início e fim do problema
+    data_inicio_problema = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].min()
+    data_fim_problema = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].max()
+    data_inicio_problema_str = data_inicio_problema.strftime("%Y-%m-%d %H:%M:%S")
+    data_fim_problema_str = data_fim_problema.strftime("%Y-%m-%d %H:%M:%S")
+
+    print("DF_PROBLEMA")
+    print(df_problema_os_alvo)
+
+    # # Obtem os dados do odômetro
+    df_odometro = os_service.obtem_odometro_veiculo(vec_asset_id, data_inicio_problema_str, data_fim_problema_str)
+    print("DF_ODOMETRO")
+    print(df_odometro)
+
+    # Marcha Lenta
+    df_marcha_lenta = os_service.obtem_historico_evento_veiculo(vec_asset_id, "ra_marcha_lenta", data_inicio_problema_str, data_fim_problema_str)
+    print("DF_MARCHA_LENTA")
+    print(df_marcha_lenta)
+
+    # Preenche os dados
+    df_marcha_lenta = preenche_dias_sem_eventos(df_marcha_lenta, data_inicio_problema, data_fim_problema, vec_asset_id, "ra_marcha_lenta")
+    # df_os[(df_os["problem_no"] == int(problem_no))].copy()
+    # df_problema_os_alvo["CLASSE"] = "OS"
+
+    # # Formata datas de abertura
+    # df_problema_os_alvo["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DA ABERTURA DA OS"], errors="coerce")
+    # df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DO FECHAMENTO DA OS"], errors="coerce")
+    
+
+
+    # Gera o gráfico
+    fig = os_graficos.gerar_grafico_historico_eventos_detalhamento_os(os_numero, df_problema_os_alvo, df_odometro, df_marcha_lenta)
 
     return fig
 
@@ -874,7 +948,28 @@ layout = dbc.Container(
             align="center",
         ),
         dcc.Graph(id="graph-gantt-historico-problema-detalhamento-os"),
-        dmc.Space(h=20),
+        dmc.Space(h=40),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="fa6-solid:chart-gantt", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Detalhamento de eventos ao longo da OS ",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_detalhamento_os("detalhe-grafico-eventos-os"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dcc.Graph(id="graph-historico-eventos-detalhamento-os"),
+        dmc.Space(h=40),
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),

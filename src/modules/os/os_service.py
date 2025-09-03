@@ -104,14 +104,15 @@ class OSService:
         """
         df_os_detalhada = pd.read_sql(query, self.pgEngine)
 
-
         # Formata datas de abertura
-        df_os_detalhada["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_os_detalhada["DATA DA ABERTURA DA OS"], errors="coerce")
+        df_os_detalhada["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(
+            df_os_detalhada["DATA DA ABERTURA DA OS"], errors="coerce"
+        )
         df_os_detalhada["DATA DA ABERTURA LABEL"] = df_os_detalhada["DATA DA ABERTURA DA OS DT"].dt.strftime(
             "%d/%m/%Y %H:%M"
         )
 
-        # Formata datas de fechamento 
+        # Formata datas de fechamento
         # Cria máscara para valores válidos (pois pode ter valores nulos - OS que não foram fechadas)
         mask = df_os_detalhada["DATA DO FECHAMENTO DA OS"].notna() & (df_os_detalhada["DATA DO FECHAMENTO DA OS"] != "")
 
@@ -121,16 +122,18 @@ class OSService:
         )
 
         # Formata os válidos
-        df_os_detalhada.loc[mask, "DATA DO FECHAMENTO LABEL"] = df_os_detalhada.loc[mask, "DATA DO FECHAMENTO DA OS DT"].dt.strftime(
-            "%d/%m/%Y %H:%M"
-        )
+        df_os_detalhada.loc[mask, "DATA DO FECHAMENTO LABEL"] = df_os_detalhada.loc[
+            mask, "DATA DO FECHAMENTO DA OS DT"
+        ].dt.strftime("%d/%m/%Y %H:%M")
 
         # Para os inválidos (NaN ou vazio), seta o label fixo
         df_os_detalhada.loc[~mask, "DATA DO FECHAMENTO LABEL"] = "Ainda não foi fechada"
 
         # Preenche valores nulos do colaborador
         df_os_detalhada["nome_colaborador"] = df_os_detalhada["nome_colaborador"].fillna("Não Informado")
-        df_os_detalhada["nome_colaborador"] = df_os_detalhada["nome_colaborador"].apply(lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)    )
+        df_os_detalhada["nome_colaborador"] = df_os_detalhada["nome_colaborador"].apply(
+            lambda x: re.sub(r"(?<!^)([A-Z])", r" \1", x)
+        )
 
         # Preenche valores nulos de peças
         df_os_detalhada["total_valor"] = df_os_detalhada["total_valor"].fillna(0)
@@ -150,3 +153,106 @@ class OSService:
         df_os_detalhada["status_os_emoji"] = df_os_detalhada.apply(definir_emoji_status, axis=1)
 
         return df_os_detalhada
+
+    def obtem_os_problema_atual(self, df, problem_no):
+        # Pega as OS do problema atual
+        df_problema_os_alvo = df[(df["problem_no"] == int(problem_no))].copy()
+        df_problema_os_alvo["CLASSE"] = "OS"
+
+        # Formata datas de abertura
+        df_problema_os_alvo["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(
+            df_problema_os_alvo["DATA DA ABERTURA DA OS"], errors="coerce"
+        )
+        df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(
+            df_problema_os_alvo["DATA DO FECHAMENTO DA OS"], errors="coerce"
+        )
+
+        # Agrupa por número de OS
+        df_agg_problema_alvo = (
+            df_problema_os_alvo.groupby("NUMERO DA OS")
+            .agg(
+                {
+                    "DATA DA ABERTURA DA OS DT": "min",
+                    "DATA DO FECHAMENTO DA OS DT": "max",
+                    "problem_no": "count",
+                }
+            )
+            .rename(columns={"problem_no": "os_count"})
+            .reset_index()
+        )
+        # Calcula tempo em dias
+        df_agg_problema_alvo["DIAS"] = np.ceil(
+            (
+                df_agg_problema_alvo["DATA DO FECHAMENTO DA OS DT"] - df_agg_problema_alvo["DATA DA ABERTURA DA OS DT"]
+            ).dt.total_seconds()
+            / (24 * 3600)
+        ).astype(int)
+
+        # Define a classe
+        df_agg_problema_alvo["CLASSE"] = "OS"
+
+        # Retorna o df agregado
+        return df_agg_problema_alvo
+
+    def obtem_asset_id_veiculo(self, vec_codigo_id):
+        """Retorna o AssetId do veículo com base no código do veículo"""
+        query = f"""
+                SELECT 
+                    va."AssetId"
+                FROM veiculos_api va
+                WHERE 
+                    va."Description" = '{vec_codigo_id}'
+                LIMIT 1;
+            """
+        df = pd.read_sql(query, self.pgEngine)
+        
+        if not df.empty:
+            return df.iloc[0]["AssetId"]
+        else:
+            return None
+
+    def obtem_odometro_veiculo(self, vec_asset_id, data_inicio_str, data_fim_str):
+        """Retorna dados de odômetro do veículo ao longo do tempo com base nos dados das trips"""
+        query = f"""
+            SELECT 
+                ("TripStart"::timestamptz AT TIME ZONE 'America/Sao_Paulo')::date AS travel_date,
+                COUNT(*) AS trip_count,
+                SUM("DistanceKilometers") AS distance_km
+            FROM trips_api ta
+            WHERE 
+                ta."AssetId" = '{vec_asset_id}'
+                AND ("TripStart"::timestamptz AT TIME ZONE 'America/Sao_Paulo') BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            GROUP BY travel_date
+            ORDER BY travel_date;
+        """
+        df = pd.read_sql(query, self.pgEngine)
+
+        # Seta a classe
+        df["CLASSE"] = "Odômetro (km)"
+
+        return df
+
+    def obtem_historico_evento_veiculo(self, vec_asset_id, event_name, data_inicio_str, data_fim_str):
+        """Retorna dados de eventos do veículo ao longo do tempo"""
+        query = f"""
+            SELECT 
+                "AssetId", DATE("StartDateTime"::timestamptz AT TIME ZONE 'America/Sao_Paulo') AS travel_date,
+                COUNT(*) AS total_evts
+            FROM 
+                public.{event_name} 
+            WHERE 
+                "AssetId" = '{vec_asset_id}'
+                AND 
+                "StartDateTime" IS NOT NULL
+                AND "StartDateTime"::text NOT ILIKE 'NaN'
+                AND ("StartDateTime"::timestamptz AT TIME ZONE 'America/Sao_Paulo')
+                    BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            GROUP BY "AssetId", travel_date;
+
+        """
+        df = pd.read_sql(query, self.pgEngine)
+
+        # Seta a classe
+        df["CLASSE"] = event_name
+
+        return df
