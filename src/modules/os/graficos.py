@@ -174,12 +174,29 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os(df, os_numero, proble
     return fig
 
 
-def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, df_odometro, df_marcha_lenta):
+def wrap_label_by_words(text, max_line_length=20):
+    words = text.split()
+    lines = []
+    current_line = ""
+
+    for word in words:
+        if len(current_line + " " + word) <= max_line_length:
+            current_line += " " + word if current_line else word
+        else:
+            lines.append(current_line)
+            current_line = word
+    if current_line:
+        lines.append(current_line)
+
+    return "<br>".join(lines)
+
+
+def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list_df_evts):
     """Gera o gráfico de histórico de eventos do problema da OS"""
 
     # Cria o gráfico de subplots
     fig = make_subplots(
-        rows=3,
+        rows=len(list_df_evts) + 1,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.08,
@@ -204,52 +221,85 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, df_o
             col=1,
         )
 
-    # Adiciona dados do odômetro
-    df_odometro["travel_date"] = pd.to_datetime(df_odometro["travel_date"])
-    fig.add_trace(
-        go.Scatter(
-            x=df_odometro["travel_date"],
-            y=df_odometro["CLASSE"],
-            mode="markers+text",
-            marker=dict(
-                size=df_odometro["distance_km"],  # Proportional size
-                sizemode="area",
-                sizeref=2.0 * max(df_odometro["distance_km"]) / (40.0**2),
-                sizemin=5,
-                color="lightblue",
-                # line=dict(width=1, color='darkblue')
-            ),
-            text=[f"{d:.0f}" for d in df_odometro["distance_km"]],
-            textposition="middle center",
-            hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
-        ),
-        row=2,
-        col=1,
-    )
+    for i, df_evt in enumerate(list_df_evts):
+        # Adiciona dados do evento
+        df_evt["travel_date"] = pd.to_datetime(df_evt["travel_date"])
 
-    # Adiciona dados do evento
-    df_marcha_lenta["travel_date"] = pd.to_datetime(df_marcha_lenta["travel_date"])
-    
-    fig.add_trace(
-        go.Scatter(
-            x=df_marcha_lenta["travel_date"],
-            y=df_marcha_lenta["CLASSE"],
-            mode="markers+text",
-            marker=dict(
-                size=df_marcha_lenta["total_evts"],  # Proportional size
-                sizemode="area",
-                sizeref=2.0 * max(df_marcha_lenta["total_evts"]) / (40.0**2),
-                sizemin=5,
-                color="lightblue",
-                # line=dict(width=1, color='darkblue')
+        # Dá espaçamento adequado nos labels
+        df_evt["CLASSE"] = df_evt["CLASSE"].apply(lambda x: wrap_label_by_words(x))
+
+        # Garante que os valores de tamanho sejam float e não objetos inválidos
+        marker_sizes = pd.to_numeric(df_evt["target_value"], errors="coerce").fillna(0).astype(float)
+
+        # Evita divisão por zero no sizeref
+        max_size = max(marker_sizes) if marker_sizes.max() > 0 else 1.0
+
+        fig.add_trace(
+            go.Scatter(
+                x=df_evt["travel_date"],
+                y=df_evt["CLASSE"],
+                mode="markers+text",
+                marker=dict(
+                    size=marker_sizes.tolist(),
+                    sizemode="area",
+                    sizeref=2.0 * max_size / (40.0**2),
+                    sizemin=5,
+                    color=tema.PALETA_CORES_DISCRETA[i % len(tema.PALETA_CORES_DISCRETA)],
+                ),
+                text=[f"{d}" for d in df_evt["target_label"]],
+                textposition="middle center",
+                hovertemplate="Data: %{x}<br>Total: %{text}<extra></extra>",
             ),
-            text=[f"{d}" for d in df_marcha_lenta["total_evts"]],
-            textposition="middle center",
-            hovertemplate="Data: %{x}<br>Total de Eventos: %{text}<extra></extra>",
-        ),
-        row=3,
-        col=1,
-    )
+            row=i + 2,
+            col=1,
+        )
+
+    # # Adiciona dados do odômetro
+    # df_odometro["travel_date"] = pd.to_datetime(df_odometro["travel_date"])
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=df_odometro["travel_date"],
+    #         y=df_odometro["CLASSE"],
+    #         mode="markers+text",
+    #         marker=dict(
+    #             size=df_odometro["distance_km"],  # Proportional size
+    #             sizemode="area",
+    #             sizeref=2.0 * max(df_odometro["distance_km"]) / (40.0**2),
+    #             sizemin=5,
+    #             color="lightblue",
+    #             # line=dict(width=1, color='darkblue')
+    #         ),
+    #         text=[f"{d:.0f}" for d in df_odometro["distance_km"]],
+    #         textposition="middle center",
+    #         hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+
+    # # Adiciona dados do evento
+    # df_marcha_lenta["travel_date"] = pd.to_datetime(df_marcha_lenta["travel_date"])
+    
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=df_marcha_lenta["travel_date"],
+    #         y=df_marcha_lenta["CLASSE"],
+    #         mode="markers+text",
+    #         marker=dict(
+    #             size=df_marcha_lenta["total_evts"],  # Proportional size
+    #             sizemode="area",
+    #             sizeref=2.0 * max(df_marcha_lenta["total_evts"]) / (40.0**2),
+    #             sizemin=5,
+    #             color="lightblue",
+    #             # line=dict(width=1, color='darkblue')
+    #         ),
+    #         text=[f"{d}" for d in df_marcha_lenta["total_evts"]],
+    #         textposition="middle center",
+    #         hovertemplate="Data: %{x}<br>Total de Eventos: %{text}<extra></extra>",
+    #     ),
+    #     row=3,
+    #     col=1,
+    # )
 
 
     fig.update_layout(
@@ -291,6 +341,11 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, df_o
     #     showgrid=True,
     #     zeroline=False
     # )
+
+    fig.update_yaxes(
+        automargin=True,  # ensures margin grows to fit long labels
+    )
+
 
     return fig
 

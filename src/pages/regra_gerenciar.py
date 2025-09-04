@@ -155,7 +155,7 @@ def cb_botao_close_modal_sucesso_apagar_regra(n_clicks):
     Input("tabela-regras-existentes", "virtualRowData"),
     prevent_initial_call=True,
 )
-def cb_botao_apagar_regra(linha, linha_virtual):
+def cb_botao_acao_tabela(linha, linha_virtual):
     # Obtém o contexto do callback
     ctx = callback_context
     if not ctx.triggered:

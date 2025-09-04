@@ -28,13 +28,14 @@ from dash_iconify import DashIconify
 # Importar bibliotecas para manipulação de URL
 from urllib.parse import urlparse, parse_qs
 
-
 # Importar nossas constantes e funções utilitárias
-import tema
 import locale_utils
 
 # Banco de Dados
 from db import PostgresSingleton
+
+# Imports gerais
+from modules.entities_utils import get_tipos_eventos_telemetria_mix
 
 # Imports específicos
 from modules.os.os_service import OSService
@@ -50,6 +51,12 @@ pgEngine = pgDB.get_engine()
 
 # Cria o serviço
 os_service = OSService(pgEngine)
+
+# Eventos da mix
+df_eventos_mix = get_tipos_eventos_telemetria_mix(pgEngine)
+df_eventos_mix = df_eventos_mix.sort_values(by="label")
+lista_todos_eventos = df_eventos_mix.to_dict(orient="records")
+
 
 ##############################################################################
 # CALLBACKS ##################################################################
@@ -166,7 +173,13 @@ def callback_sincroniza_input_store(os_value, dias_value):
 
     input_dict["valido"] = input_os_valido and input_dias_valido
 
-    return input_dict, style_borda_input_os, style_borda_input_dias, style_campo_erro_input_os, style_campo_erro_input_dias
+    return (
+        input_dict,
+        style_borda_input_os,
+        style_borda_input_dias,
+        style_campo_erro_input_os,
+        style_campo_erro_input_dias,
+    )
 
 
 # Recupera as OS escolhidas a partir do input
@@ -210,11 +223,27 @@ def callback_recupera_os_armazena_store_output(data):
     saida["modelo_veiculo"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["DESCRICAO DO MODELO"].values[0]
     saida["problema_veiculo"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["DESCRICAO DO SERVICO"].values[0]
     saida["num_problema_os"] = df_os[df_os["NUMERO DA OS"] == int(os_numero)]["problem_no"].values[0]
-    
+
     # Asset ID (útil para acelerar as queries)
     saida["vec_asset_id"] = str(os_service.obtem_asset_id_veiculo(saida["codigo_veiculo"]))
 
     return saida
+
+
+@callback(
+    Output("input-select-eventos-mix-detalhamento-os", "value"),
+    Output("input-select-eventos-mix-detalhamento-os-error", "style"),
+    Input("input-select-eventos-mix-detalhamento-os", "value"),
+    prevent_initial_call=True,
+)
+def cb_limita_dropdown_eventos_mix(selected):
+    estilo_sem_erro = {"display": "none"}
+    estilo_com_erro = {"display": "block"}
+    if selected is None:
+        return [], estilo_sem_erro
+    if len(selected) > 3:
+        return selected[:3], estilo_com_erro
+    return selected, estilo_sem_erro
 
 
 ##############################################################################
@@ -378,8 +407,12 @@ def atualiza_dados_card_detalhamento_problema(data):
     txt_total_os_no_problema = df_problema_os_alvo["NUMERO DA OS"].nunique()
 
     # Data do início e fim do problema, primeiro arruma datas
-    df_problema_os_alvo["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DA ABERTURA DA OS DT"], errors="coerce")
-    df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"], errors="coerce")
+    df_problema_os_alvo["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(
+        df_problema_os_alvo["DATA DA ABERTURA DA OS DT"], errors="coerce"
+    )
+    df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(
+        df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"], errors="coerce"
+    )
 
     # Calcula a data de início e fim do problema
     data_inicio_problema = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].min()
@@ -414,7 +447,9 @@ def atualiza_dados_card_detalhamento_problema(data):
     # Ordena a lista de peças
     lista_pecas_problema_final.sort()
 
-    html_pecas_problema = html.Div([html.Span("🧰 Peças trocadas até agora:"), html.Ul([html.Li(p) for p in lista_pecas_problema_final])])
+    html_pecas_problema = html.Div(
+        [html.Span("🧰 Peças trocadas até agora:"), html.Ul([html.Li(p) for p in lista_pecas_problema_final])]
+    )
 
     return [
         "🚍 Código do veículo: " + txt_codigo_veiculo,
@@ -489,7 +524,9 @@ def preencher_timeline(data):
         item_body = dbc.Row(
             [
                 dmc.Text("🧑‍🔧 Colaborador: " + os_colaborador, size="sm", className="text-muted"),
-                dmc.Text("👥 Total de colaboradores: " + str(os_total_colaboradores), size="sm", className="text-muted"),
+                dmc.Text(
+                    "👥 Total de colaboradores: " + str(os_total_colaboradores), size="sm", className="text-muted"
+                ),
                 dmc.Text("🚩 Início: " + os_data_inicio, size="sm", className="text-muted"),
                 dmc.Text("📌 Fim: " + os_data_fim, size="sm", className="text-muted"),
                 dmc.Text("💡 Sintoma: " + os_sintoma, size="sm", className="text-muted"),
@@ -510,7 +547,9 @@ def preencher_timeline(data):
                 bullet=os_status_os_emoji,
                 title=titulo_item,
                 lineVariant="solid",
-                children=dmc.Paper(withBorder=True, radius="lg", p="md", style={"backgroundColor": "#fff8e1"}, children=item_body),
+                children=dmc.Paper(
+                    withBorder=True, radius="lg", p="md", style={"backgroundColor": "#fff8e1"}, children=item_body
+                ),
             )
 
         timeline_items.append(dmc_timeline_item)
@@ -524,7 +563,6 @@ def preencher_timeline(data):
         # Remove "Nenhuma" from lista_pecas_problema se houver alguma peca diferente de "Nenhuma"
         # lista_pecas_problema_final = []
         # lista_pecas_problema_sem_nenhuma = [p for p in lista_pecas_problema if p != "Nenhuma"]
-
 
     # for index, row in df_problema_os_alvo.iterrows():
     #     titulo_item = dmc.Text(f"OS {row['NUMERO DA OS']}", size="lg")
@@ -575,7 +613,9 @@ def preencher_timeline(data):
     #     )
     #     timeline_items.append(dmc_timeline_item)
 
-    return dmc.Timeline(active=problemas_ativos, lineWidth=2, color="lightgray", radius="lg", bulletSize=30, children=timeline_items)
+    return dmc.Timeline(
+        active=problemas_ativos, lineWidth=2, color="lightgray", radius="lg", bulletSize=30, children=timeline_items
+    )
 
 
 ##############################################################################
@@ -626,14 +666,23 @@ def plota_grafico_gantt_retrabalho_os(data):
 
 
 def preenche_dias_sem_eventos(df, data_inicio_problema, data_fim_problema, vec_asset_id, clazz):
-    lista_dias_evt = df['travel_date'].astype(str).unique()
+    lista_dias_evt = df["travel_date"].astype(str).unique()
     print(lista_dias_evt)
-    for dia in pd.date_range(data_inicio_problema, data_fim_problema, freq='D'):
+    for dia in pd.date_range(data_inicio_problema, data_fim_problema, freq="D"):
         dia_str = dia.strftime("%Y-%m-%d")
         print(dia_str, dia_str in lista_dias_evt)
         if dia_str not in lista_dias_evt:
             # Adiciona linha com zero
-            df_linha = pd.DataFrame({"AssetId": [vec_asset_id], "travel_date": [dia_str], "total_evts": [0], "CLASSE": [clazz]})
+            df_linha = pd.DataFrame(
+                {
+                    "AssetId": [vec_asset_id],
+                    "travel_date": [dia_str],
+                    "total_evts": [0],
+                    "target_value": [0],
+                    "target_label": ["0"],
+                    "CLASSE": [clazz],
+                }
+            )
             df = pd.concat([df, df_linha], ignore_index=True)
 
     print(df)
@@ -644,8 +693,9 @@ def preenche_dias_sem_eventos(df, data_inicio_problema, data_fim_problema, vec_a
 @callback(
     Output("graph-historico-eventos-detalhamento-os", "figure"),
     Input("store-output-dados-detalhamento-os", "data"),
+    Input("input-select-eventos-mix-detalhamento-os", "value"),
 )
-def plota_grafico_eventos_retrabalho_os(data):
+def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
     # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
     if not data or not data["sucesso"]:
         return go.Figure()
@@ -666,32 +716,34 @@ def plota_grafico_eventos_retrabalho_os(data):
     data_inicio_problema_str = data_inicio_problema.strftime("%Y-%m-%d %H:%M:%S")
     data_fim_problema_str = data_fim_problema.strftime("%Y-%m-%d %H:%M:%S")
 
-    print("DF_PROBLEMA")
-    print(df_problema_os_alvo)
-
-    # # Obtem os dados do odômetro
+    # Obtem os dados do odômetro e consumo de combustível
     df_odometro = os_service.obtem_odometro_veiculo(vec_asset_id, data_inicio_problema_str, data_fim_problema_str)
-    print("DF_ODOMETRO")
-    print(df_odometro)
+    df_consumo = os_service.obtem_consumo_veiculo(vec_asset_id, data_inicio_problema_str, data_fim_problema_str)
 
-    # Marcha Lenta
-    df_marcha_lenta = os_service.obtem_historico_evento_veiculo(vec_asset_id, "ra_marcha_lenta", data_inicio_problema_str, data_fim_problema_str)
-    print("DF_MARCHA_LENTA")
-    print(df_marcha_lenta)
+    lista_df_evts = [df_odometro, df_consumo]
 
-    # Preenche os dados
-    df_marcha_lenta = preenche_dias_sem_eventos(df_marcha_lenta, data_inicio_problema, data_fim_problema, vec_asset_id, "ra_marcha_lenta")
-    # df_os[(df_os["problem_no"] == int(problem_no))].copy()
-    # df_problema_os_alvo["CLASSE"] = "OS"
+    # Obtem os demais eventos mix através do input / select
+    if lista_dropdown_eventos_mix is not None and len(lista_dropdown_eventos_mix) > 0:
+        for evento in lista_dropdown_eventos_mix:
+            df_evt_raw = os_service.obtem_historico_evento_veiculo(
+                vec_asset_id, evento, data_inicio_problema_str, data_fim_problema_str
+            )
+            df_evt = preenche_dias_sem_eventos(
+                df_evt_raw, data_inicio_problema, data_fim_problema, vec_asset_id, evento
+            )
 
-    # # Formata datas de abertura
-    # df_problema_os_alvo["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DA ABERTURA DA OS"], errors="coerce")
-    # df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df_problema_os_alvo["DATA DO FECHAMENTO DA OS"], errors="coerce")
-    
+            # Encontra o label descritivo do evento
+            label_row = df_eventos_mix[df_eventos_mix["value"] == evento]
+            if not label_row.empty:
+                label_evento_str = label_row["label"].values[0]
+            else:
+                label_evento_str = evento  # fallback
 
+            df_evt["CLASSE"] = label_evento_str
+            lista_df_evts.append(df_evt)
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_historico_eventos_detalhamento_os(os_numero, df_problema_os_alvo, df_odometro, df_marcha_lenta)
+    fig = os_graficos.gerar_grafico_historico_eventos_detalhamento_os(os_numero, df_problema_os_alvo, lista_df_evts)
 
     return fig
 
@@ -855,7 +907,9 @@ layout = dbc.Container(
                                 [
                                     dbc.ListGroup(
                                         [
-                                            dbc.ListGroupItem("", id="card-detalhamento-os-codigo-veiculo", active=True),
+                                            dbc.ListGroupItem(
+                                                "", id="card-detalhamento-os-codigo-veiculo", active=True
+                                            ),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-modelo-veiculo"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-problema-veiculo"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-total-os-no-problema"),
@@ -951,12 +1005,12 @@ layout = dbc.Container(
         dmc.Space(h=40),
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="fa6-solid:chart-gantt", width=45), width="auto"),
+                dbc.Col(DashIconify(icon="oui:inspect", width=45), width="auto"),
                 dbc.Col(
                     dbc.Row(
                         [
                             html.H4(
-                                "Detalhamento de eventos ao longo da OS ",
+                                "Detalhamento de eventos ao longo da OS e do problema selecionado ",
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
@@ -968,8 +1022,48 @@ layout = dbc.Container(
             ],
             align="center",
         ),
-        dcc.Graph(id="graph-historico-eventos-detalhamento-os"),
+        dmc.Space(h=20),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Eventos da Mix (até 3 eventos)"),
+                                    dcc.Dropdown(
+                                        id="input-select-eventos-mix-detalhamento-os",
+                                        options=[
+                                            {"label": evt["label"], "value": evt["value"]}
+                                            for evt in lista_todos_eventos
+                                        ],
+                                        multi=True,
+                                        value=[
+                                            "ra_marcha_lenta",
+                                            "ra_fora_da_faixa_verde",
+                                            "ra_uso_indevido_do_pedal_de_acelerador_85_mb",
+                                        ],
+                                        placeholder="Selecione uma ou mais oficinas...",
+                                    ),
+                                    dbc.FormText(
+                                        html.Em("⚠️ Máximo de 3 eventos permitidos"),
+                                        color="secondary",
+                                        id="input-select-eventos-mix-detalhamento-os-error",
+                                        style={"display": "none"},
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=12,
+                ),
+            ]
+        ),
         dmc.Space(h=40),
+        dcc.Graph(id="graph-historico-eventos-detalhamento-os"),
+        # dmc.Space(h=40),
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),

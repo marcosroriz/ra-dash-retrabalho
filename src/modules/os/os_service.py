@@ -229,6 +229,31 @@ class OSService:
 
         # Seta a classe
         df["CLASSE"] = "Odômetro (km)"
+        df["target_value"] = df["distance_km"]
+        df["target_label"] = df["distance_km"].apply(lambda x: f"{x:.0f}")
+
+        return df
+
+    def obtem_consumo_veiculo(self, vec_asset_id, data_inicio_str, data_fim_str):
+        """Retorna dados de consumo do veículo ao longo do tempo com base nos dados das trips"""
+        query = f"""
+            SELECT 
+                ("TripStart"::timestamptz AT TIME ZONE 'America/Sao_Paulo')::date AS travel_date,
+                COUNT(*) AS trip_count,
+                SUM("FuelUsedLitres") AS consumo_litros
+            FROM trips_api ta
+            WHERE 
+                ta."AssetId" = '{vec_asset_id}'
+                AND ("TripStart"::timestamptz AT TIME ZONE 'America/Sao_Paulo') BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            GROUP BY travel_date
+            ORDER BY travel_date;
+        """
+        df = pd.read_sql(query, self.pgEngine)
+
+        # Seta a classe
+        df["CLASSE"] = "Consumo (L)"
+        df["target_value"] = df["consumo_litros"]
+        df["target_label"] = df["consumo_litros"].apply(lambda x: f"{x:.0f}")
 
         return df
 
@@ -252,7 +277,10 @@ class OSService:
         """
         df = pd.read_sql(query, self.pgEngine)
 
+        print(query)
         # Seta a classe
         df["CLASSE"] = event_name
+        df["target_value"] = df["total_evts"]
+        df["target_label"] = df["total_evts"].apply(lambda x: f"{x:.0f}")
 
         return df

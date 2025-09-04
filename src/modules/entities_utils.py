@@ -141,6 +141,26 @@ def get_regras_monitoramento_os(dbEngine):
     )
 
 
+def get_tipos_eventos_telemetria_mix(dbEngine):
+    # Retorns os tipos de eventos de telemetria que possuem StartDateTime
+    query = """
+    WITH eventos_aptos AS (
+        SELECT DISTINCT table_name AS evt_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' 
+        AND column_name = 'StartDateTime'
+    )
+    SELECT 
+        t."Description" AS "label", 
+        t."DescriptionCLEAN" AS "value" 
+    FROM 
+        tipos_eventos_api t
+    WHERE 
+        t."DescriptionCLEAN" IN ( SELECT evt_name FROM eventos_aptos );
+    """
+    return pd.read_sql(query, dbEngine)
+
+
 def gerar_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
