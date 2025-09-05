@@ -213,6 +213,7 @@ def corrige_input(lista):
     # Por fim, se não caiu em nenhum caso, retorna o valor original
     return lista
 
+
 @callback(
     Output("input-select-oficina-colaborador", "value", allow_duplicate=True),
     Input("input-select-oficina-colaborador", "value"),
@@ -341,7 +342,6 @@ def gera_labels_inputs_colaborador(campo):
 
     # Cria o componente
     return dmc.Group(id=f"{campo}-labels", children=[])
-
 
 
 ##############################################################################
@@ -756,6 +756,38 @@ def tabela_visao_geral_colaborador(data):
 
 
 @callback(
+    Output("url", "href", allow_duplicate=True),
+    Input("tabela-detalhamento-os-colaborador", "cellRendererData"),
+    Input("tabela-detalhamento-os-colaborador", "virtualRowData"),
+    Input("input-min-dias-colaborador", "value"),
+    prevent_initial_call=True,
+)
+def cb_pag_colaborador_botao_detalhar_os_tabela_os(linha, linha_virtual, min_dias):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de visualização
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
+
+    if triggered_id != "cellRendererData":
+        return dash.no_update
+
+    # Acessa os demais dados da linha
+    linha_alvo = linha_virtual[linha["rowIndex"]]
+
+    # Pega o parâmetro final (# da os)
+    numero_da_os = linha_alvo["NUMERO DA OS"]
+    url_params = [
+        f"os={numero_da_os}",
+        f"mindiasretrabalho={min_dias}",
+    ]
+    url_params_str = "&".join(url_params)
+
+    return f"/retrabalho-por-os?{url_params_str}"
+
+
+@callback(
     [
         Output("tabela-detalhamento-os-colaborador", "rowData"),
         Output("input-lista-vec-detalhar-problema-colaborador", "options"),
@@ -779,6 +811,9 @@ def tabela_detalhamento_os_colaborador(data):
     df_os_detalhada_colaborador = colab_service.get_dados_tabela_detalhamento_os_colaborador(
         id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelo, lista_oficina
     )
+
+    # Ação de visualização
+    df_os_detalhada_colaborador["acao"] = "🔍 Detalhar"
 
     # Gera as opções dos problemas, como dict pois o colaborador pode ter o mesmo problema várias vezes
     dict_options = {}

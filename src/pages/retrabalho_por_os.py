@@ -836,9 +836,11 @@ def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados, relayoutData):
     # Zoom para os marcadores
     # bound south east canto inferior esquerdo
     # bound north east canto superior direito
-    bound_south_west = [min(lista_lat), min(lista_lon)]
-    bound_north_east = [max(lista_lat), max(lista_lon)]
-    bounds = [bound_south_west, bound_north_east]
+    bounds = dash.no_update
+    if lista_lat and lista_lon and len(lista_lat) > 0:
+        bound_south_west = [min(lista_lat), min(lista_lon)]
+        bound_north_east = [max(lista_lat), max(lista_lon)]
+        bounds = [bound_south_west, bound_north_east]
 
     return getMapaFundo() + lista_overlays, bounds
 

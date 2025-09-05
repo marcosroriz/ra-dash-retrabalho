@@ -105,6 +105,14 @@ tbl_top_os_geral_retrabalho = [
 # Tabela detalhamento da OS do colaborador
 tbl_detalhamento_os_colaborador = [
     {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 200},
+    {
+        "field": "acao",
+        "headerName": "DETALHAR OS",
+        "cellRenderer": "Button",
+        "cellRendererParams": {"className": "btn btn-outline-primary btn-sm"},
+        "minWidth": 150,
+        "pinned": "left",
+    },
     {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "minWidth": 250},
     {"field": "DESCRICAO DO MODELO", "headerName": "MODELO"},
     {"field": "CODIGO DO VEICULO", "headerName": "VEÍCULO", "maxWidth": 150},
