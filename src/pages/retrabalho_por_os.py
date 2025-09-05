@@ -711,8 +711,9 @@ def get_label_com_icone(i, label_str):
         icone = "🟥 "
     elif i == 4:
         icone = "🟪 "
-    
+
     return icone + label_str
+
 
 def gera_layer_evento_mix(vec_asset_id, evt, data_inicio_problema_str, data_fim_problema_str, cor_icone):
     lista_marcadores = []
@@ -772,8 +773,9 @@ def gera_layer_evento_mix(vec_asset_id, evt, data_inicio_problema_str, data_fim_
     Output("mapa-eventos-detalhe-os", "bounds"),
     Input("store-output-dados-detalhamento-os", "data"),
     Input("input-select-data-eventos-mix-detalhamento-os", "value"),
+    Input("graph-historico-eventos-detalhamento-os", "relayoutData"),
 )
-def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados):
+def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados, relayoutData):
     # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
     if not data or not data["sucesso"]:
         return dash.no_update, dash.no_update
@@ -794,6 +796,11 @@ def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados):
     data_fim_problema = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].max()
     data_inicio_problema_str = data_inicio_problema.strftime("%Y-%m-%d %H:%M:%S")
     data_fim_problema_str = data_fim_problema.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Verifica se houve seleção, caso tenha, atualiza data_inicio e data_fim para os valores selecionados
+    if relayoutData and "xaxis.range[0]" in relayoutData and "xaxis.range[1]" in relayoutData:
+        data_inicio_problema_str = pd.to_datetime(relayoutData["xaxis.range[0]"]).strftime("%Y-%m-%d %H:%M:%S")
+        data_fim_problema_str = pd.to_datetime(relayoutData["xaxis.range[1]"]).strftime("%Y-%m-%d %H:%M:%S")
 
     # Lista de overlays
     lista_overlays = []
@@ -820,16 +827,11 @@ def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados):
 
             # Adiciona o overlay
             lista_overlays.append(
-                dl.Overlay(
-                    dl.LayerGroup(layer_lista_marcadores),
-                    name=label_evento_str,
-                    checked=True
-                )
+                dl.Overlay(dl.LayerGroup(layer_lista_marcadores), name=label_evento_str, checked=True)
             )
             # Salva lat e lon para zoom
             lista_lat.extend(layer_lista_lat)
             lista_lon.extend(layer_lista_lon)
-
 
     # Zoom para os marcadores
     # bound south east canto inferior esquerdo
@@ -837,7 +839,7 @@ def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados):
     bound_south_west = [min(lista_lat), min(lista_lon)]
     bound_north_east = [max(lista_lat), max(lista_lon)]
     bounds = [bound_south_west, bound_north_east]
-    
+
     return getMapaFundo() + lista_overlays, bounds
 
 
@@ -1247,15 +1249,20 @@ layout = dbc.Container(
             ]
         ),
         dcc.Graph(id="graph-historico-eventos-detalhamento-os"),
+        dmc.Space(h=20),
         dl.Map(
             children=dl.LayersControl(getMapaFundo(), id="layer-control-eventos-detalhe-os", collapsed=False),
             id="mapa-eventos-detalhe-os",
-            bounds=None, 
+            bounds=None,
             center=(-16.665136, -49.286041),
             zoom=11,
-            style={"height": "60vh"},
+            style={
+                "height": "60vh",
+                "border": "2px solid gray", 
+                "borderRadius": "6px",
+            },
         ),
-        dmc.Space(h=40),
+        dmc.Space(h=80),
     ]
 )
 

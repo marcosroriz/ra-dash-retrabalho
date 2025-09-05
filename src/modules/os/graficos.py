@@ -256,7 +256,7 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
 
     fig.update_layout(
         height=600,
-        margin=dict(l=150),  # ← margem esquerda aumentada
+        margin=dict(t=40, l=150),  # ← margem esquerda aumentada
     )
 
     fig.update_layout(showlegend=False)
