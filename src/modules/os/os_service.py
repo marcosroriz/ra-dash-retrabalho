@@ -205,7 +205,7 @@ class OSService:
                 LIMIT 1;
             """
         df = pd.read_sql(query, self.pgEngine)
-        
+
         if not df.empty:
             return df.iloc[0]["AssetId"]
         else:
@@ -277,10 +277,31 @@ class OSService:
         """
         df = pd.read_sql(query, self.pgEngine)
 
-        print(query)
         # Seta a classe
         df["CLASSE"] = event_name
         df["target_value"] = df["total_evts"]
         df["target_label"] = df["total_evts"].apply(lambda x: f"{x:.0f}")
 
+        return df
+
+    def obtem_detalhamento_evento_os(self, vec_asset_id, event_name, data_inicio_str, data_fim_str):
+        query = f"""
+            SELECT
+            *
+            FROM
+                public.{event_name} evt
+            LEFT JOIN motoristas_api ma 
+                on evt."DriverId" = ma."DriverId" 
+            WHERE
+                "AssetId" = '{vec_asset_id}'
+                AND
+                "StartDateTime" IS NOT NULL
+                AND "StartDateTime"::text NOT ILIKE 'NaN'
+                AND ("StartDateTime"::timestamptz AT TIME ZONE 'America/Sao_Paulo')
+                    BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+        """
+        df = pd.read_sql(query, self.pgEngine)
+
+        # Seta nome não conhecido para os motoristas que não tiverem dado
+        df["Name"] = df["Name"].fillna("Não informado")
         return df

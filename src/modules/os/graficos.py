@@ -254,165 +254,16 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
             col=1,
         )
 
-    # # Adiciona dados do odômetro
-    # df_odometro["travel_date"] = pd.to_datetime(df_odometro["travel_date"])
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=df_odometro["travel_date"],
-    #         y=df_odometro["CLASSE"],
-    #         mode="markers+text",
-    #         marker=dict(
-    #             size=df_odometro["distance_km"],  # Proportional size
-    #             sizemode="area",
-    #             sizeref=2.0 * max(df_odometro["distance_km"]) / (40.0**2),
-    #             sizemin=5,
-    #             color="lightblue",
-    #             # line=dict(width=1, color='darkblue')
-    #         ),
-    #         text=[f"{d:.0f}" for d in df_odometro["distance_km"]],
-    #         textposition="middle center",
-    #         hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
-    #     ),
-    #     row=2,
-    #     col=1,
-    # )
-
-    # # Adiciona dados do evento
-    # df_marcha_lenta["travel_date"] = pd.to_datetime(df_marcha_lenta["travel_date"])
-    
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=df_marcha_lenta["travel_date"],
-    #         y=df_marcha_lenta["CLASSE"],
-    #         mode="markers+text",
-    #         marker=dict(
-    #             size=df_marcha_lenta["total_evts"],  # Proportional size
-    #             sizemode="area",
-    #             sizeref=2.0 * max(df_marcha_lenta["total_evts"]) / (40.0**2),
-    #             sizemin=5,
-    #             color="lightblue",
-    #             # line=dict(width=1, color='darkblue')
-    #         ),
-    #         text=[f"{d}" for d in df_marcha_lenta["total_evts"]],
-    #         textposition="middle center",
-    #         hovertemplate="Data: %{x}<br>Total de Eventos: %{text}<extra></extra>",
-    #     ),
-    #     row=3,
-    #     col=1,
-    # )
-
-
     fig.update_layout(
         height=600,
         margin=dict(l=150),  # ← margem esquerda aumentada
-        # xaxis=dict(
-        #     title="Data",
-        #     showline=True,
-        #     showgrid=True,
-        #     zeroline=False,
-        # ),
     )
 
-    # Ajuste dos eixos para garantir alinhamento
-    # fig.update_yaxes(matches='y', row=1, col=1)
-    # fig.update_yaxes(matches='y', row=2, col=1)
-
-    
     fig.update_layout(showlegend=False)
-
-    
-    # # Ajustes de layout
-    # fig.update_layout(
-    #     height=800,
-    #     margin=dict(t=40, b=80),  # margem inferior aumentada para evitar corte
-    #     xaxis=dict(
-    #         title="Data",
-    #         showline=True,
-    #         showgrid=True,
-    #         zeroline=False,
-    #     ),
-    # )
-
-    # # Garante que o eixo X seja visível em todos os subplots compartilhados
-    # fig.update_xaxes(
-    #     showline=True,
-    #     linewidth=1,
-    #     linecolor='black',
-    #     showgrid=True,
-    #     zeroline=False
-    # )
 
     fig.update_yaxes(
         automargin=True,  # ensures margin grows to fit long labels
     )
-
-
     return fig
 
 
-#     fig.add_trace(
-#         go.Scatter(
-#             x=df["travel_date"],
-#             y=["Odômetro"] * len(df),  # Constant y to align dots on the same line
-#             mode="markers+text",
-#             marker=dict(
-#                 size=df["distance_km"],  # Proportional size
-#                 sizemode="area",
-#                 sizeref=2.0 * max(df["distance_km"]) / (40.0**2),  # scale for reasonable max dot size
-#                 sizemin=5,
-#                 color="lightblue",
-#                 # line=dict(width=1, color='darkblue')
-#             ),
-#             text=[f"{d:.2f}km" for d in df["distance_km"]],
-#             textposition="middle center",
-#             hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
-#         ),
-#         row=2,
-#         col=1,
-#     )
-
-#     fig.add_trace(
-#         go.Scatter(
-#             x=df_marcha_lenta["travel_date"],
-#             y=["Marcha Lenta"] * len(df_marcha_lenta),  # Constant y to align dots on the same line
-#             mode="markers+text",
-#             marker=dict(
-#                 size=df_marcha_lenta["count"],  # Proportional size
-#                 sizemode="area",
-#                 sizeref=2.0 * max(df_marcha_lenta["count"]) / (40.0**2),  # scale for reasonable max dot size
-#                 sizemin=5,
-#                 color="orange",
-#                 # line=dict(width=1, color='darkblue')
-#             ),
-#             text=[f"{d}" for d in df_marcha_lenta["count"]],
-#             textposition="middle center",
-#             hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
-#         ),
-#         row=3,
-#         col=1,
-#     )
-
-#     fig.add_trace(
-#         go.Scatter(
-#             x=df_2["travel_date"],
-#             y=["USO INDEVIDO DO PEDAL"] * len(df_2),  # Constant y to align dots on the same line
-#             mode="markers+text",
-#             marker=dict(
-#                 size=df_2["count"],  # Proportional size
-#                 sizemode="area",
-#                 sizeref=2.0 * max(df_2["count"]) / (40.0**2),  # scale for reasonable max dot size
-#                 sizemin=5,
-#                 color="orange",
-#                 # line=dict(width=1, color='darkblue')
-#             ),
-#             text=[f"{d}" for d in df_2["count"]],
-#             textposition="middle center",
-#             hovertemplate="Data: %{x}<br>Distância: %{text}<extra></extra>",
-#         ),
-#         row=4,
-#         col=1,
-#     )
-#     fig.update_layout(showlegend=False)
-
-
-#     fig

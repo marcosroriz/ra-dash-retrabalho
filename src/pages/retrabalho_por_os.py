@@ -7,8 +7,9 @@
 # IMPORTS ####################################################################
 ##############################################################################
 # Bibliotecas básicas
-from datetime import date
+import os
 import pandas as pd
+from datetime import date
 from collections import defaultdict
 
 # Importar bibliotecas do dash básicas e plotly
@@ -29,18 +30,22 @@ from dash_iconify import DashIconify
 from urllib.parse import urlparse, parse_qs
 
 # Importar nossas constantes e funções utilitárias
+import tema
 import locale_utils
 
 # Banco de Dados
 from db import PostgresSingleton
 
 # Imports gerais
-from modules.entities_utils import get_tipos_eventos_telemetria_mix
+from modules.entities_utils import get_tipos_eventos_telemetria_mix_com_data, get_tipos_eventos_telemetria_mix_com_gps
 
 # Imports específicos
 from modules.os.os_service import OSService
 import modules.os.tabelas as os_tabelas
 import modules.os.graficos as os_graficos
+
+# Imports de mapa
+import dash_leaflet as dl
 
 ##############################################################################
 # LEITURA DE DADOS ###########################################################
@@ -52,11 +57,18 @@ pgEngine = pgDB.get_engine()
 # Cria o serviço
 os_service = OSService(pgEngine)
 
-# Eventos da mix
-df_eventos_mix = get_tipos_eventos_telemetria_mix(pgEngine)
-df_eventos_mix = df_eventos_mix.sort_values(by="label")
-lista_todos_eventos = df_eventos_mix.to_dict(orient="records")
+# Eventos da mix com data
+df_eventos_mix_data = get_tipos_eventos_telemetria_mix_com_data(pgEngine)
+df_eventos_mix_data = df_eventos_mix_data.sort_values(by="label")
+lista_todos_eventos_com_data = df_eventos_mix_data.to_dict(orient="records")
 
+# Eventos da mix com GPS
+df_eventos_mix_gps = get_tipos_eventos_telemetria_mix_com_gps(pgEngine)
+df_eventos_mix_gps = df_eventos_mix_gps.sort_values(by="label")
+lista_todos_eventos_com_gps = df_eventos_mix_gps.to_dict(orient="records")
+
+# MapBox
+MAPBOX_KEY = os.getenv("MAPBOX_KEY", None)
 
 ##############################################################################
 # CALLBACKS ##################################################################
@@ -231,9 +243,9 @@ def callback_recupera_os_armazena_store_output(data):
 
 
 @callback(
-    Output("input-select-eventos-mix-detalhamento-os", "value"),
-    Output("input-select-eventos-mix-detalhamento-os-error", "style"),
-    Input("input-select-eventos-mix-detalhamento-os", "value"),
+    Output("input-select-data-eventos-mix-detalhamento-os", "value"),
+    Output("input-select-data-eventos-mix-detalhamento-os-error", "style"),
+    Input("input-select-data-eventos-mix-detalhamento-os", "value"),
     prevent_initial_call=True,
 )
 def cb_limita_dropdown_eventos_mix(selected):
@@ -554,65 +566,6 @@ def preencher_timeline(data):
 
         timeline_items.append(dmc_timeline_item)
 
-        # # Pega as peças trocadas
-        # lista_pecas_problema = []
-        # for pecas_os in df_os_do_problema["pecas_trocadas_str"].unique():
-        #     if pecas_os != "Nenhuma":
-        #         lista_pecas_problema.extend(pecas_os.split("__SEP__"))
-
-        # Remove "Nenhuma" from lista_pecas_problema se houver alguma peca diferente de "Nenhuma"
-        # lista_pecas_problema_final = []
-        # lista_pecas_problema_sem_nenhuma = [p for p in lista_pecas_problema if p != "Nenhuma"]
-
-    # for index, row in df_problema_os_alvo.iterrows():
-    #     titulo_item = dmc.Text(f"OS {row['NUMERO DA OS']}", size="lg")
-    #     item_body = dbc.Row(
-    #         [
-    #             # dmc.Text(row["status_os"], size="sm", className="text-muted"),
-    #             dmc.Text("🧑‍🔧 Colaborador: " + row["nome_colaborador"], size="sm", className="text-muted"),
-    #             dmc.Text("🚩 Início: " + row["DATA DA ABERTURA LABEL"], size="sm", className="text-muted"),
-    #             dmc.Text("📌 Fim: " + row["DATA DO FECHAMENTO LABEL"], size="sm", className="text-muted"),
-    #             dmc.Text("💬 Correção: " + row["CORRECAO"], size="sm", className="text-muted"),
-    #         ]
-    #     )
-
-    #     dmc_timeline_item = dmc.TimelineItem(
-    #         bullet=row["status_os_emoji"],
-    #         title=titulo_item,
-    #         lineVariant="solid",
-    #         children=item_body,
-    #     )
-
-    #     # Se for a OS atual, adiciona um highlight especial
-    #     if row["NUMERO DA OS"] == int(os_numero):
-    #         dmc_timeline_item = dmc.TimelineItem(
-    #             bullet=row["status_os_emoji"],
-    #             title=titulo_item,
-    #             lineVariant="solid",
-    #             children=dmc.Paper(withBorder=True, radius="lg", p="md", style={"backgroundColor": "#fff8e1"}, children=item_body),
-    #         )
-
-    #     timeline_items.append(dmc_timeline_item)
-
-    # Problema anterior (vem com line)
-    # for index, row in df_problema_os_alvo_anterior.iterrows():
-    #     titulo_item = dmc.Text(f"OS {row['NUMERO DA OS']}", size="lg")
-    #     item_body = dbc.Row(
-    #         [
-    #             # dmc.Text(row["status_os"], size="sm", className="text-muted"),
-    #             dmc.Text("🧑‍🔧 Colaborador: " + row["nome_colaborador"], size="sm", className="text-muted"),
-    #             dmc.Text("🚩 Início: " + row["DATA DA ABERTURA LABEL"], size="sm", className="text-muted"),
-    #             dmc.Text("📌 Fim: " + row["DATA DO FECHAMENTO LABEL"], size="sm", className="text-muted"),
-    #         ]
-    #     )
-    #     dmc_timeline_item = dmc.TimelineItem(
-    #         bullet=row["status_os_emoji"],
-    #         title=titulo_item,
-    #         children=item_body,
-    #         lineVariant="dashed",
-    #     )
-    #     timeline_items.append(dmc_timeline_item)
-
     return dmc.Timeline(
         active=problemas_ativos, lineWidth=2, color="lightgray", radius="lg", bulletSize=30, children=timeline_items
     )
@@ -667,10 +620,8 @@ def plota_grafico_gantt_retrabalho_os(data):
 
 def preenche_dias_sem_eventos(df, data_inicio_problema, data_fim_problema, vec_asset_id, clazz):
     lista_dias_evt = df["travel_date"].astype(str).unique()
-    print(lista_dias_evt)
     for dia in pd.date_range(data_inicio_problema, data_fim_problema, freq="D"):
         dia_str = dia.strftime("%Y-%m-%d")
-        print(dia_str, dia_str in lista_dias_evt)
         if dia_str not in lista_dias_evt:
             # Adiciona linha com zero
             df_linha = pd.DataFrame(
@@ -685,7 +636,6 @@ def preenche_dias_sem_eventos(df, data_inicio_problema, data_fim_problema, vec_a
             )
             df = pd.concat([df, df_linha], ignore_index=True)
 
-    print(df)
     return df
 
 
@@ -693,7 +643,7 @@ def preenche_dias_sem_eventos(df, data_inicio_problema, data_fim_problema, vec_a
 @callback(
     Output("graph-historico-eventos-detalhamento-os", "figure"),
     Input("store-output-dados-detalhamento-os", "data"),
-    Input("input-select-eventos-mix-detalhamento-os", "value"),
+    Input("input-select-data-eventos-mix-detalhamento-os", "value"),
 )
 def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
     # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
@@ -733,7 +683,7 @@ def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
             )
 
             # Encontra o label descritivo do evento
-            label_row = df_eventos_mix[df_eventos_mix["value"] == evento]
+            label_row = df_eventos_mix_data[df_eventos_mix_data["value"] == evento]
             if not label_row.empty:
                 label_evento_str = label_row["label"].values[0]
             else:
@@ -749,8 +699,210 @@ def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
 
 
 ##############################################################################
+# Callback para o mapa #######################################################
+##############################################################################
+
+
+def get_label_com_icone(i, label_str):
+    icone = "⬜ "
+    if i == 2:
+        icone = "🟩 "
+    elif i == 3:
+        icone = "🟥 "
+    elif i == 4:
+        icone = "🟪 "
+    
+    return icone + label_str
+
+def gera_layer_evento_mix(vec_asset_id, evt, data_inicio_problema_str, data_fim_problema_str, cor_icone):
+    lista_marcadores = []
+    lista_lat = []
+    lista_lon = []
+
+    # Retorne se o evento possui dados e os marcadores (quando houver), bem como a lista de lat e long
+    if evt not in df_eventos_mix_gps["value"].unique():
+        return False, lista_marcadores, lista_lat, lista_lon
+
+    df_eventos_mix = os_service.obtem_detalhamento_evento_os(
+        vec_asset_id, evt, data_inicio_problema_str, data_fim_problema_str
+    )
+
+    # Caso não tenha eventos para a data, retorne falso
+    if df_eventos_mix.empty:
+        return False, lista_marcadores, lista_lat, lista_lon
+
+    for jx, row in df_eventos_mix.iterrows():
+        evt_lon = row["StartPosition_Longitude"]
+        evt_lat = row["StartPosition_Latitude"]
+        evt_driver_name = row["Name"]
+        evt_timestamp = pd.to_datetime(row["StartDateTime"]).strftime("%H:%M:%S - %Y-%m-%d")
+
+        # Encontra o label descritivo do evento
+        label_row = df_eventos_mix_data[df_eventos_mix_data["value"] == evt]
+        label_evento_str = evt
+        if not label_row.empty:
+            label_evento_str = label_row["label"].values[0]
+
+        marcador = dl.CircleMarker(
+            center=[evt_lat, evt_lon],
+            radius=10,
+            color="black",
+            fillColor=cor_icone,
+            fillOpacity=0.75,
+            children=dl.Popup(
+                html.Div(
+                    [
+                        html.H6(label_evento_str),
+                        html.Ul([html.Li(f"Motorista: {evt_driver_name}"), html.Li(f"Hora: {evt_timestamp}")]),
+                    ]
+                )
+            ),
+        )
+
+        # Adiciona o marcador e guarda lat e lon para dar zoom
+        lista_marcadores.append(marcador)
+        lista_lat.append(evt_lat)
+        lista_lon.append(evt_lon)
+
+    return True, lista_marcadores, lista_lat, lista_lon
+
+
+@callback(
+    Output("layer-control-eventos-detalhe-os", "children"),
+    Output("mapa-eventos-detalhe-os", "bounds"),
+    Input("store-output-dados-detalhamento-os", "data"),
+    Input("input-select-data-eventos-mix-detalhamento-os", "value"),
+)
+def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["sucesso"]:
+        return dash.no_update, dash.no_update
+
+    if not eventos_selecionados:
+        return dash.no_update, dash.no_update
+
+    # Obtem os dados do estado
+    df_os = pd.DataFrame(data["df_os"])
+    problem_no = data["num_problema_os"]
+    vec_asset_id = data["vec_asset_id"]
+
+    # Pega as OS do problema atual
+    df_problema_os_alvo = os_service.obtem_os_problema_atual(df_os, problem_no)
+
+    # Pega o início e fim do problema
+    data_inicio_problema = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].min()
+    data_fim_problema = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].max()
+    data_inicio_problema_str = data_inicio_problema.strftime("%Y-%m-%d %H:%M:%S")
+    data_fim_problema_str = data_fim_problema.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Lista de overlays
+    lista_overlays = []
+    lista_lat = []
+    lista_lon = []
+
+    # Define as cores
+    for i, evt in enumerate(eventos_selecionados):
+        # i + 2 pq as duas primerias cores ficam com o odômetro e combustível, daí vem as cores dos eventos
+        cor_icone = tema.PALETA_CORES_DISCRETA[i + 2 % len(tema.PALETA_CORES_DISCRETA)]
+
+        layer_possui_marcador, layer_lista_marcadores, layer_lista_lat, layer_lista_lon = gera_layer_evento_mix(
+            vec_asset_id, evt, data_inicio_problema_str, data_fim_problema_str, cor_icone
+        )
+
+        if layer_possui_marcador:
+            # Encontra o label descritivo do evento
+            label_row = df_eventos_mix_data[df_eventos_mix_data["value"] == evt]
+            label_evento_str = evt
+            if not label_row.empty:
+                label_evento_str = label_row["label"].values[0]
+
+            label_evento_str = get_label_com_icone(i + 2, label_evento_str)
+
+            # Adiciona o overlay
+            lista_overlays.append(
+                dl.Overlay(
+                    dl.LayerGroup(layer_lista_marcadores),
+                    name=label_evento_str,
+                    checked=True
+                )
+            )
+            # Salva lat e lon para zoom
+            lista_lat.extend(layer_lista_lat)
+            lista_lon.extend(layer_lista_lon)
+
+
+    # Zoom para os marcadores
+    # bound south east canto inferior esquerdo
+    # bound north east canto superior direito
+    bound_south_west = [min(lista_lat), min(lista_lon)]
+    bound_north_east = [max(lista_lat), max(lista_lon)]
+    bounds = [bound_south_west, bound_north_east]
+    
+    return getMapaFundo() + lista_overlays, bounds
+
+
+##############################################################################
 # Layout #####################################################################
 ##############################################################################
+
+
+def getMapaFundo():
+    if MAPBOX_KEY and MAPBOX_KEY != "":
+        return [
+            # 🛰️ Satélite
+            dl.BaseLayer(
+                dl.TileLayer(
+                    url=f"https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{{z}}/{{x}}/{{y}}?access_token={MAPBOX_KEY}",
+                    attribution="© Mapbox, © OpenStreetMap",
+                    tileSize=512,
+                    zoomOffset=-1,
+                ),
+                name="Satélite",
+                checked=False,
+            ),
+            # 🛰️ + 🗺️ Híbrido
+            dl.BaseLayer(
+                dl.TileLayer(
+                    url=f"https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{{z}}/{{x}}/{{y}}?access_token={MAPBOX_KEY}",
+                    attribution="© Mapbox, © OpenStreetMap",
+                    tileSize=512,
+                    zoomOffset=-1,
+                ),
+                name="Híbrido",
+                checked=False,
+            ),
+            # 🛣️ Ruas
+            dl.BaseLayer(
+                dl.TileLayer(
+                    url=f"https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{{z}}/{{x}}/{{y}}?access_token={MAPBOX_KEY}",
+                    attribution="© Mapbox, © OpenStreetMap",
+                    tileSize=512,
+                    zoomOffset=-1,
+                ),
+                name="Ruas",
+                checked=True,
+            ),
+        ]
+    else:
+        return [
+            # OpenStreetMap (ruas padrão)
+            dl.BaseLayer(
+                dl.TileLayer(url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
+                name="OpenStreetMap",
+                checked=False,
+            ),
+            # ESRI Satellite (sem nomes de rua)
+            dl.BaseLayer(
+                dl.TileLayer(
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                    attribution="Tiles © Esri",
+                ),
+                name="ESRI Satellite",
+                checked=True,
+            ),
+        ]
+
+
 layout = dbc.Container(
     [
         # Estado
@@ -1005,67 +1157,6 @@ layout = dbc.Container(
         dmc.Space(h=40),
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="oui:inspect", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Detalhamento de eventos ao longo da OS e do problema selecionado ",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_detalhamento_os("detalhe-grafico-eventos-os"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=20),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            html.Div(
-                                [
-                                    dbc.Label("Eventos da Mix (até 3 eventos)"),
-                                    dcc.Dropdown(
-                                        id="input-select-eventos-mix-detalhamento-os",
-                                        options=[
-                                            {"label": evt["label"], "value": evt["value"]}
-                                            for evt in lista_todos_eventos
-                                        ],
-                                        multi=True,
-                                        value=[
-                                            "ra_marcha_lenta",
-                                            "ra_fora_da_faixa_verde",
-                                            "ra_uso_indevido_do_pedal_de_acelerador_85_mb",
-                                        ],
-                                        placeholder="Selecione uma ou mais oficinas...",
-                                    ),
-                                    dbc.FormText(
-                                        html.Em("⚠️ Máximo de 3 eventos permitidos"),
-                                        color="secondary",
-                                        id="input-select-eventos-mix-detalhamento-os-error",
-                                        style={"display": "none"},
-                                    ),
-                                ],
-                                className="dash-bootstrap",
-                            ),
-                        ],
-                        body=True,
-                    ),
-                    md=12,
-                ),
-            ]
-        ),
-        dmc.Space(h=40),
-        dcc.Graph(id="graph-historico-eventos-detalhamento-os"),
-        # dmc.Space(h=40),
-        dbc.Row(
-            [
                 dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),
                 dbc.Col(
                     dbc.Row(
@@ -1098,6 +1189,73 @@ layout = dbc.Container(
             style={"height": 600, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
         ),
         dmc.Space(h=80),
+        dbc.Row(
+            [
+                dbc.Col(DashIconify(icon="oui:inspect", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Detalhamento de eventos ao longo da OS e do problema selecionado ",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_detalhamento_os("detalhe-grafico-eventos-os"),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=20),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            html.Div(
+                                [
+                                    dbc.Label("Eventos da Mix (até 3 eventos)"),
+                                    dcc.Dropdown(
+                                        id="input-select-data-eventos-mix-detalhamento-os",
+                                        options=[
+                                            {"label": evt["label"], "value": evt["value"]}
+                                            for evt in lista_todos_eventos_com_data
+                                        ],
+                                        multi=True,
+                                        value=[
+                                            "ra_uso_indevido_do_pedal_de_acelerador_85",
+                                            "ra_acelerando_parado",
+                                        ],
+                                        placeholder="Selecione um ou mais eventos...",
+                                    ),
+                                    dbc.FormText(
+                                        html.Em("⚠️ Máximo de 3 eventos permitidos"),
+                                        color="secondary",
+                                        id="input-select-data-eventos-mix-detalhamento-os-error",
+                                        style={"display": "none"},
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                        ],
+                        body=True,
+                    ),
+                    md=12,
+                ),
+            ]
+        ),
+        dcc.Graph(id="graph-historico-eventos-detalhamento-os"),
+        dl.Map(
+            children=dl.LayersControl(getMapaFundo(), id="layer-control-eventos-detalhe-os", collapsed=False),
+            id="mapa-eventos-detalhe-os",
+            bounds=None, 
+            center=(-16.665136, -49.286041),
+            zoom=11,
+            style={"height": "60vh"},
+        ),
+        dmc.Space(h=40),
     ]
 )
 

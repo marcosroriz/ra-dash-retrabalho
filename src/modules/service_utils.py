@@ -55,3 +55,4 @@ def definir_emoji_status(os_row):
         return f"{tema.EMOJI_NOVA_OS_SEM_RETRABALHO_ANTERIOR}"
     else:
         return f"{tema.EMOJI_NAO_CLASSIFICADO}"
+
