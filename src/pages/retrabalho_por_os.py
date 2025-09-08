@@ -57,18 +57,24 @@ pgEngine = pgDB.get_engine()
 # Cria o serviço
 os_service = OSService(pgEngine)
 
-# Eventos da mix com data
-df_eventos_mix_data = get_tipos_eventos_telemetria_mix_com_data(pgEngine)
-df_eventos_mix_data = df_eventos_mix_data.sort_values(by="label")
-lista_todos_eventos_com_data = df_eventos_mix_data.to_dict(orient="records")
-
 # Eventos da mix com GPS
 df_eventos_mix_gps = get_tipos_eventos_telemetria_mix_com_gps(pgEngine)
 df_eventos_mix_gps = df_eventos_mix_gps.sort_values(by="label")
 lista_todos_eventos_com_gps = df_eventos_mix_gps.to_dict(orient="records")
 
-# MapBox
-MAPBOX_KEY = os.getenv("MAPBOX_KEY", None)
+# Eventos da mix com data (todos os evts)
+df_eventos_mix_todos_evts = get_tipos_eventos_telemetria_mix_com_data(pgEngine)
+df_eventos_mix_todos_evts = df_eventos_mix_todos_evts.sort_values(by="label")
+df_eventos_mix_todos_evts["tem_gps"] = df_eventos_mix_todos_evts["value"].isin(df_eventos_mix_gps["value"].unique())
+# Atualiza label
+df_eventos_mix_todos_evts["label"] = df_eventos_mix_todos_evts.apply(
+    lambda row: f'{row["label"]} 🌐' if row["tem_gps"] else row["label"],
+    axis=1
+)
+lista_todos_eventos_mix_com_data = df_eventos_mix_todos_evts.to_dict(orient="records")
+
+
+
 
 ##############################################################################
 # CALLBACKS ##################################################################
@@ -683,7 +689,7 @@ def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
             )
 
             # Encontra o label descritivo do evento
-            label_row = df_eventos_mix_data[df_eventos_mix_data["value"] == evento]
+            label_row = df_eventos_mix_todos_evts[df_eventos_mix_todos_evts["value"] == evento]
             if not label_row.empty:
                 label_evento_str = label_row["label"].values[0]
             else:
@@ -739,7 +745,7 @@ def gera_layer_evento_mix(vec_asset_id, evt, data_inicio_problema_str, data_fim_
         evt_timestamp = pd.to_datetime(row["StartDateTime"]).strftime("%H:%M:%S - %Y-%m-%d")
 
         # Encontra o label descritivo do evento
-        label_row = df_eventos_mix_data[df_eventos_mix_data["value"] == evt]
+        label_row = df_eventos_mix_todos_evts[df_eventos_mix_todos_evts["value"] == evt]
         label_evento_str = evt
         if not label_row.empty:
             label_evento_str = label_row["label"].values[0]
@@ -818,7 +824,7 @@ def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados, relayoutData):
 
         if layer_possui_marcador:
             # Encontra o label descritivo do evento
-            label_row = df_eventos_mix_data[df_eventos_mix_data["value"] == evt]
+            label_row = df_eventos_mix_todos_evts[df_eventos_mix_todos_evts["value"] == evt]
             label_evento_str = evt
             if not label_row.empty:
                 label_evento_str = label_row["label"].values[0]
@@ -851,60 +857,23 @@ def cb_mapa_eventos_mix_retrabalho_os(data, eventos_selecionados, relayoutData):
 
 
 def getMapaFundo():
-    if MAPBOX_KEY and MAPBOX_KEY != "":
-        return [
-            # 🛰️ Satélite
-            dl.BaseLayer(
-                dl.TileLayer(
-                    url=f"https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{{z}}/{{x}}/{{y}}?access_token={MAPBOX_KEY}",
-                    attribution="© Mapbox, © OpenStreetMap",
-                    tileSize=512,
-                    zoomOffset=-1,
-                ),
-                name="Satélite",
-                checked=False,
+    return [
+        # OpenStreetMap (ruas padrão)
+        dl.BaseLayer(
+            dl.TileLayer(url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
+            name="OpenStreetMap",
+            checked=False,
+        ),
+        # ESRI Satellite (sem nomes de rua)
+        dl.BaseLayer(
+            dl.TileLayer(
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                attribution="Tiles © Esri",
             ),
-            # 🛰️ + 🗺️ Híbrido
-            dl.BaseLayer(
-                dl.TileLayer(
-                    url=f"https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{{z}}/{{x}}/{{y}}?access_token={MAPBOX_KEY}",
-                    attribution="© Mapbox, © OpenStreetMap",
-                    tileSize=512,
-                    zoomOffset=-1,
-                ),
-                name="Híbrido",
-                checked=False,
-            ),
-            # 🛣️ Ruas
-            dl.BaseLayer(
-                dl.TileLayer(
-                    url=f"https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{{z}}/{{x}}/{{y}}?access_token={MAPBOX_KEY}",
-                    attribution="© Mapbox, © OpenStreetMap",
-                    tileSize=512,
-                    zoomOffset=-1,
-                ),
-                name="Ruas",
-                checked=True,
-            ),
-        ]
-    else:
-        return [
-            # OpenStreetMap (ruas padrão)
-            dl.BaseLayer(
-                dl.TileLayer(url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
-                name="OpenStreetMap",
-                checked=False,
-            ),
-            # ESRI Satellite (sem nomes de rua)
-            dl.BaseLayer(
-                dl.TileLayer(
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-                    attribution="Tiles © Esri",
-                ),
-                name="ESRI Satellite",
-                checked=True,
-            ),
-        ]
+            name="ESRI Satellite",
+            checked=True,
+        ),
+    ]
 
 
 layout = dbc.Container(
@@ -1225,7 +1194,7 @@ layout = dbc.Container(
                                         id="input-select-data-eventos-mix-detalhamento-os",
                                         options=[
                                             {"label": evt["label"], "value": evt["value"]}
-                                            for evt in lista_todos_eventos_com_data
+                                            for evt in lista_todos_eventos_mix_com_data
                                         ],
                                         multi=True,
                                         value=[
