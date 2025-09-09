@@ -215,7 +215,7 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
                 line=dict(width=48, color="#ccb271" if r["NUMERO DA OS"] != int(numero_os) else "#16707d"),
                 showlegend=False,
                 hoverinfo="text",
-                text=f"OS: {r['NUMERO DA OS']}<br>Abertura: {r['DATA DA ABERTURA LABEL']}<br>Fechamento: {r['DATA DO FECHAMENTO LABEL']}<br>Dias em aberto: {r["DIAS"]}",
+                text=f"OS: {r['NUMERO DA OS']}<br>Abertura: {r['DATA DA ABERTURA LABEL']}<br>Fechamento: {r['DATA DO FECHAMENTO LABEL']}<br>Dias em aberto: {r['DIAS']}",
             ),
             row=1,
             col=1,
@@ -265,5 +265,3 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
         automargin=True,  # ensures margin grows to fit long labels
     )
     return fig
-
-
