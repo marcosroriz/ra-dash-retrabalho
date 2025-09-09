@@ -181,12 +181,14 @@ class OSService:
             .reset_index()
         )
         # Calcula tempo em dias
-        df_agg_problema_alvo["DIAS"] = np.ceil(
-            (
-                df_agg_problema_alvo["DATA DO FECHAMENTO DA OS DT"] - df_agg_problema_alvo["DATA DA ABERTURA DA OS DT"]
-            ).dt.total_seconds()
-            / (24 * 3600)
-        ).astype(int)
+        df_agg_problema_alvo["DIAS"] = (
+            df_agg_problema_alvo["DATA DO FECHAMENTO DA OS DT"] - df_agg_problema_alvo["DATA DA ABERTURA DA OS DT"]
+        ).dt.total_seconds() / (24 * 3600)
+
+        # Arredonda para int ou coloca em aberto para vazio
+        df_agg_problema_alvo["DIAS"] = df_agg_problema_alvo["DIAS"].apply(
+            lambda x: str(int(np.ceil(x))) if pd.notna(x) else "EM ABERTO"
+        )
 
         # Define a classe
         df_agg_problema_alvo["CLASSE"] = "OS"

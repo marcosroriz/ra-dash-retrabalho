@@ -9,6 +9,7 @@
 # Bibliotecas básicas
 import os
 import pandas as pd
+import datetime as dt
 from datetime import date
 from collections import defaultdict
 
@@ -666,11 +667,18 @@ def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
     # Pega as OS do problema atual
     df_problema_os_alvo = os_service.obtem_os_problema_atual(df_os, problem_no)
 
+    # Seta NaT para tempo atual
+    df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].fillna(pd.Timestamp.now())
+
     # Pega o início e fim do problema
     data_inicio_problema = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].min()
     data_fim_problema = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].max()
     data_inicio_problema_str = data_inicio_problema.strftime("%Y-%m-%d %H:%M:%S")
     data_fim_problema_str = data_fim_problema.strftime("%Y-%m-%d %H:%M:%S")
+
+    df_problema_os_alvo["DATA DA ABERTURA LABEL"] = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].dt.strftime("%d/%m/%Y %H:%M")
+    df_problema_os_alvo["DATA DO FECHAMENTO LABEL"] = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].dt.strftime("%d/%m/%Y %H:%M")
+
 
     # Obtem os dados do odômetro e consumo de combustível
     df_odometro = os_service.obtem_odometro_veiculo(vec_asset_id, data_inicio_problema_str, data_fim_problema_str)
