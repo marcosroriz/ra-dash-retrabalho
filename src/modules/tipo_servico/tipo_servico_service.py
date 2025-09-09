@@ -42,16 +42,55 @@ class TipoServicoService:
         query = f"""
         WITH 
         os_clean AS (
-		    SELECT 
-			    *
-		    FROM
-    			os_dados od
+            SELECT 
+                od."FILIAL",
+                od."DESCRICAO DA FILIAL",
+                od."NUMERO DA OS",
+                od."CODIGO DO VEICULO",
+                od."DESCRICAO DO VEICULO",
+                od."DESCRICAO DO MODELO",
+                od."OFICINA",
+                od."DESCRICAO DA OFICINA",
+                od."DATA DA ABERTURA DA OS",
+                NULLIF(od."DATA DO FECHAMENTO DA OS", ''::text) AS "DATA DO FECHAMENTO DA OS",
+                od."TIPO DE MANUTENCAO",
+                od."CODIGO DO MOTIVO",
+                od."DESCRICAO DO MOTIVO",
+                od."TIPO DA OS",
+                od."DESCRICAO DO TIPO DA OS",
+                od."OBSERVACAO DA OS",
+                od."JUSTIFICATIVA",
+                od."USUARIO DE ABRIU A OS",
+                od."USUARIO DE ALTERACAO",
+                od."SERVICO DA OS",
+                od."DESCRICAO DO SERVICO",
+                od."TEMPO PADRAO",
+                od."PRIORIDADE SERVICO",
+                od."SERVICO VINCULADO",
+                od."QTD DE SERVICO",
+                od."SECAO",
+                od."DESCRICAO DA SECAO",
+                od."COMPLEMENTO DO SERVICO",
+                od."FLAG DE NAO EXECUTADO",
+                od."DATA DE INI. DO PLANEJAMENTO",
+                od."DATA DE FIN. DO PLANEJAMENTO",
+                od."DATA INICIO SERVIÇO",
+                od."DATA DE FECHAMENTO DO SERVICO",
+                od."TEMPO TOTAL",
+                od."COLABORADOR QUE EXECUTOU O SERVICO",
+                od."KEY",
+                od."KEY_HASH"
+            FROM os_dados od
             WHERE 
-                od."DATA DA ABERTURA DA OS" IS NOT NULL 
-                AND od."DATA DO FECHAMENTO DA OS" IS NOT NULL 
+                od."DATA DA ABERTURA DA OS" IS NOT NULL  
                 AND od."DATA DA ABERTURA DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
-                AND od."DATA DO FECHAMENTO DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
-                AND od."DESCRICAO DO TIPO DA OS" = 'OFICINA'::text
+                AND od."DATA DA ABERTURA DA OS" >= '2024-01-01'::text 
+                AND od."DATA DO FECHAMENTO DA OS" IS NOT NULL 
+                AND (
+                    od."DATA DO FECHAMENTO DA OS" ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}$'::text 
+                    OR 
+                    od."DATA DO FECHAMENTO DA OS" = ''::text
+                )
                 AND (od."PRIORIDADE SERVICO" = ANY (ARRAY['Vermelho'::text, 'Amarelo'::text, 'Verde'::text]))
                 {withquery_modelos_str}
                 {withquery_oficinas_str}
@@ -84,17 +123,20 @@ class TipoServicoService:
                 od."COLABORADOR QUE EXECUTOU O SERVICO",
                 lag(od."DATA DO FECHAMENTO DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") AS "PREV_DATA_FECHAMENTO",
                 lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") AS "NEXT_DATA_ABERTURA",
-                    CASE
-                        WHEN lag(od."DATA DO FECHAMENTO DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") IS NOT NULL 
-                             AND od."DATA DA ABERTURA DA OS" IS NOT NULL 
-                        THEN date_part('day'::text, od."DATA DA ABERTURA DA OS"::timestamp without time zone - lag(od."DATA DO FECHAMENTO DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS")::timestamp without time zone)
-                        ELSE NULL::double precision
-                    END AS prev_days,
-                    CASE
-                        WHEN od."DATA DO FECHAMENTO DA OS" IS NOT NULL AND lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") IS NOT NULL 
-                        THEN date_part('day'::text, lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS")::timestamp without time zone - od."DATA DO FECHAMENTO DA OS"::timestamp without time zone)
-                        ELSE NULL::double precision
-                    END AS next_days
+                CASE
+                    WHEN 
+                        lag(od."DATA DO FECHAMENTO DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") IS NOT NULL 
+                        AND od."DATA DA ABERTURA DA OS" IS NOT NULL 
+                    THEN abs(date_part('day'::text, od."DATA DA ABERTURA DA OS"::timestamp without time zone - lag(od."DATA DO FECHAMENTO DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS")::timestamp without time zone))
+                    ELSE NULL::double precision
+                END AS prev_days,
+                CASE
+                    WHEN 
+                        od."DATA DO FECHAMENTO DA OS" IS NOT NULL 
+                        AND lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS") IS NOT NULL 
+                    THEN abs(date_part('day'::text, lead(od."DATA DA ABERTURA DA OS") OVER (PARTITION BY od."CODIGO DO VEICULO" ORDER BY od."DATA DA ABERTURA DA OS")::timestamp without time zone - od."DATA DO FECHAMENTO DA OS"::timestamp without time zone))
+                    ELSE NULL::double precision
+                END AS next_days
             FROM 
                 os_remove_duplicadas od
             ORDER BY
@@ -102,35 +144,54 @@ class TipoServicoService:
         ), 
         os_with_flags AS (
             SELECT 
+                os_diff_days."KEY_HASH",
+                os_diff_days."PRIORIDADE SERVICO",
+                os_diff_days."DESCRICAO DA SECAO",
+                os_diff_days."DESCRICAO DA OFICINA",
+                os_diff_days."OBSERVACAO DA OS",
+                os_diff_days."COMPLEMENTO DO SERVICO",
                 os_diff_days."NUMERO DA OS",
                 os_diff_days."CODIGO DO VEICULO",
-                os_diff_days."DESCRICAO DA OFICINA",
                 os_diff_days."DESCRICAO DO SERVICO",
                 os_diff_days."DESCRICAO DO MODELO",
-                os_diff_days."DATA INICIO SERVIÇO",
-                os_diff_days."DATA DE FECHAMENTO DO SERVICO",
                 os_diff_days."DATA DA ABERTURA DA OS",
                 os_diff_days."DATA DO FECHAMENTO DA OS",
+                os_diff_days."DATA INICIO SERVIÇO",
+                os_diff_days."DATA DE FECHAMENTO DO SERVICO",
                 os_diff_days."COLABORADOR QUE EXECUTOU O SERVICO",
-                os_diff_days."COMPLEMENTO DO SERVICO",
                 os_diff_days.prev_days,
                 os_diff_days.next_days,
                 CASE
-                    WHEN os_diff_days.next_days <= {min_dias}::numeric THEN true
+                    WHEN os_diff_days.next_days <= {min_dias}::double precision AND os_diff_days.next_days IS NOT NULL THEN true
                     ELSE false
                 END AS retrabalho,
                 CASE
-                    WHEN os_diff_days.next_days > {min_dias}::numeric OR os_diff_days.next_days IS NULL THEN true
+                    WHEN os_diff_days.next_days > {min_dias}::double precision OR os_diff_days.next_days IS NULL 
+                    AND (now() - os_diff_days."DATA DA ABERTURA DA OS"::timestamp without time zone::timestamp with time zone) > '{min_dias} days'::interval 
+                    THEN true
                     ELSE false
                 END AS correcao,
                 CASE
-                    WHEN 
-                        (os_diff_days.next_days > {min_dias}::numeric OR os_diff_days.next_days IS NULL) 
-                        AND 
-                        (os_diff_days.prev_days > {min_dias}::numeric OR os_diff_days.prev_days IS NULL) 
-                        THEN true
+                    WHEN (os_diff_days.next_days > {min_dias}::double precision OR os_diff_days.next_days IS NULL) 
+                    AND (os_diff_days.prev_days > 10::double precision OR os_diff_days.prev_days IS NULL) 
+                    AND (now() - os_diff_days."DATA DA ABERTURA DA OS"::timestamp without time zone::timestamp with time zone) > '{min_dias} days'::interval 
+                    THEN true
                     ELSE false
-                END AS correcao_primeira
+                END AS correcao_primeira,
+                CASE
+                    WHEN os_diff_days.prev_days <= {min_dias}::double precision 
+                    AND os_diff_days.next_days IS NULL 
+                    AND (now() - os_diff_days."DATA DA ABERTURA DA OS"::timestamp without time zone::timestamp with time zone) <= '{min_dias} days'::interval 
+                    THEN true
+                    ELSE false
+                END AS nova_os_com_retrabalho_anterior,
+                CASE
+                    WHEN (os_diff_days.prev_days > {min_dias}::double precision OR os_diff_days.prev_days IS NULL) 
+                    AND os_diff_days.next_days IS NULL 
+                    AND (now() - os_diff_days."DATA DA ABERTURA DA OS"::timestamp without time zone::timestamp with time zone) <= '{min_dias} days'::interval 
+                    THEN true
+                    ELSE false
+                END AS nova_os_sem_retrabalho_anterior
             FROM 
                 os_diff_days
         ),
@@ -141,92 +202,129 @@ class TipoServicoService:
                         WHEN os_with_flags.correcao THEN 1
                         ELSE 0
                     END) OVER (PARTITION BY os_with_flags."CODIGO DO VEICULO" ORDER BY os_with_flags."DATA DA ABERTURA DA OS") AS problem_no,
+                os_with_flags."KEY_HASH",
+                os_with_flags."PRIORIDADE SERVICO",
+                os_with_flags."DESCRICAO DA SECAO",
+                os_with_flags."DESCRICAO DA OFICINA",
+                os_with_flags."OBSERVACAO DA OS",
+                os_with_flags."COMPLEMENTO DO SERVICO",
                 os_with_flags."NUMERO DA OS",
                 os_with_flags."CODIGO DO VEICULO",
                 os_with_flags."DESCRICAO DO SERVICO",
                 os_with_flags."DESCRICAO DO MODELO",
-                os_with_flags."DESCRICAO DA OFICINA",
                 os_with_flags."DATA DA ABERTURA DA OS",
                 os_with_flags."DATA DO FECHAMENTO DA OS",
                 os_with_flags."DATA INICIO SERVIÇO",
                 os_with_flags."DATA DE FECHAMENTO DO SERVICO",
                 os_with_flags."COLABORADOR QUE EXECUTOU O SERVICO",
-                os_with_flags."COMPLEMENTO DO SERVICO",
                 os_with_flags.prev_days,
                 os_with_flags.next_days,
                 os_with_flags.retrabalho,
                 os_with_flags.correcao,
-                os_with_flags.correcao_primeira
+                os_with_flags.correcao_primeira,
+                os_with_flags.nova_os_com_retrabalho_anterior,
+                os_with_flags.nova_os_sem_retrabalho_anterior
             FROM 
                 os_with_flags
         ),
         os_with_fix_problem_number AS (
             SELECT
                 CASE
-                    WHEN problem_grouping.retrabalho
+                    WHEN problem_grouping.retrabalho OR problem_grouping.nova_os_com_retrabalho_anterior OR problem_grouping.nova_os_sem_retrabalho_anterior 
                     THEN problem_grouping.problem_no + 1
                     ELSE problem_grouping.problem_no
                 END AS problem_no,
+                problem_grouping."KEY_HASH",
+                problem_grouping."PRIORIDADE SERVICO",
+                problem_grouping."DESCRICAO DA SECAO",
+                problem_grouping."DESCRICAO DA OFICINA",
+                problem_grouping."OBSERVACAO DA OS",
+                problem_grouping."COMPLEMENTO DO SERVICO",
                 problem_grouping."NUMERO DA OS",
                 problem_grouping."CODIGO DO VEICULO",
-                problem_grouping."DESCRICAO DA OFICINA",
                 problem_grouping."DESCRICAO DO MODELO",
                 problem_grouping."DESCRICAO DO SERVICO",
-                problem_grouping."DATA INICIO SERVIÇO",
                 problem_grouping."DATA DE FECHAMENTO DO SERVICO",
                 problem_grouping."DATA DA ABERTURA DA OS",
                 problem_grouping."DATA DO FECHAMENTO DA OS",
+                problem_grouping."DATA INICIO SERVIÇO",
                 problem_grouping."COLABORADOR QUE EXECUTOU O SERVICO",
-                problem_grouping."COMPLEMENTO DO SERVICO",
                 problem_grouping.prev_days,
                 problem_grouping.next_days,
                 problem_grouping.retrabalho,
                 problem_grouping.correcao,
-                problem_grouping.correcao_primeira
+                problem_grouping.correcao_primeira,
+                problem_grouping.nova_os_com_retrabalho_anterior,
+                problem_grouping.nova_os_sem_retrabalho_anterior
             FROM 
                 problem_grouping
             WHERE
-                problem_grouping."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                problem_grouping."DATA DA ABERTURA DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_modelos_str}
                 {subquery_oficinas_str}
                 {subquery_os_str}
             ORDER BY 
                 problem_grouping."DATA DA ABERTURA DA OS"
         )
-        SELECT
- 		    od_fix."problem_no",
- 		    od_fix."retrabalho", 
- 		    od_fix."correcao", 
- 		    od_fix."correcao_primeira", 
- 		    od_fix."prev_days", 
- 		    od_fix."next_days", 
- 		    od.*
-	    FROM
-    		os_clean od
+        SELECT 
+            od_fix.problem_no,
+            od_fix.retrabalho,
+            od_fix.correcao,
+            od_fix.correcao_primeira,
+            od_fix.nova_os_com_retrabalho_anterior,
+            od_fix.nova_os_sem_retrabalho_anterior,
+            od_fix.prev_days,
+            od_fix.next_days,
+            od."FILIAL",
+            od."DESCRICAO DA FILIAL",
+            od."NUMERO DA OS",
+            od."CODIGO DO VEICULO",
+            od."DESCRICAO DO VEICULO",
+            od."DESCRICAO DO MODELO",
+            od."OFICINA",
+            od."DESCRICAO DA OFICINA",
+            od."DATA DA ABERTURA DA OS",
+            od."DATA DO FECHAMENTO DA OS",
+            od."TIPO DE MANUTENCAO",
+            od."CODIGO DO MOTIVO",
+            od."DESCRICAO DO MOTIVO",
+            od."TIPO DA OS",
+            od."DESCRICAO DO TIPO DA OS",
+            od."OBSERVACAO DA OS",
+            od."JUSTIFICATIVA",
+            od."USUARIO DE ABRIU A OS",
+            od."USUARIO DE ALTERACAO",
+            od."SERVICO DA OS",
+            od."DESCRICAO DO SERVICO",
+            od."TEMPO PADRAO",
+            od."PRIORIDADE SERVICO",
+            od."SERVICO VINCULADO",
+            od."QTD DE SERVICO",
+            od."SECAO",
+            od."DESCRICAO DA SECAO",
+            od."COMPLEMENTO DO SERVICO",
+            od."FLAG DE NAO EXECUTADO",
+            od."DATA DE INI. DO PLANEJAMENTO",
+            od."DATA DE FIN. DO PLANEJAMENTO",
+            od."DATA INICIO SERVIÇO",
+            od."DATA DE FECHAMENTO DO SERVICO",
+            od."TEMPO TOTAL",
+            od."COLABORADOR QUE EXECUTOU O SERVICO",
+            od."KEY",
+            od."KEY_HASH"
+        FROM 
+            os_clean od
         LEFT JOIN 
-		    os_with_fix_problem_number od_fix
-	    ON 
-            od."NUMERO DA OS" = od_fix."NUMERO DA OS" and od."DESCRICAO DO SERVICO" = od_fix."DESCRICAO DO SERVICO"
+            os_with_fix_problem_number od_fix 
+        ON 
+            od."NUMERO DA OS" = od_fix."NUMERO DA OS" 
+            AND od."DESCRICAO DO SERVICO" = od_fix."DESCRICAO DO SERVICO"
         WHERE
-            od."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
-            --AND (
-            --    od."COLABORADOR QUE EXECUTOU O SERVICO" = '3561'
-            --)
-            --and (
-            --	od."CODIGO DO VEICULO" = '50714'
-            --	or 
-            --	od."CODIGO DO VEICULO" = '50774'
-            --	or
-            --	od."CODIGO DO VEICULO" = '50763'
-            --	)
-	    ORDER BY
-		    od."DATA DA ABERTURA DA OS" 
+            od."DATA DA ABERTURA DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+        ORDER BY od."DATA DA ABERTURA DA OS"
         """
-        df_os_query = pd.read_sql_query(query, self.dbEngine)
         print(query)
-        print("shape", df_os_query.shape)
-
-        print(df_os_query[["NUMERO DA OS"]].drop_duplicates().shape)
+        df_os_query = pd.read_sql_query(query, self.dbEngine)
 
         # Tratamento de datas
         df_os_query["DATA INICIO SERVICO"] = pd.to_datetime(df_os_query["DATA INICIO SERVIÇO"])

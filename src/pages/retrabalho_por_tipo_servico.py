@@ -86,7 +86,7 @@ def formata_moeda(valor):
     return "{:,.2f}".format(valor).replace(',', 'X').replace('.', ',').replace('X', '.')
 
 # Função para validar o input
-def input_valido_tela_os(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
+def input_valido_tela_tipo_servico(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
     if datas is None or not datas or None in datas or min_dias is None:
         return False
 
@@ -103,7 +103,7 @@ def input_valido_tela_os(datas, min_dias, lista_modelos, lista_oficinas, lista_o
 
 
 # Corrige o input para garantir que o termo para todas ("TODAS") não seja selecionado junto com outras opções
-def corrrige_input(lista, termo_all="TODAS"):
+def corrrige_input_tipo_servico(lista, termo_all="TODAS"):
     # Caso 1: Nenhuma opcao é selecionada, reseta para "TODAS"
     if not lista:
         return [termo_all]
@@ -121,27 +121,20 @@ def corrrige_input(lista, termo_all="TODAS"):
 
 
 @callback(
-    Output("input-select-modelo-veiculos-visao-os", "value"),
-    Input("input-select-modelo-veiculos-visao-os", "value"),
+    Output("input-select-modelo-veiculos-visao-tipo-servico", "value"),
+    Input("input-select-modelo-veiculos-visao-tipo-servico", "value"),
 )
-def corrige_input_modelos_tela_os(lista_modelos):
-    return corrrige_input(lista_modelos, "TODOS")
+def corrige_input_modelos_tela_tipo_servico(lista_modelos):
+    return corrrige_input_tipo_servico(lista_modelos, "TODOS")
 
 
 @callback(
-    Output("input-select-oficina-visao-os", "value"),
-    Input("input-select-oficina-visao-os", "value"),
+    Output("input-select-oficina-visao-tipo-servico", "value"),
+    Input("input-select-oficina-visao-tipo-servico", "value"),
 )
-def corrige_input_oficinas_tela_os(lista_oficinas):
-    return corrrige_input(lista_oficinas, "TODAS")
+def corrige_input_oficinas_tela_tipo_servico(lista_oficinas):
+    return corrrige_input_tipo_servico(lista_oficinas, "TODAS")
 
-
-# @callback(
-#     Output("input-select-ordens-servico-visao-os", "value"),
-#     Input("input-select-ordens-servico-visao-os", "value"),
-# )
-# def corrige_input_ordem_servico_tela_os(lista_os):
-#     return corrrige_input(lista_os, "TODAS")
 
 ##############################################################################
 # Callback para gerar labels dinâmicos
@@ -157,12 +150,12 @@ def gera_labels_inputs(campo):
         [
             Input("input-intervalo-datas-os", "value"),
             Input("input-select-dias-os-retrabalho", "value"),
-            Input("input-select-modelo-veiculos-visao-os", "value"),
-            Input("input-select-oficina-visao-os", "value"),
-            Input("input-select-ordens-servico-visao-os", "value"),
+            Input("input-select-modelo-veiculos-visao-tipo-servico", "value"),
+            Input("input-select-oficina-visao-tipo-servico", "value"),
+            Input("input-select-ordens-servico-visao-tipo-servico", "value"),
         ],
     )
-    def atualiza_labels_inputs(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
+    def atualiza_labels_inputs_tipo_servico(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
         labels_antes = [
             # DashIconify(icon="material-symbols:filter-arrow-right", width=20),
             dmc.Badge("Filtro", color="gray", variant="outline"),
@@ -219,13 +212,13 @@ def gera_labels_inputs(campo):
 
 
 @callback(
-    Output("store-dados-os", "data"),
+    Output("store-dados-tipo-servico", "data"),
     [
         Input("input-intervalo-datas-os", "value"),
         Input("input-select-dias-os-retrabalho", "value"),
-        Input("input-select-modelo-veiculos-visao-os", "value"),
-        Input("input-select-oficina-visao-os", "value"),
-        Input("input-select-ordens-servico-visao-os", "value"),
+        Input("input-select-modelo-veiculos-visao-tipo-servico", "value"),
+        Input("input-select-oficina-visao-tipo-servico", "value"),
+        Input("input-select-ordens-servico-visao-tipo-servico", "value"),
     ],
     running=[(Output("loading-overlay-guia-os", "visible"), True, False)],
 )
@@ -236,7 +229,7 @@ def computa_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
     }
 
     # Valida input
-    if not input_valido_tela_os(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
+    if not input_valido_tela_tipo_servico(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
         return dados_vazios
 
     # Obtém dados das os
@@ -278,7 +271,7 @@ def computa_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
 
 
 # Callback para o grafico de síntese do retrabalho
-@callback(Output("graph-pizza-sintese-retrabalho-os", "figure"), Input("store-dados-os", "data"))
+@callback(Output("graph-pizza-sintese-retrabalho-os", "figure"), Input("store-dados-tipo-servico", "data"))
 def plota_grafico_pizza_sintese_os(store_payload):
     if store_payload["vazio"]:
         return go.Figure()
@@ -311,7 +304,7 @@ def plota_grafico_pizza_sintese_os(store_payload):
 
 
 # Callback para o grafico cumulativo de retrabalho
-@callback(Output("graph-retrabalho-cumulativo-os", "figure"), Input("store-dados-os", "data"))
+@callback(Output("graph-retrabalho-cumulativo-os", "figure"), Input("store-dados-tipo-servico", "data"))
 def plota_grafico_cumulativo_retrabalho_os(store_payload):
     if store_payload["vazio"]:
         return go.Figure()
@@ -332,7 +325,7 @@ def plota_grafico_cumulativo_retrabalho_os(store_payload):
     return fig
 
 
-@callback(Output("graph-retrabalho-por-modelo-perc-os", "figure"), Input("store-dados-os", "data"))
+@callback(Output("graph-retrabalho-por-modelo-perc-os", "figure"), Input("store-dados-tipo-servico", "data"))
 def plota_grafico_retrabalho_por_modelo_perc_os(store_payload):
     if store_payload["vazio"]:
         return go.Figure()
@@ -397,7 +390,7 @@ def plota_grafico_evolucao_retrabalho_por_oficina_por_mes_os(store_payload):
         Output("indicador-porcentagem-retrabalho", "children"),
         Output("indicador-num-medio-dias-correcao", "children"),
     ],
-    Input("store-dados-os", "data"),
+    Input("store-dados-tipo-servico", "data"),
 )
 def atualiza_indicadores_os_gerais(store_payload):
     if store_payload["vazio"]:
@@ -408,6 +401,9 @@ def atualiza_indicadores_os_gerais(store_payload):
 
     # Remove duplicatas
     df = df_os_raw.drop_duplicates(subset=["NUMERO DA OS"])
+
+    # Remove NaNs e NaTs
+    df = df[df["DATA DO FECHAMENTO DA OS"].notna()].copy()
 
     # Cálculo
     df_dias_para_correcao, df_num_os_por_problema, df_estatistica = tipo_servico_service.get_indicadores_gerais(df)
@@ -441,7 +437,7 @@ def atualiza_indicadores_os_gerais(store_payload):
         Output("indicador-custo-retrabalho-os", "children"),
         Output("indicador-custo-percentagem-os", "children"),
     ],
-    Input("store-dados-os", "data"),
+    Input("store-dados-tipo-servico", "data"),
 )
 def atualiza_indicadores_os_custos(store_payload):
     if store_payload["vazio"]:
@@ -475,7 +471,7 @@ def atualiza_indicadores_os_custos(store_payload):
         Output("indicador-media-correcoes-primeira-colaborador", "children"),
         Output("indicador-media-correcoes-tardias-colaborador", "children"),
     ],
-    Input("store-dados-os", "data"),
+    Input("store-dados-tipo-servico", "data"),
 )
 def atualiza_indicadores_os_mecanico(store_payload):
     if store_payload["vazio"]:
@@ -512,7 +508,7 @@ def atualiza_indicadores_os_mecanico(store_payload):
 
 @callback(
     Output("tabela-top-mecanicos", "rowData"),
-    Input("store-dados-os", "data"),
+    Input("store-dados-tipo-servico", "data"),
 )
 def update_tabela_mecanicos_retrabalho(store_payload):
     if store_payload["vazio"]:
@@ -662,7 +658,7 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Modelos de Veículos"),
                                                     dcc.Dropdown(
-                                                        id="input-select-modelo-veiculos-visao-os",
+                                                        id="input-select-modelo-veiculos-visao-tipo-servico",
                                                         options=[
                                                             {
                                                                 "label": os["MODELO"],
@@ -690,7 +686,7 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Oficinas"),
                                                     dcc.Dropdown(
-                                                        id="input-select-oficina-visao-os",
+                                                        id="input-select-oficina-visao-tipo-servico",
                                                         options=[
                                                             {"label": os["LABEL"], "value": os["LABEL"]}
                                                             for os in lista_todas_oficinas
@@ -715,7 +711,7 @@ layout = dbc.Container(
                                                 [
                                                     dbc.Label("Ordens de Serviço"),
                                                     dcc.Dropdown(
-                                                        id="input-select-ordens-servico-visao-os",
+                                                        id="input-select-ordens-servico-visao-tipo-servico",
                                                         options=[
                                                             {"label": os["LABEL"], "value": os["LABEL"]}
                                                             for os in lista_todas_os
@@ -764,7 +760,7 @@ layout = dbc.Container(
             ]
         ),
         # Estado
-        dcc.Store(id="store-dados-os"),
+        dcc.Store(id="store-dados-tipo-servico"),
         # Indicadores
         html.Hr(),
         dbc.Row(
@@ -1250,7 +1246,7 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-servico", icon="ic:baseline-category")
+dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-servico", icon="ic:baseline-category", hide_page=True)
 
 
 # #!/usr/bin/env python
@@ -1658,7 +1654,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 #                                                 [
 #                                                     dbc.Label("Modelos de Veículos"),
 #                                                     dcc.Dropdown(
-#                                                         id="input-select-modelo-veiculos-visao-os",
+#                                                         id="input-select-modelo-veiculos-visao-tipo-servico",
 #                                                         options=[
 #                                                             {
 #                                                                 "label": os["MODELO"],
@@ -1686,7 +1682,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 #                                                 [
 #                                                     dbc.Label("Ordens de Serviço"),
 #                                                     dcc.Dropdown(
-#                                                         id="input-select-ordens-servico-visao-os",
+#                                                         id="input-select-ordens-servico-visao-tipo-servico",
 #                                                         options=[
 #                                                             {
 #                                                                 "label": os["LABEL"],
@@ -1818,7 +1814,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 #             ]
 #         ),
 #         # Estado
-#         dcc.Store(id="store-dados-os"),
+#         dcc.Store(id="store-dados-tipo-servico"),
 #         # Inicio dos gráficos
 #         dbc.Row(dmc.Space(h=20)),
 #         # Graficos gerais
@@ -2697,7 +2693,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 
 # @callback(
-#     Output("store-dados-os", "data"),
+#     Output("store-dados-tipo-servico", "data"),
 #     [
 #         Input("input-lista-os", "value"),
 #         Input("input-intervalo-datas", "value"),
@@ -2756,7 +2752,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 
 # @callback(
-#     Output("graph-retrabalho-correcoes", "figure"), Input("store-dados-os", "data")
+#     Output("graph-retrabalho-correcoes", "figure"), Input("store-dados-tipo-servico", "data")
 # )
 # def plota_grafico_pizza_retrabalho(data):
 #     if data["vazio"]:
@@ -2795,7 +2791,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 
 # @callback(
-#     Output("graph-retrabalho-cumulativo", "figure"), Input("store-dados-os", "data")
+#     Output("graph-retrabalho-cumulativo", "figure"), Input("store-dados-tipo-servico", "data")
 # )
 # def plota_grafico_cumulativo_retrabalho(data):
 #     if data["vazio"]:
@@ -2885,7 +2881,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 # @callback(
 #     Output("graph-retrabalho-por-modelo-perc", "figure"),
-#     Input("store-dados-os", "data"),
+#     Input("store-dados-tipo-servico", "data"),
 # )
 # def plota_grafico_barras_retrabalho_por_modelo_perc(data):
 #     if data["vazio"]:
@@ -2961,7 +2957,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 #         Output("indicador-porcentagem-retrabalho", "children"),
 #         Output("indicador-num-medio-dias-correcao", "children"),
 #     ],
-#     Input("store-dados-os", "data"),
+#     Input("store-dados-tipo-servico", "data"),
 # )
 # def atualiza_indicadores(data):
 #     if data["vazio"]:
@@ -3006,7 +3002,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 #         Output("indicador-media-correcoes-primeira-colaborador", "children"),
 #         Output("indicador-media-correcoes-tardias-colaborador", "children"),
 #     ],
-#     Input("store-dados-os", "data"),
+#     Input("store-dados-tipo-servico", "data"),
 # )
 # def atualiza_indicadores_mecanico(data):
 #     if data["vazio"]:
@@ -3043,7 +3039,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 # @callback(
 #     Output("tabela-top-mecanicos", "rowData"),
-#     Input("store-dados-os", "data"),
+#     Input("store-dados-tipo-servico", "data"),
 # )
 # def update_tabela_mecanicos_retrabalho(data):
 #     if data["vazio"]:
@@ -3071,7 +3067,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 # @callback(
 #     Output("tabela-top-veiculos-problematicos", "rowData"),
-#     Input("store-dados-os", "data"),
+#     Input("store-dados-tipo-servico", "data"),
 # )
 # def update_tabela_veiculos_mais_problematicos(data):
 #     if data["vazio"]:
@@ -3111,7 +3107,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 # # @callback(
 # #     Output("tabela-top-os-problematicas", "rowData"),
-# #     Input("store-dados-os", "data"),
+# #     Input("store-dados-tipo-servico", "data"),
 # # )
 # # def update_tabela_os_problematicas(data):
 # #     if data["vazio"]:
@@ -3134,7 +3130,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 # # @callback(
 # #     Output("tabela-top-veiculos", "rowData"),
-# #     Input("store-dados-os", "data"),
+# #     Input("store-dados-tipo-servico", "data"),
 # # )
 # # def update_tabela_veiculos_problematicos(data):
 # #     if data["vazio"]:
@@ -3156,7 +3152,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 
 # @callback(
 #     Output("input-lista-vec-detalhar", "options"),
-#     Input("store-dados-os", "data"),
+#     Input("store-dados-tipo-servico", "data"),
 # )
 # def update_lista_veiculos_detalhar(data):
 #     if data["vazio"]:
@@ -3192,7 +3188,7 @@ dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-serv
 # @callback(
 #     Output("tabela-detalhes-vec-os", "rowData"),
 #     [
-#         Input("store-dados-os", "data"),
+#         Input("store-dados-tipo-servico", "data"),
 #         Input("input-lista-vec-detalhar", "value"),
 #         Input("input-dias", "value"),
 #     ],
