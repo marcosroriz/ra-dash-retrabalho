@@ -43,8 +43,6 @@ from modules.entities_utils import get_regras_monitoramento_os, get_mecanicos, g
 
 # Imports específicos
 from modules.crud_regra.crud_regra_service import CRUDRegraService
-from modules.crud_regra.crud_email_test import CRUDEmailTestService
-from modules.crud_regra.crud_wpp_test import CRUDWppTestService
 
 import modules.crud_regra.graficos as crud_regra_graficos
 import modules.crud_regra.tabelas as crud_regra_tabelas
@@ -453,8 +451,9 @@ def callback_botao_relatorio_detalhamento_regra(
 @callback(
     Output("graph-relatorio-regra-por-servico", "figure"),
     Input("store-relatorio-relatorio-regra", "data"),
+    Input("store-window-size", "data"),
 )
-def graph_relatorio_regra_por_servico(store_relatorio_regra):
+def graph_relatorio_regra_por_servico(store_relatorio_regra, metadata_browser):
     if store_relatorio_regra and store_relatorio_regra["valido"]:
         df = pd.DataFrame(store_relatorio_regra["df_resultado_regra"])
         
@@ -480,7 +479,7 @@ def graph_relatorio_regra_por_servico(store_relatorio_regra):
         # Junta
         df_agg_top_10 = pd.concat([df_agg_top_10, df_demais_problemas], ignore_index=True)
 
-        return crud_regra_graficos.gerar_grafico_top_10_problemas_relatorio_regras(df_agg_top_10)
+        return crud_regra_graficos.gerar_grafico_top_10_problemas_relatorio_regras(df_agg_top_10, metadata_browser)
     else:
         return go.Figure()
 
@@ -686,24 +685,44 @@ layout = dbc.Container(
         ),
         # Cabeçalho e Inputs
         html.Hr(),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="carbon:rule-data-quality", width=45), width="auto"),
-                dbc.Col(
-                    html.H1(
-                        [
-                            "Relatório da \u00a0",
-                            html.Strong("regra"),
-                            "\u00a0 de monitoramento do retrabalho",
-                        ],
-                        className="align-self-center",
+        # Título Desktop
+        dmc.Box(
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="carbon:rule-data-quality", width=45), width="auto"),
+                    dbc.Col(
+                        html.H1(
+                            [
+                                "Relatório da \u00a0",
+                                html.Strong("regra"),
+                                "\u00a0 de monitoramento do retrabalho",
+                            ],
+                            className="align-self-center",
+                        ),
+                        width=True,
                     ),
-                    width=True,
-                ),
-            ],
-            align="center",
+                ],
+                align="center",
+            ),
+            visibleFrom="sm",
         ),
-        # dmc.Space(h=15),
+        # Titulo Mobile
+        dmc.Box(
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="carbon:rule-data-quality", width=45), width="auto"),
+                    dbc.Col(
+                        html.H1(
+                            "Relatório da regra",
+                            className="align-self-center",
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            hiddenFrom="sm",
+        ),
         html.Hr(),
         dbc.Row(
             [
@@ -732,6 +751,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Card(
@@ -760,6 +780,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
             ]
         ),
@@ -801,14 +822,17 @@ layout = dbc.Container(
                                             dbc.ListGroupItem("", id="card-regra-horario-envio"),
                                             dbc.ListGroupItem("", id="card-regra-alvos-email"),
                                             dbc.ListGroupItem("", id="card-regra-alvos-whatsapp"),
-                                        ]
-                                    )
-                                ]
+                                        ],
+                                        className="m-0",
+                                    ),
+                                ],
+                                className="m-0",
                             ),
                         ],
-                        className="m-1",
+                        className="m-0 m-md-1",  # margem só no desktop
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Row(
@@ -841,14 +865,17 @@ layout = dbc.Container(
                                             dbc.ListGroupItem("", id="card-relatorio-resultado-secoes"),
                                             dbc.ListGroupItem("", id="card-relatorio-resultado-oficinas"),
                                             # dbc.ListGroupItem("", id="card-relatorio-resultado-os"),
-                                        ]
+                                        ],
+                                        className="m-0",
                                     ),
-                                ]
+                                ],
+                                className="m-0",
                             ),
                         ],
-                        className="m-1",
+                        className="m-0 m-md-1",  # margem só no desktop
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
             ],
         ),

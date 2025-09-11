@@ -7,9 +7,6 @@
 # IMPORTS ####################################################################
 ##############################################################################
 # Bibliotecas básicas
-from datetime import date, datetime
-import json
-import pandas as pd
 import re
 
 # Importar bibliotecas do dash básicas e plotly
@@ -54,10 +51,10 @@ def prepara_dados_tabela(df_regras):
     return df_regras
 
 
-
 ##############################################################################
 # CALLBACKS ##################################################################
 ##############################################################################
+
 
 # Callback para carregar as regras existentes
 @callback(
@@ -72,6 +69,7 @@ def cb_carregar_regras_existentes(ready):
         lista_todas_regras = df_todas_regras.to_dict(orient="records")
 
     return lista_todas_regras
+
 
 # Callback botão criar regra
 @callback(
@@ -97,9 +95,10 @@ def cb_botao_cancelar_apagar_regra(n_clicks):
         return dash.no_update
     else:
         return False
-    
+
+
 # Callback para o botão de confirmar apagar regra
-# Saída: 
+# Saída:
 # - Fecha o Modal de confirmação de apagar regra
 # - Abre o Modal de sucesso de apagar regra
 # - Atualiza tabela de regras existentes
@@ -132,7 +131,8 @@ def cb_botao_confirma_apagar_regra(n_clicks, nome_regra):
             lista_todas_regras = df_todas_regras.to_dict(orient="records")
 
         return False, True, lista_todas_regras
-    
+
+
 # Callback para fechar o modal de sucesso de apagar regra
 @callback(
     Output("modal-sucesso-apagar-gerenciar-regra", "opened", allow_duplicate=True),
@@ -144,6 +144,7 @@ def cb_botao_close_modal_sucesso_apagar_regra(n_clicks):
         return dash.no_update
     else:
         return False
+
 
 # Callback para acessar o botão apertado da tabela e guardar no estado
 @callback(
@@ -171,7 +172,7 @@ def cb_botao_acao_tabela(linha, linha_virtual):
     # Verifica se a linha é valida
     if linha is None or linha_virtual is None:
         return dash.no_update, dash.no_update, dash.no_update
-    
+
     # Pega os dados da regra clicada
     dados_regra = linha_virtual[linha["rowIndex"]]
     nome_regra = dados_regra["nome"]
@@ -182,14 +183,18 @@ def cb_botao_acao_tabela(linha, linha_virtual):
     acao = linha["colId"]
 
     if acao == "acao_relatorio":
-        return f"/regra-relatorio?id_regra={id_regra}&data_relatorio={dia_ultimo_relatorio}", dash.no_update, dash.no_update
+        return (
+            f"/regra-relatorio?id_regra={id_regra}&data_relatorio={dia_ultimo_relatorio}",
+            dash.no_update,
+            dash.no_update,
+        )
     elif acao == "acao_editar":
         return f"/regra-editar?id_regra={id_regra}", dash.no_update, dash.no_update
     elif acao == "acao_apagar":
         nome_regra = f"{nome_regra} (ID: {id_regra})"
         return dash.no_update, True, nome_regra
     else:
-        return dash.no_update, dash.no_update, dash.no_update   
+        return dash.no_update, dash.no_update, dash.no_update
 
 
 ##############################################################################
@@ -197,7 +202,7 @@ def cb_botao_acao_tabela(linha, linha_virtual):
 ##############################################################################
 layout = dbc.Container(
     [
-    # Loading
+        # Loading
         dmc.LoadingOverlay(
             visible=False,
             id="loading-overlay-guia-gerenciar-regra",
@@ -290,19 +295,36 @@ layout = dbc.Container(
                 gap="md",
             ),
         ),
-
         # Cabeçalho e Inputs
         html.Hr(),
         dbc.Row(
             [
                 dbc.Col(DashIconify(icon="carbon:rule", width=45), width="auto"),
                 dbc.Col(
-                    html.H1(
+                    dbc.Row(
                         [
-                            html.Strong("Regras"),
-                            "\u00a0 de Monitoramento",
+                            # Título desktop
+                            dmc.Box(
+                                html.H1(
+                                    [
+                                        html.Strong("Regras"),
+                                        "\u00a0 de Monitoramento",
+                                    ],
+                                    className="align-self-center",
+                                ),
+                                visibleFrom="sm",
+                            ),
+                            # Título mobile
+                            dmc.Box(
+                                html.H1(
+                                    [
+                                        html.Strong("Regras"),
+                                    ],
+                                    className="align-self-center",
+                                ),
+                                hiddenFrom="sm",
+                            ),
                         ],
-                        className="align-self-center",
                     ),
                     width=True,
                 ),
@@ -314,6 +336,7 @@ layout = dbc.Container(
                         className="me-1",
                         style={"padding": "1em"},
                     ),
+                    className="mt-3 mt-md-0",
                     width="auto",
                 ),
             ],

@@ -932,7 +932,6 @@ layout = dbc.Container(
             ),
             hiddenFrom="sm",
         ),
-        # dmc.Space(h=15),
         html.Hr(),
         dbc.Row(
             [

@@ -5,7 +5,7 @@
 
 # Tabela de regras existentes
 tbl_regras_existentes = [
-    {"field": "nome", "headerName": "NOME DA REGRA", "minWidth": 250},
+    {"field": "nome", "headerName": "NOME DA REGRA", "minWidth": 200},
     {
         "field": "created_at",
         "headerName": "DATA DE CRIAÇÃO",
@@ -34,6 +34,7 @@ tbl_regras_existentes = [
         "cellRenderer": "Button",
         "floatingFilter": False,
         "filter": False,
+        "minWidth": 150,
         "cellRendererParams": {"className": "btn btn-outline-primary btn-sm"},
     },
     {
@@ -42,6 +43,7 @@ tbl_regras_existentes = [
         "cellRenderer": "Button",
         "floatingFilter": False,
         "filter": False,
+        "minWidth": 120,
         "cellRendererParams": {"className": "btn btn-outline-warning btn-sm"},
     },
     {
@@ -50,6 +52,7 @@ tbl_regras_existentes = [
         "cellRenderer": "Button",
         "floatingFilter": False,
         "filter": False,
+        "minWidth": 130,
         "cellRendererParams": {"className": "btn btn-outline-danger btn-sm"},
     },
 ]

@@ -4,12 +4,10 @@
 # Funções utilitárias para gerar os gráficos do detalhamento de uma OS
 
 # Imports básicos
-import math
 import pandas as pd
-import numpy as np
 
 # Imports de datas
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 # Imports gráficos
 import plotly.express as px
@@ -18,6 +16,9 @@ from plotly.subplots import make_subplots
 
 # Imports do tema
 import tema
+
+# Funções utilitárias de texto
+from modules.str_utils import truncate_label, wrap_label_by_words
 
 
 # Rotinas para gerar o gráfico de gantt
@@ -174,29 +175,25 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os(df, os_numero, metada
             tr.update(width=0.32, marker_line=dict(width=2, color="black"))
             break
 
-    fig.update_yaxes(
-        tickangle=-90
-    )
+    fig.update_yaxes(tickangle=-90)
 
     fig.update_layout(
         legend=dict(
-            orientation="h",           # horizontal
-            yanchor="bottom",          # anchor legend to bottom
-            y=-0.3,                    # position below chart
-            xanchor="center",          # center it
-            x=0.5
+            orientation="h",  # horizontal
+            yanchor="bottom",  # anchor legend to bottom
+            y=-0.3,  # position below chart
+            xanchor="center",  # center it
+            x=0.5,
         )
     )
-    fig.update_layout(
-        margin=dict(l=30, r=30, t=20, b=10)
-    )
+    fig.update_layout(margin=dict(l=30, r=30, t=20, b=10))
 
     # Definir o intervalo padrão de 6 meses (com padding)
     end_date_slider = df_os_escolhida["DATA DO FECHAMENTO PAD"].max() + timedelta(days=5)
     start_date_slider = end_date_slider - timedelta(days=190)
     fig.update_layout(xaxis=dict(range=[start_date_slider, end_date_slider]))
-    
-    # Especificidades do mapa para cada display
+
+    # Especificidades do gráfico para cada display
     # No desktop, mostra linha do tempo
     if metadata_browser and metadata_browser["device"] == "Desktop":
         # Atualiza o título do eixo X
@@ -206,47 +203,21 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os(df, os_numero, metada
         fig.update_xaxes(
             rangeslider_visible=True,
             rangeselector=dict(
-                buttons=list([
-                    dict(count=1, label="1 mês", step="month", stepmode="backward"),
-                    dict(count=6, label="6 meses", step="month", stepmode="backward"),
-                    dict(count=1, label="YTD", step="year", stepmode="todate"),
-                    dict(count=1, label="1 ano", step="year", stepmode="backward"),
-                    dict(label="Todo o período", step="all")
-                ]),
+                buttons=list(
+                    [
+                        dict(count=1, label="1 mês", step="month", stepmode="backward"),
+                        dict(count=6, label="6 meses", step="month", stepmode="backward"),
+                        dict(count=1, label="YTD", step="year", stepmode="todate"),
+                        dict(count=1, label="1 ano", step="year", stepmode="backward"),
+                        dict(label="Todo o período", step="all"),
+                    ]
+                ),
             ),
-            rangeslider=dict(
-                borderwidth=2
-            )
+            rangeslider=dict(borderwidth=2),
         )
 
     return fig
 
-# Funções utilitárias para limpar texto
-def wrap_label_by_words(text, max_line_length=20):
-    words = text.split()
-    lines = []
-    current_line = ""
-
-    for word in words:
-        if len(current_line + " " + word) <= max_line_length:
-            current_line += " " + word if current_line else word
-        else:
-            lines.append(current_line)
-            current_line = word
-    if current_line:
-        lines.append(current_line)
-
-    return "<br>".join(lines)
-
-def truncate_label(text, maxlen=40):
-    if len(text) <= maxlen:
-        return text
-    truncated = text[:maxlen].rstrip()
-    if " " not in truncated:
-        return truncated[:maxlen-1] + "…"
-    # Remove a última palavra cortada
-    truncated = truncated[:truncated.rfind(" ")]
-    return truncated + "…"
 
 def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list_df_evts, metadata_browser):
     """Gera o gráfico de histórico de eventos do problema da OS"""
@@ -316,22 +287,20 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
         automargin=True,  # ensures margin grows to fit long labels
     )
 
-    # Especificidades do mapa para cada dispositivo
+    # Especificidades do gráfico para cada dispositivo
     if metadata_browser and metadata_browser["device"] == "Mobile":
         # Muda margem
         fig.update_layout(
             height=700,
-            margin=dict(t=40, l=10),  
+            margin=dict(t=40, l=10),
         )
         # Rotaciona em 90 graus
-        fig.update_yaxes(
-            tickangle=-90
-        )
+        fig.update_yaxes(tickangle=-90)
     else:
         # Muda margem
         fig.update_layout(
             height=600,
-            margin=dict(t=40, l=150), 
+            margin=dict(t=40, l=150),
         )
 
     return fig

@@ -3,16 +3,15 @@
 
 # Funções utilitárias para gerar os gráficos da visão de criação de regra
 
-# Imports básicos
-import pandas as pd
-import numpy as np
-
 # Imports gráficos
 import plotly.express as px
 import plotly.graph_objects as go
 
 # Imports do tema
 import tema
+
+# Funções utilitárias de texto
+from modules.str_utils import truncate_label, wrap_label_by_words
 
 
 # Rotinas para gerar os Gráficos
@@ -23,9 +22,9 @@ def gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False, 
     paleta_cores_padrao = [
         # tema.COR_SUCESSO, # Correção Primeira
         # tema.COR_SUCESSO_BRANDO, # Correção Tardia
-        tema.COR_PADRAO, # Nova OS, sem retrabalho prévio
-        tema.COR_ALERTA, # Nova OS, com retrabalho prévio
-        tema.COR_ERRO, # Retrabalho
+        tema.COR_PADRAO,  # Nova OS, sem retrabalho prévio
+        tema.COR_ALERTA,  # Nova OS, com retrabalho prévio
+        tema.COR_ERRO,  # Retrabalho
     ]
 
     if usar_checklist:
@@ -130,7 +129,9 @@ def gerar_grafico_retrabalho_por_modelo(df):
     bar_chart.update_traces(
         text=[
             f"{perc_teve_prob_e_retrab:.0f}%<br>({teve_prob_e_retrab:.0f})"
-            for teve_prob_e_retrab, perc_teve_prob_e_retrab in zip(df["TEVE_PROBLEMA_E_RETRABALHO"], df["PERC_TEVE_PROBLEMA_E_RETRABALHO"])
+            for teve_prob_e_retrab, perc_teve_prob_e_retrab in zip(
+                df["TEVE_PROBLEMA_E_RETRABALHO"], df["PERC_TEVE_PROBLEMA_E_RETRABALHO"]
+            )
         ],
         selector=dict(name="PERC_TEVE_PROBLEMA_E_RETRABALHO"),
     )
@@ -451,14 +452,14 @@ def gerar_grafico_evolucao_retrabalho_por_custo_por_mes(df):
     return fig
 
 
-def gerar_grafico_top_10_problemas_relatorio_regras(df):
+def gerar_grafico_top_10_problemas_relatorio_regras(df, metadata_browser):
     """Gera o gráfico de barras referentes aos 10 problemas mais frequentes"""
 
-    fig = px.bar(
-        df,
-        x="DESCRICAO DO SERVICO",
-        y="count"
-    )
+    # Se tiver no mobile, reduz a descrição
+    if metadata_browser and metadata_browser["device"] == "Mobile":
+        df["DESCRICAO DO SERVICO"] = df["DESCRICAO DO SERVICO"].apply(lambda x: truncate_label(x, maxlen=30))
+
+    fig = px.bar(df, x="DESCRICAO DO SERVICO", y="count")
 
     fig.update_traces(
         texttemplate="%{y} (%{customdata:.1f}%)",
@@ -473,8 +474,9 @@ def gerar_grafico_top_10_problemas_relatorio_regras(df):
             tickmode="auto",
             automargin=True,
         ),
-        margin=dict(b=200),
     )
 
-    return fig
+    # Adiciona o label
+    fig.update_layout(margin=dict(b=200, r=0))
 
+    return fig
