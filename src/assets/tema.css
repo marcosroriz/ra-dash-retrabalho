@@ -10,6 +10,25 @@
     align-items: center;
 }
 
+/* Logo */
+.logo-mobile, .title-mobile {
+  display: none;
+}
+.logo-desktop, .title-desktop {
+  display: inline-block;
+}
+
+/* Logo na telas pequena (<768px) */
+@media (max-width: 767px) {
+  .logo-desktop, .title-desktop {
+    display: none !important;
+  }
+  .logo-mobile, .title-mobile {
+    display: inline-block !important;
+  }
+}
+
+
 /* Center the header text vertically */
 .align-self-center {
     display: flex;

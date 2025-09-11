@@ -8,6 +8,9 @@ import math
 import pandas as pd
 import numpy as np
 
+# Imports de datas
+from datetime import datetime, timedelta
+
 # Imports gráficos
 import plotly.express as px
 import plotly.graph_objects as go
@@ -18,7 +21,7 @@ import tema
 
 
 # Rotinas para gerar o gráfico de gantt
-def gerar_grafico_gantt_historico_problema_detalhamento_os(df, os_numero, problem_no, buffer_dias=1):
+def gerar_grafico_gantt_historico_problema_detalhamento_os(df, os_numero, metadata_browser, buffer_dias=1):
     """Gera o gráfico de gantt com o histórico do problema da OS"""
 
     # Adiciona categoria
@@ -171,9 +174,54 @@ def gerar_grafico_gantt_historico_problema_detalhamento_os(df, os_numero, proble
             tr.update(width=0.32, marker_line=dict(width=2, color="black"))
             break
 
+    fig.update_yaxes(
+        tickangle=-90
+    )
+
+    fig.update_layout(
+        legend=dict(
+            orientation="h",           # horizontal
+            yanchor="bottom",          # anchor legend to bottom
+            y=-0.3,                    # position below chart
+            xanchor="center",          # center it
+            x=0.5
+        )
+    )
+    fig.update_layout(
+        margin=dict(l=30, r=30, t=20, b=10)
+    )
+
+    # Definir o intervalo padrão de 6 meses (com padding)
+    end_date_slider = df_os_escolhida["DATA DO FECHAMENTO PAD"].max() + timedelta(days=5)
+    start_date_slider = end_date_slider - timedelta(days=190)
+    fig.update_layout(xaxis=dict(range=[start_date_slider, end_date_slider]))
+    
+    # Especificidades do mapa para cada display
+    # No desktop, mostra linha do tempo
+    if metadata_browser and metadata_browser["device"] == "Desktop":
+        # Atualiza o título do eixo X
+        fig.update_xaxes(title="Período")
+
+        # Definir os intervalos
+        fig.update_xaxes(
+            rangeslider_visible=True,
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1, label="1 mês", step="month", stepmode="backward"),
+                    dict(count=6, label="6 meses", step="month", stepmode="backward"),
+                    dict(count=1, label="YTD", step="year", stepmode="todate"),
+                    dict(count=1, label="1 ano", step="year", stepmode="backward"),
+                    dict(label="Todo o período", step="all")
+                ]),
+            ),
+            rangeslider=dict(
+                borderwidth=2
+            )
+        )
+
     return fig
 
-
+# Funções utilitárias para limpar texto
 def wrap_label_by_words(text, max_line_length=20):
     words = text.split()
     lines = []
@@ -190,8 +238,17 @@ def wrap_label_by_words(text, max_line_length=20):
 
     return "<br>".join(lines)
 
+def truncate_label(text, maxlen=40):
+    if len(text) <= maxlen:
+        return text
+    truncated = text[:maxlen].rstrip()
+    if " " not in truncated:
+        return truncated[:maxlen-1] + "…"
+    # Remove a última palavra cortada
+    truncated = truncated[:truncated.rfind(" ")]
+    return truncated + "…"
 
-def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list_df_evts):
+def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list_df_evts, metadata_browser):
     """Gera o gráfico de histórico de eventos do problema da OS"""
 
     # Cria o gráfico de subplots
@@ -200,9 +257,6 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.08,
-        # subplot_titles=("Timeline", "Odômetro", "Marcha Lenta", "Uso Indevido do Pedal"),
-        # row_heights=[0.3, 0.23, 0.23, 0.23],
-        # specs=[[{"type": "xy"}], [{"type": "xy"}], [{"type": "xy"}], [{"type": "xy"}]],
     )
 
     # Adiciona dados do problema
@@ -226,7 +280,10 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
         df_evt["travel_date"] = pd.to_datetime(df_evt["travel_date"])
 
         # Dá espaçamento adequado nos labels
-        df_evt["CLASSE"] = df_evt["CLASSE"].apply(lambda x: wrap_label_by_words(x))
+        if metadata_browser and metadata_browser["device"] == "Mobile":
+            df_evt["CLASSE"] = df_evt["CLASSE"].apply(lambda x: truncate_label(wrap_label_by_words(x)))
+        else:
+            df_evt["CLASSE"] = df_evt["CLASSE"].apply(lambda x: wrap_label_by_words(x))
 
         # Garante que os valores de tamanho sejam float e não objetos inválidos
         marker_sizes = pd.to_numeric(df_evt["target_value"], errors="coerce").fillna(0).astype(float)
@@ -254,14 +311,27 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
             col=1,
         )
 
-    fig.update_layout(
-        height=600,
-        margin=dict(t=40, l=150),  # ← margem esquerda aumentada
-    )
-
     fig.update_layout(showlegend=False)
-
     fig.update_yaxes(
         automargin=True,  # ensures margin grows to fit long labels
     )
+
+    # Especificidades do mapa para cada dispositivo
+    if metadata_browser and metadata_browser["device"] == "Mobile":
+        # Muda margem
+        fig.update_layout(
+            height=700,
+            margin=dict(t=40, l=10),  
+        )
+        # Rotaciona em 90 graus
+        fig.update_yaxes(
+            tickangle=-90
+        )
+    else:
+        # Muda margem
+        fig.update_layout(
+            height=600,
+            margin=dict(t=40, l=150), 
+        )
+
     return fig

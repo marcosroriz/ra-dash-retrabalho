@@ -69,12 +69,9 @@ df_eventos_mix_todos_evts = df_eventos_mix_todos_evts.sort_values(by="label")
 df_eventos_mix_todos_evts["tem_gps"] = df_eventos_mix_todos_evts["value"].isin(df_eventos_mix_gps["value"].unique())
 # Atualiza label
 df_eventos_mix_todos_evts["label"] = df_eventos_mix_todos_evts.apply(
-    lambda row: f'{row["label"]} 🌐' if row["tem_gps"] else row["label"],
-    axis=1
+    lambda row: f'{row["label"]} 🌐' if row["tem_gps"] else row["label"], axis=1
 )
 lista_todos_eventos_mix_com_data = df_eventos_mix_todos_evts.to_dict(orient="records")
-
-
 
 
 ##############################################################################
@@ -608,8 +605,9 @@ def preencher_tabela(data):
 @callback(
     Output("graph-gantt-historico-problema-detalhamento-os", "figure"),
     Input("store-output-dados-detalhamento-os", "data"),
+    Input("store-window-size", "data"),
 )
-def plota_grafico_gantt_retrabalho_os(data):
+def plota_grafico_gantt_retrabalho_os(data, metadata_browser):
     # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
     if not data or not data["sucesso"]:
         return go.Figure()
@@ -617,10 +615,9 @@ def plota_grafico_gantt_retrabalho_os(data):
     # Obtem os dados do estado
     df_os = pd.DataFrame(data["df_os"])
     os_numero = data["os_numero"]
-    problem_no = data["num_problema_os"]
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_gantt_historico_problema_detalhamento_os(df_os, os_numero, problem_no)
+    fig = os_graficos.gerar_grafico_gantt_historico_problema_detalhamento_os(df_os, os_numero, metadata_browser)
 
     return fig
 
@@ -651,8 +648,9 @@ def preenche_dias_sem_eventos(df, data_inicio_problema, data_fim_problema, vec_a
     Output("graph-historico-eventos-detalhamento-os", "figure"),
     Input("store-output-dados-detalhamento-os", "data"),
     Input("input-select-data-eventos-mix-detalhamento-os", "value"),
+    Input("store-window-size", "data"),
 )
-def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
+def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix, metadata_browser):
     # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
     if not data or not data["sucesso"]:
         return go.Figure()
@@ -668,7 +666,9 @@ def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
     df_problema_os_alvo = os_service.obtem_os_problema_atual(df_os, problem_no)
 
     # Seta NaT para tempo atual
-    df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].fillna(pd.Timestamp.now())
+    df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"] = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].fillna(
+        pd.Timestamp.now()
+    )
 
     # Pega o início e fim do problema
     data_inicio_problema = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].min()
@@ -676,9 +676,12 @@ def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
     data_inicio_problema_str = data_inicio_problema.strftime("%Y-%m-%d %H:%M:%S")
     data_fim_problema_str = data_fim_problema.strftime("%Y-%m-%d %H:%M:%S")
 
-    df_problema_os_alvo["DATA DA ABERTURA LABEL"] = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].dt.strftime("%d/%m/%Y %H:%M")
-    df_problema_os_alvo["DATA DO FECHAMENTO LABEL"] = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].dt.strftime("%d/%m/%Y %H:%M")
-
+    df_problema_os_alvo["DATA DA ABERTURA LABEL"] = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].dt.strftime(
+        "%d/%m/%Y %H:%M"
+    )
+    df_problema_os_alvo["DATA DO FECHAMENTO LABEL"] = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].dt.strftime(
+        "%d/%m/%Y %H:%M"
+    )
 
     # Obtem os dados do odômetro e consumo de combustível
     df_odometro = os_service.obtem_odometro_veiculo(vec_asset_id, data_inicio_problema_str, data_fim_problema_str)
@@ -707,7 +710,9 @@ def plota_grafico_eventos_retrabalho_os(data, lista_dropdown_eventos_mix):
             lista_df_evts.append(df_evt)
 
     # Gera o gráfico
-    fig = os_graficos.gerar_grafico_historico_eventos_detalhamento_os(os_numero, df_problema_os_alvo, lista_df_evts)
+    fig = os_graficos.gerar_grafico_historico_eventos_detalhamento_os(
+        os_numero, df_problema_os_alvo, lista_df_evts, metadata_browser
+    )
 
     return fig
 
@@ -890,21 +895,42 @@ layout = dbc.Container(
         dcc.Store(id="store-input-dados-detalhamento-os"),
         dcc.Store(id="store-output-dados-detalhamento-os"),
         html.Hr(),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent-mdl2:repair", width=45), width="auto"),
-                dbc.Col(
-                    html.H1(
-                        [
-                            "Retrabalho por\u00a0",
-                            html.Strong("Ordem de Serviço (OS)"),
-                        ],
-                        className="align-self-center",
+        # Título Desktop
+        dmc.Box(
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="fluent-mdl2:repair", width=45), width="auto"),
+                    dbc.Col(
+                        html.H1(
+                            [
+                                "Retrabalho por\u00a0",
+                                html.Strong("Ordem de Serviço (OS)"),
+                            ],
+                            className="align-self-center",
+                        ),
+                        width=True,
                     ),
-                    width=True,
-                ),
-            ],
-            align="center",
+                ],
+                align="center",
+            ),
+            visibleFrom="sm",
+        ),
+        # Titulo Mobile
+        dmc.Box(
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="fluent-mdl2:repair", width=45), width="auto"),
+                    dbc.Col(
+                        html.H1(
+                            "Retrabalho por OS",
+                            className="align-self-center",
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            hiddenFrom="sm",
         ),
         # dmc.Space(h=15),
         html.Hr(),
@@ -936,6 +962,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Card(
@@ -969,6 +996,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
             ]
         ),
@@ -1007,14 +1035,17 @@ layout = dbc.Container(
                                             dbc.ListGroupItem("", id="card-detalhamento-os-sintoma-os"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-correcao-os"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-pecas-os"),
-                                        ]
-                                    )
-                                ]
+                                        ],
+                                        className="m-0",
+                                    ),
+                                ],
+                                className="m-0",
                             ),
                         ],
-                        className="m-1",
+                        className="m-0 m-md-1",  # margem só no desktop
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Row(
@@ -1050,14 +1081,17 @@ layout = dbc.Container(
                                             dbc.ListGroupItem("", id="card-detalhamento-os-data-fim-problema"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-diff-dias-problema"),
                                             dbc.ListGroupItem("", id="card-detalhamento-os-pecas-problema"),
-                                        ]
+                                        ],
+                                        className="m-0",
                                     ),
-                                ]
+                                ],
+                                className="m-0",
                             ),
                         ],
-                        className="m-1",
+                        className="m-0 m-md-1",  # margem só no desktop
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
             ],
         ),
@@ -1227,7 +1261,11 @@ layout = dbc.Container(
                 ),
             ]
         ),
-        dcc.Graph(id="graph-historico-eventos-detalhamento-os"),
+        # dcc.Graph(id="graph-historico-eventos-detalhamento-os"),
+        html.Div(
+            dcc.Graph(id="graph-historico-eventos-detalhamento-os", style={"minWidth": "900px"}),  # force wide chart
+            style={"overflowX": "auto"},  # enable horizontal scroll
+        ),
         dmc.Space(h=20),
         dl.Map(
             children=dl.LayersControl(getMapaFundo(), id="layer-control-eventos-detalhe-os", collapsed=False),
@@ -1237,7 +1275,7 @@ layout = dbc.Container(
             zoom=11,
             style={
                 "height": "60vh",
-                "border": "2px solid gray", 
+                "border": "2px solid gray",
                 "borderRadius": "6px",
             },
         ),

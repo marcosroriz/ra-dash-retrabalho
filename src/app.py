@@ -162,8 +162,27 @@ header = dmc.Group(
         dmc.Group(
             [
                 dmc.Burger(id="burger-button", opened=False, hiddenFrom="md"),
-                html.Img(src=app.get_asset_url("logo.png"), height=40),
-                dmc.Text(["Retrabalho (RA-UFG)"], size="2.3rem", fw=700),
+                # Logo Mobile
+                html.Img(
+                    src=app.get_asset_url("logo_small.png"),
+                    height=32,
+                    className="logo-mobile",
+                ),
+                # Logo Desktop 
+                html.Img(
+                    src=app.get_asset_url("logo.png"),
+                    height=40,
+                    className="logo-desktop",
+                ),
+                # Título
+                dmc.Stack(
+                    [
+                        dmc.Text("Painel de", size="sm", fw=400),
+                        dmc.Text("Retrabalho", size="2rem", fw=700),
+                    ],
+                    gap=0,
+                    align="flex-start",
+                ),
             ]
         ),
         dmc.Group(
@@ -193,6 +212,7 @@ app_shell = dmc.AppShell(
                     [
                         dcc.Location(id="url", refresh="callback-nav"),
                         html.Div(id="scroll-hook", style={"display": "none"}),
+                        dcc.Store(id="store-window-size"),
                         dash.page_container,
                     ],
                     fluid=True,
@@ -202,7 +222,7 @@ app_shell = dmc.AppShell(
             ),
         ),
     ],
-    header={"height": 90},
+    header={"height": 100},
     navbar={
         "width": 300,
         "breakpoint": "sm",
@@ -224,7 +244,7 @@ def toggle_navbar(opened, navbar):
     navbar["collapsed"] = {"mobile": not opened, "desktop": True}
     return navbar
 
-
+# Hook para levar para o topo ao mudar a url
 app.clientside_callback(
     """
     function(pathname) {
@@ -238,6 +258,22 @@ app.clientside_callback(
     Output("scroll-hook", "children"),
     Input("url", "pathname"),
 )
+
+# Script para armazerar o tamanho do navegador
+app.clientside_callback(
+    """
+    function(n) {
+        return {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            device: window.innerWidth < 768 ? "Mobile" : "Desktop"
+        };
+    }
+    """,
+    Output("store-window-size", "data"),
+    Input("url", "pathname"),
+)
+
 
 ##############################################################################
 # Auth #######################################################################

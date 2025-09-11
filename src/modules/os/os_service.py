@@ -230,7 +230,7 @@ class OSService:
         df = pd.read_sql(query, self.pgEngine)
 
         # Seta a classe
-        df["CLASSE"] = "Odômetro (km)"
+        df["CLASSE"] = "KM Percorrido"
         df["target_value"] = df["distance_km"]
         df["target_label"] = df["distance_km"].apply(lambda x: f"{x:.0f}")
 
