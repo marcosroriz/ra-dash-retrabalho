@@ -7,16 +7,12 @@
 # IMPORTS ####################################################################
 ##############################################################################
 # Bibliotecas básicas
-import os
 import pandas as pd
-import datetime as dt
-from datetime import date
 from collections import defaultdict
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
-from dash import Dash, html, dcc, callback, Input, Output, State
-import plotly.express as px
+from dash import html, dcc, callback, Input, Output
 import plotly.graph_objects as go
 
 # Importar bibliotecas do bootstrap e ag-grid
@@ -433,10 +429,17 @@ def atualiza_dados_card_detalhamento_problema(data):
     # Calcula a data de início e fim do problema
     data_inicio_problema = df_problema_os_alvo["DATA DA ABERTURA DA OS DT"].min()
     data_fim_problema = df_problema_os_alvo["DATA DO FECHAMENTO DA OS DT"].max()
-    txt_data_inicio_problema = data_inicio_problema.strftime("%d/%m/%Y")
-    txt_data_fim_problema = data_fim_problema.strftime("%d/%m/%Y")
+    txt_data_inicio_problema = data_inicio_problema.strftime("%d/%m/%Y %H:%M")
 
-    txt_diff_dias_problema = (data_fim_problema - data_inicio_problema).days
+    txt_data_fim_problema = ""
+    txt_diff_dias_problema = ""
+    if pd.isna(data_fim_problema):
+        txt_data_fim_problema = "EM ABERTO"
+        txt_diff_dias_problema = (pd.Timestamp.now() - data_inicio_problema).days
+    else: 
+        txt_data_fim_problema = data_fim_problema.strftime("%d/%m/%Y")
+        txt_diff_dias_problema = (data_fim_problema - data_inicio_problema).days
+    
 
     # Pega as peças trocadas
     hashmap_pecas_problema = defaultdict(set)

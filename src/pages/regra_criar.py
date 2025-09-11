@@ -7,14 +7,11 @@
 # IMPORTS ####################################################################
 ##############################################################################
 # Bibliotecas básicas
-from datetime import date, datetime
-import pandas as pd
 import re
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
-from dash import Dash, html, dcc, callback, Input, Output, State, callback_context
-import plotly.express as px
+from dash import html, dcc, callback, Input, Output, callback_context
 import plotly.graph_objects as go
 
 # Importar bibliotecas do bootstrap e ag-grid
@@ -367,10 +364,11 @@ def verifica_erro_wpp_5(wpp_telefone):
         Input("input-select-secao-regra-criar-retrabalho", "value"),
         Input("input-select-ordens-servico-regra-criar-retrabalho", "value"),
         Input("checklist-alertar-alvo-regra-criar-retrabalho", "value"),
+        Input("store-window-size", "data"),
     ],
 )
 def plota_grafico_pizza_sintese_criar_regra(
-    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
+    data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo, metadata_browser
 ):
     # Valida input
     if not input_valido(data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
@@ -403,24 +401,20 @@ def plota_grafico_pizza_sintese_criar_regra(
 
     # Prepara os dados para o gráfico
     labels = [
-        # "Correção Primeira",
-        # "Correção Tardia",
         "Nova OS, sem retrabalho prévio",
         "Nova OS, com retrabalho prévio",
         "Retrabalho",
     ]
     values = [
-        # df["TOTAL_CORRECAO_PRIMEIRA"].values[0],
-        # df["TOTAL_CORRECAO_TARDIA"].values[0],
         df["TOTAL_NOVA_OS_SEM_RETRABALHO_ANTERIOR"].values[0],
         df["TOTAL_NOVA_OS_COM_RETRABALHO_ANTERIOR"].values[0],
         df["TOTAL_RETRABALHO"].values[0],
     ]
 
     # Gera o gráfico
-    fig_geral = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False)
+    fig_geral = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values, metadata_browser, usar_checklist=False)
     fig_filtro = crud_regra_graficos.gerar_grafico_pizza_sinteze_geral(
-        df_checklist, labels, values, usar_checklist=True, checklist_alvo=checklist_alvo
+        df_checklist, labels, values, metadata_browser, usar_checklist=True, checklist_alvo=checklist_alvo
     )
     return fig_geral, fig_filtro
 
@@ -449,6 +443,9 @@ def tabela_previa_os_regra_criar(
     df = crud_regra_service.get_previa_os_regra_detalhada(
         data_periodo_regra, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, checklist_alvo
     )
+
+    # Ação de visualização
+    df["acao"] = "🔍 Detalhar"
 
     return df.to_dict(orient="records")
 
@@ -802,6 +799,51 @@ def salvar_regra_monitoramento_retrabalho(
         return [False, True]
     else:
         return [True, False]
+
+##############################################################################
+# Callbacks para o botão de detalhamento #####################################
+##############################################################################
+
+@callback(
+    Output("url", "href", allow_duplicate=True),
+    Input("tabela-previa-os-regra-criar", "cellRendererData"),
+    Input("tabela-previa-os-regra-criar", "virtualRowData"),
+    Input("input-select-dias-regra-criar-retrabalho", "value"),
+    prevent_initial_call=True,
+)
+def callback_botao_relatorio_criacao_regra(
+    linha, linha_virtual, min_dias
+):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de visualização
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
+
+    if triggered_id != "cellRendererData":
+        return dash.no_update
+    
+    # Valida inputs (tabela e store)
+    if linha is None or linha_virtual is None:
+        return dash.no_update
+
+    # Validação para min_dias diferente de 10, 15 ou 30
+    if not min_dias or min_dias == '' or int(min_dias) not in [10, 15, 30]:
+        return dash.no_update
+    
+    # Pega a linha alvo
+    linha_alvo = linha_virtual[linha["rowIndex"]]
+    os_num = linha_alvo["NUMERO DA OS"]
+
+    url_params = [
+        f"os={os_num}",
+        f"mindiasretrabalho={min_dias}",
+    ]
+    url_params_str = "&".join(url_params)
+
+    return f"/retrabalho-por-os?{url_params_str}"
+
 
 
 ##############################################################################
@@ -1177,6 +1219,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Card(
@@ -1240,6 +1283,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Card(
@@ -1291,6 +1335,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Card(
@@ -1356,6 +1401,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Card(
@@ -1461,6 +1507,7 @@ layout = dbc.Container(
                         body=True,
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Card(
@@ -1560,6 +1607,7 @@ layout = dbc.Container(
                         style={"padding": "1em", "width": "100%"},
                     ),
                     md=6,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     dbc.Button(

@@ -262,6 +262,7 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
         # Evita divisão por zero no sizeref
         max_size = max(marker_sizes) if marker_sizes.max() > 0 else 1.0
 
+        df_evt = df_evt.sort_values(by="travel_date")
         fig.add_trace(
             go.Scatter(
                 x=df_evt["travel_date"],
@@ -281,6 +282,36 @@ def gerar_grafico_historico_eventos_detalhamento_os(numero_os, df_problema, list
             row=i + 2,
             col=1,
         )
+
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=df_evt["travel_date"],
+        #         y=df_evt["target_label"],
+        #         mode="markers+lines+text",
+        #         name=df_evt["CLASSE"].values[0],
+        #         line_shape="spline",
+        #         # marker=dict(
+        #         #     size=marker_sizes.tolist(),
+        #         #     sizemode="area",
+        #         #     sizeref=2.0 * max_size / (40.0**2),
+        #         #     sizemin=5,
+        #         #     color=tema.PALETA_CORES_DISCRETA[i % len(tema.PALETA_CORES_DISCRETA)],
+        #         # ),
+        #         text=[f"{d}" for d in df_evt["target_label"]],
+        #         textposition="top center",
+        #         hovertemplate="Data: %{x}<br>Total: %{y}<extra></extra>",
+        #     ),
+        #     row=i + 2,
+        #     col=1,
+        # )
+        # # Adiciona rótulo no eixo Y do subplot correspondente
+        # fig.update_yaxes(
+        #     tickfont=dict(size=10),
+        #     titlefont=dict(size=12),
+        #     title_text=df_evt["CLASSE"].values[0],
+        #     row=i + 2,
+        #     col=1,
+        # )
 
     fig.update_layout(showlegend=False)
     fig.update_yaxes(

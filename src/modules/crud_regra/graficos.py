@@ -15,13 +15,11 @@ from modules.str_utils import truncate_label, wrap_label_by_words
 
 
 # Rotinas para gerar os Gráficos
-def gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False, checklist_alvo=[]):
+def gerar_grafico_pizza_sinteze_geral(df, labels, values, metadata_browser, usar_checklist=False, checklist_alvo=[]):
     """Gera o gráfico de pizza com síntese do total de OS e retrabalhos da tela de criação de regras"""
 
     # Checklist alvo vai determinar a paletra de cores a se utilizar
     paleta_cores_padrao = [
-        # tema.COR_SUCESSO, # Correção Primeira
-        # tema.COR_SUCESSO_BRANDO, # Correção Tardia
         tema.COR_PADRAO,  # Nova OS, sem retrabalho prévio
         tema.COR_ALERTA,  # Nova OS, com retrabalho prévio
         tema.COR_ERRO,  # Retrabalho
@@ -29,8 +27,6 @@ def gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False, 
 
     if usar_checklist:
         paleta_cores_padrao = [
-            # tema.COR_SUCESSO if "nova_os_sem_retrabalho_anterior" in checklist_alvo else tema.COR_NEUTRO,
-            # tema.COR_SUCESSO_BRANDO if "nova_os_com_retrabalho_anterior" in checklist_alvo else tema.COR_NEUTRO,
             tema.COR_PADRAO if "nova_os_sem_retrabalho_anterior" in checklist_alvo else tema.COR_NEUTRO,
             tema.COR_ALERTA if "nova_os_com_retrabalho_anterior" in checklist_alvo else tema.COR_NEUTRO,
             tema.COR_ERRO if "retrabalho" in checklist_alvo else tema.COR_NEUTRO,
@@ -78,6 +74,10 @@ def gerar_grafico_pizza_sinteze_geral(df, labels, values, usar_checklist=False, 
             x=0.5,  # Alinha com o centro
         ),
     )
+
+    # Remove espaço do gráfico na versão móvel
+    if metadata_browser and metadata_browser["device"] == "Mobile":
+        fig.update_layout(margin=dict(l=0, r=0))
 
     # Retorna o gráfico
     return fig

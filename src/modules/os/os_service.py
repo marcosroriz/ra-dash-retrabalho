@@ -190,6 +190,13 @@ class OSService:
             lambda x: str(int(np.ceil(x))) if pd.notna(x) else "EM ABERTO"
         )
 
+        # Para os casos em aberto coloca a data de hoje + 1 dias para poder plotar no gráfico, mas ilustra aberto
+        # substitui NaT pelo timestamp atual + 1 dia
+        df_agg_problema_alvo["DATA DO FECHAMENTO DA OS DT"] = (
+            df_agg_problema_alvo["DATA DO FECHAMENTO DA OS DT"]
+            .fillna(pd.Timestamp.now() + pd.Timedelta(days=1))
+        )
+
         # Define a classe
         df_agg_problema_alvo["CLASSE"] = "OS"
 

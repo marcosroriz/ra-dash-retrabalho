@@ -60,8 +60,16 @@ tbl_regras_existentes = [
 # Tabela detalhamento do problema/OS que envolve a regra (página de criar e editar)
 tbl_detalhamento_problema_regra = [
     {"field": "status_os", "pinned": "left", "headerName": "STATUS", "minWidth": 200},
-    {"field": "NUMERO DA OS", "headerName": "OS", "minWidth": 150, "pinned": "left"},
-    {"field": "COLABORADOR QUE EXECUTOU O SERVICO", "headerName": "CÓDIGO DO COLABORADOR", "minWidth": 150},
+    {
+        "field": "acao",
+        "headerName": "Analisar",
+        "cellRenderer": "Button",
+        "cellRendererParams": {"className": "btn btn-outline-primary btn-sm"},
+        "minWidth": 150,
+        "pinned": "left",
+    },
+    {"field": "NUMERO DA OS", "headerName": "OS", "minWidth": 150},
+    {"field": "COLABORADOR QUE EXECUTOU O SERVICO", "headerName": "CÓDIGO DO COLABORADOR", "maxWidth": 150, "wrapHeaderText": True},
     {"field": "nome_colaborador", "headerName": "COLABORADOR", "minWidth": 200},
     {"field": "DESCRICAO DO SERVICO", "headerName": "SERVIÇO", "minWidth": 250},
     {"field": "DESCRICAO DO MODELO", "headerName": "MODELO"},

@@ -26,6 +26,11 @@
   .logo-mobile, .title-mobile {
     display: inline-block !important;
   }
+  [role="alert"] {
+    display: none !important;
+  }
+}
+
 }
 
 
