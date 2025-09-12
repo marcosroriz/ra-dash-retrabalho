@@ -14,9 +14,11 @@ import plotly.graph_objects as go
 # Imports do tema
 import tema
 
+# Funções para formatação
+from modules.str_utils import truncate_label
 
 # Rotinas para gerar os Gráficos
-def gerar_grafico_pizza_sinteze_geral(df, labels, values):
+def gerar_grafico_pizza_sinteze_geral(df, labels, values, metadata_browser):
     """Gera o gráfico de pizza com síntese do total de OS e retrabalhos da tela inicial"""
 
     fig = go.Figure(
@@ -62,12 +64,20 @@ def gerar_grafico_pizza_sinteze_geral(df, labels, values):
         ),
     )
 
+    # Remove o espaçamento lateral do gráfico no dispositivo móvel
+    if metadata_browser and metadata_browser["device"] == "Mobile":
+        fig.update_layout(margin=dict(t=20, b=20, l=20, r=20))
+
     # Retorna o gráfico
     return fig
 
 
-def gerar_grafico_retrabalho_por_modelo(df):
+def gerar_grafico_retrabalho_por_modelo(df, metadata_browser):
     """Gera o gráfico de barras (colunas) por modelo referentes ao retrabalho e correções de primeira"""
+
+    # Trunca o texto dos modelos na versão mobile
+    if metadata_browser and metadata_browser["device"] == "Mobile":
+        df["DESCRICAO DO MODELO"] = df["DESCRICAO DO MODELO"].apply(lambda x: truncate_label(x, maxlen=20))
 
     bar_chart = px.bar(
         df,
@@ -112,7 +122,9 @@ def gerar_grafico_retrabalho_por_modelo(df):
     bar_chart.update_traces(
         text=[
             f"{perc_teve_prob_e_retrab:.0f}%<br>({teve_prob_e_retrab:.0f})"
-            for teve_prob_e_retrab, perc_teve_prob_e_retrab in zip(df["TEVE_PROBLEMA_E_RETRABALHO"], df["PERC_TEVE_PROBLEMA_E_RETRABALHO"])
+            for teve_prob_e_retrab, perc_teve_prob_e_retrab in zip(
+                df["TEVE_PROBLEMA_E_RETRABALHO"], df["PERC_TEVE_PROBLEMA_E_RETRABALHO"]
+            )
         ],
         selector=dict(name="PERC_TEVE_PROBLEMA_E_RETRABALHO"),
     )
@@ -133,6 +145,20 @@ def gerar_grafico_retrabalho_por_modelo(df):
 
     # Separador numérico
     bar_chart.update_layout(separators=",.")
+
+    # Coloca legenda em baixo na versão móvel
+    if metadata_browser and metadata_browser["device"] == "Mobile":
+        bar_chart.update_layout(
+            margin=dict(t=40, b=200, l=30, r=0),  # Remove as margens
+            height=600,  # Ajuste conforme necessário
+            legend=dict(
+                orientation="h",  # Legenda horizontal
+                yanchor="top",  # Ancora no topo
+                xanchor="center",  # Centraliza
+                y=-0.5,  # Coloca abaixo
+                x=0.5,  # Alinha com o centro
+            ),
+        )
 
     # Retorna o gráfico
     return bar_chart

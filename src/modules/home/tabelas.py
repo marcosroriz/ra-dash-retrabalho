@@ -131,6 +131,7 @@ tbl_top_colaborador_geral_retrabalho = [
         "field": "NOME_COLABORADOR",
         "headerName": "Colaborador",
         "pinned": "left",
+        "minWidth": 150
     },
     {
         "field": "acao",

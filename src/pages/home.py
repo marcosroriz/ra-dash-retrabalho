@@ -190,9 +190,10 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("store-window-size", "data"),
     ],
 )
-def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, metadata_browser):
     # Valida input
     if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
@@ -209,7 +210,7 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_modelos, lista_ofic
     ]
 
     # Gera o gráfico
-    fig = home_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values)
+    fig = home_graficos.gerar_grafico_pizza_sinteze_geral(df, labels, values, metadata_browser)
     return fig
 
 
@@ -223,9 +224,10 @@ def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_modelos, lista_ofic
         Input("input-select-oficina-visao-geral", "value"),
         Input("input-select-secao-visao-geral", "value"),
         Input("input-select-ordens-servico-visao-geral", "value"),
+        Input("store-window-size", "data"),
     ],
 )
-def plota_grafico_por_modelo(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+def plota_grafico_por_modelo(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, metadata_browser):
     # Valida input
     if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
@@ -234,7 +236,7 @@ def plota_grafico_por_modelo(datas, min_dias, lista_modelos, lista_oficinas, lis
     df = home_service.get_retrabalho_por_modelo(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os)
 
     # Gera o gráfico
-    fig = home_graficos.gerar_grafico_retrabalho_por_modelo(df)
+    fig = home_graficos.gerar_grafico_retrabalho_por_modelo(df, metadata_browser)
 
     return fig
 
@@ -872,6 +874,7 @@ layout = dbc.Container(
                                         body=True,
                                     ),
                                     md=6,
+                                    className="mb-3 mb-md-0",
                                 ),
                                 dbc.Col(
                                     dbc.Card(
@@ -949,6 +952,7 @@ layout = dbc.Container(
                                         body=True,
                                     ),
                                     md=6,
+                                    className="mb-3 mb-md-0",
                                 ),
                                 dbc.Col(
                                     dbc.Card(
@@ -998,11 +1002,13 @@ layout = dbc.Container(
                                         body=True,
                                     ),
                                     md=12,
+                                    className="mb-3 mb-md-0",
                                 ),
                             ]
                         ),
                     ],
                     md=8,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     # Resumo
@@ -1193,6 +1199,7 @@ layout = dbc.Container(
                                                         "font-size": "16px",
                                                         "font-weight": "bold",
                                                     },
+                                                    className="btnExcel"
                                                 ),
                                                 dcc.Download(id="download-excel-tipo-os"),
                                             ],
@@ -1260,6 +1267,7 @@ layout = dbc.Container(
                                                         "font-size": "16px",
                                                         "font-weight": "bold",
                                                     },
+                                                    className="btnExcel"
                                                 ),
                                                 dcc.Download(id="download-excel-tabela-colaborador"),
                                             ],
@@ -1326,6 +1334,7 @@ layout = dbc.Container(
                                                         "font-size": "16px",
                                                         "font-weight": "bold",
                                                     },
+                                                    className="btnExcel"
                                                 ),
                                                 dcc.Download(id="download-excel-tabela-veiculo"),
                                             ],
