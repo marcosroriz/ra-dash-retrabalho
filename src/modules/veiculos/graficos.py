@@ -18,7 +18,16 @@ import plotly.subplots as sp
 import tema
 import locale_utils
 
-def grafico_pizza_sintese_geral(labels, values):
+
+def grafico_pizza_veiculo(data, metadata_browser):
+    # Prepara os dados para o gráfico
+    labels = ["Correções de Primeira", "Correções Tardias", "Retrabalhos"]
+    values = [
+        data["TOTAL_CORRECAO_PRIMEIRA"].values[0],
+        data["TOTAL_CORRECAO_TARDIA"].values[0],
+        data["TOTAL_RETRABALHO"].values[0],
+    ]
+
     # Gera o gráfico
     fig = go.Figure(
         data=[
@@ -47,6 +56,11 @@ def grafico_pizza_sintese_geral(labels, values):
             x=0.5,  # Alinha com o centro
         ),
     )
+
+    # Remove o espaçamento lateral do gráfico no dispositivo móvel
+    if metadata_browser and metadata_browser["device"] == "Mobile":
+        fig.update_layout(margin=dict(t=20, b=20, l=20, r=20))
+
     return fig
 
 
@@ -58,7 +72,6 @@ def grafico_evolucao_quantidade_os_por_mes(df):
         color="CATEGORIA",
         labels={"year_month_dt": "Ano-Mês", "QUANTIDADE_DE_OS": "Quantidade de OS"},
         markers=True,
-
     )
 
     # Ajusta o formato do eixo Y para exibir valores como porcentagem
@@ -209,7 +222,10 @@ def grafico_evolucao_custo_por_mes(df):
         color="CATEGORIA",
         facet_col="TIPO_GASTO",
         facet_col_spacing=0.05,  # Espaçamento entre os gráficos
-        labels={"year_month_dt": "Ano-Mês", "GASTO": "Custo", },
+        labels={
+            "year_month_dt": "Ano-Mês",
+            "GASTO": "Custo",
+        },
         markers=True,
     )
 
@@ -263,11 +279,8 @@ def grafico_evolucao_custo_por_mes(df):
     return fig
 
 
-
-
-
 def grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas):
-        # Gráfico 1: Quantidade de OS por Veículo e por mês
+    # Gráfico 1: Quantidade de OS por Veículo e por mês
     fig1 = px.line(
         df_soma_mes,
         x="MÊS",
@@ -282,7 +295,7 @@ def grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas):
         xaxis_title="Ano-Mês",
         yaxis_title="Quantidade de OS",
         margin=dict(b=100),
-        showlegend=False  # Desativa a legenda no primeiro gráfico
+        showlegend=False,  # Desativa a legenda no primeiro gráfico
     )
 
     # Gráfico 2: Soma de OS por Mês
@@ -299,7 +312,7 @@ def grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas):
         title="Quantidade de Ordens de Serviço diferentes por Veículo e por mês",
         xaxis_title="Ano-Mês",
         yaxis_title="Quantidade de OS",
-        showlegend=False  # Desativa a legenda no segundo gráfico
+        showlegend=False,  # Desativa a legenda no segundo gráfico
     )
 
     # Combina os gráficos em uma única visualização lado a lado
@@ -329,16 +342,9 @@ def grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas):
         #     xanchor="center",
         #     yanchor="top"
         # ),
-        showlegend=True,  
-        legend=dict(
-            title="Código do Veículo",
-            orientation="v",
-            yanchor="top",
-            y=1,
-            xanchor="right",
-            x=1.3
-        ),
-        margin=dict(t=95, b=100)  # Reduz o espaço superior para puxar o título mais para cima
+        showlegend=True,
+        legend=dict(title="Código do Veículo", orientation="v", yanchor="top", y=1, xanchor="right", x=1.3),
+        margin=dict(t=95, b=100),  # Reduz o espaço superior para puxar o título mais para cima
     )
     # Configuração dos eixos para cada subplot
     fig.update_xaxes(title_text="Ano-Mês", row=1, col=1)
@@ -369,7 +375,7 @@ def grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo):
                     "<b>Mês:</b> %{x|%Y-%m}<br>"
                     "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
                 ),
-                text=df_equip["EQUIPAMENTO"]  # Adiciona o nome do veículo ao hover
+                text=df_equip["EQUIPAMENTO"],  # Adiciona o nome do veículo ao hover
             )
         )
 
@@ -383,9 +389,7 @@ def grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo):
                 name="Média Geral",
                 line=dict(color="orange", dash="dot", width=2),
                 hovertemplate=(
-                    "<b>Média Geral</b><br>"
-                    "<b>Mês:</b> %{x|%Y-%m}<br>"
-                    "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
+                    "<b>Média Geral</b><br>" "<b>Mês:</b> %{x|%Y-%m}<br>" "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
                 ),
             )
         )
@@ -406,19 +410,15 @@ def grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo):
                         "<b>Mês:</b> %{x|%Y-%m}<br>"
                         "<b>Valor:</b> R$ %{y:.2f}<extra></extra>"
                     ),
-                    text=df_modelo["MODELO"]
+                    text=df_modelo["MODELO"],
                 )
             )
 
     # Layout melhorado
-    fig.update_layout(
-        xaxis_title="Mês",
-        yaxis_title="Valor (R$)",
-        hovermode="x unified",
-        template="plotly_white"
-    )
+    fig.update_layout(xaxis_title="Mês", yaxis_title="Valor (R$)", hovermode="x unified", template="plotly_white")
 
     return fig
+
 
 def gerar_grafico_evolucao_retrabalho_por_veiculo_por_mes(df):
     # Gera o gráfico

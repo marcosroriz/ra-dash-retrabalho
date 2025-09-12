@@ -67,6 +67,50 @@ class VeiculoService:
 
         return df
 
+    def get_sinteze_retrabalho_veiculo_para_grafico_pizza(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Obtem dados de retrabalho para grafico de resumo"""
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        SELECT
+            SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+            SUM(CASE WHEN correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+            SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+            100 * ROUND(SUM(CASE WHEN retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+            100 * ROUND(SUM(CASE WHEN correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+            100 * ROUND(SUM(CASE WHEN correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias
+        WHERE
+            "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+            AND "CODIGO DO VEICULO" = '{id_veiculo}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        """
+        print(query)
+        # Executa query
+        df = pd.read_sql(query, self.dbEngine)
+
+        # Calcula o total de correções tardia
+        df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
+
+        return df
+
     def get_evolucao_quantidade_os_por_mes(
         self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
     ):
@@ -183,7 +227,6 @@ class VeiculoService:
         df = df.sort_values("year_month_dt")
 
         return df
-    
 
     def get_evolucao_retrabalho_por_veiculo_por_mes(
         self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
@@ -291,8 +334,9 @@ class VeiculoService:
         )
         return df_combinado
 
-
-    def get_evolucao_retrabalho_por_secao_por_mes(self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+    def get_evolucao_retrabalho_por_secao_por_mes(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
         # Datas
         data_inicio_str = datas[0]
 
@@ -346,8 +390,10 @@ class VeiculoService:
         )
 
         return df_combinado
-    
-    def get_evolucao_custo_por_mes(self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
+
+    def get_evolucao_custo_por_mes(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
         # Datas
         data_inicio_str = datas[0]
 
@@ -446,7 +492,7 @@ class VeiculoService:
         # Limpa os valores nulos
         df["TOTAL_GASTO"] = df["TOTAL_GASTO"].fillna(0)
         df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].fillna(0)
-        
+
         # Verifica se há dados do veículo no dataframe para cada mês
         # Quando não houver, adiciona uma linha com o mês e o escopo "VEÍCULO" e media_gasto = 0
         meses = df["year_month"].unique()
@@ -456,7 +502,9 @@ class VeiculoService:
             df_mes = df[df["year_month"] == mes]
             for cat in categorias:
                 if cat not in df_mes["CATEGORIA"].unique():
-                    novas_linhas.append({"CATEGORIA": cat, "year_month": mes, "TOTAL_GASTO": 0, "TOTAL_GASTO_RETRABALHO": 0})
+                    novas_linhas.append(
+                        {"CATEGORIA": cat, "year_month": mes, "TOTAL_GASTO": 0, "TOTAL_GASTO_RETRABALHO": 0}
+                    )
 
         # Concatena as novas linhas (se houver)
         df = pd.concat([df, pd.DataFrame(novas_linhas)], ignore_index=True)
@@ -469,17 +517,16 @@ class VeiculoService:
 
         # Funde (melt) colunas de retrabalho e correção
         df_melt = df.melt(
-            id_vars=["CATEGORIA", "year_month_dt"], 
+            id_vars=["CATEGORIA", "year_month_dt"],
             value_vars=["TOTAL_GASTO", "TOTAL_GASTO_RETRABALHO"],
             var_name="TIPO_GASTO",
-            value_name="GASTO"
+            value_name="GASTO",
         )
 
         # Ajustar os nomes em TIPO_GASTO
-        df_melt["TIPO_GASTO"] = df_melt["TIPO_GASTO"].replace({
-            "TOTAL_GASTO": "TOTAL",
-            "TOTAL_GASTO_RETRABALHO": "RETRABALHO"
-        })
+        df_melt["TIPO_GASTO"] = df_melt["TIPO_GASTO"].replace(
+            {"TOTAL_GASTO": "TOTAL", "TOTAL_GASTO_RETRABALHO": "RETRABALHO"}
+        )
 
         # Ordena novamente
         df_melt = df_melt.sort_values(by=["year_month_dt", "CATEGORIA"])

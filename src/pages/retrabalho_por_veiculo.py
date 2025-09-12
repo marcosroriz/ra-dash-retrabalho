@@ -403,6 +403,38 @@ def callback_sincroniza_input_veiculo_store(
 # Callbacks para os gráficos #################################################
 ##############################################################################
 
+@callback(
+    Output("graph-pizza-sintese-veiculo", "figure"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+    Input("store-window-size", "data"),
+)
+def plota_grafico_pizza_sintese_veiculo(data, metadata_browser):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return go.Figure()
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_sinteze_retrabalho_veiculo_para_grafico_pizza(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return go.Figure()
+
+    # Gera o gráfico
+    fig = veiculos_graficos.grafico_pizza_veiculo(df, metadata_browser)
+
+    return fig
+
 
 @callback(
     Output("graph-evolucao-os-mes-veiculo", "figure"),
@@ -593,6 +625,7 @@ layout = dbc.Container(
                                         body=True,
                                     ),
                                     md=6,
+                                    className="mb-3 mb-md-0",
                                 ),
                                 dbc.Col(
                                     dbc.Card(
@@ -641,6 +674,7 @@ layout = dbc.Container(
                                         body=True,
                                     ),
                                     md=6,
+                                    className="mb-3 mb-md-0",
                                 ),
                                 dbc.Col(
                                     dbc.Card(
@@ -693,6 +727,7 @@ layout = dbc.Container(
                                         body=True,
                                     ),
                                     md=6,
+                                    className="mb-3 mb-md-0",
                                 ),
                                 dbc.Col(
                                     dbc.Card(
@@ -711,7 +746,7 @@ layout = dbc.Container(
                                                         placeholder="Selecione uma ou mais seções...",
                                                     ),
                                                 ],
-                                                # className="dash-bootstrap",
+                                                className="dash-bootstrap",
                                             ),
                                         ],
                                         body=True,
@@ -742,11 +777,13 @@ layout = dbc.Container(
                                         body=True,
                                     ),
                                     md=12,
+                                    className="mb-3 mb-md-0",
                                 ),
                             ]
                         ),
                     ],
                     md=8,
+                    className="mb-3 mb-md-0",
                 ),
                 dbc.Col(
                     # Resumo
@@ -768,7 +805,7 @@ layout = dbc.Container(
                             ),
                             dmc.Space(h=30),
                             # Gráfico de pizza com a relação entre Retrabalho e Correção
-                            dcc.Graph(id="graph-pizza-sintese-retrabalho-geral_veiculo"),
+                            dcc.Graph(id="graph-pizza-sintese-veiculo"),
                         ]
                     ),
                     md=4,
@@ -1512,31 +1549,31 @@ layout = dbc.Container(
 
 
 # GRÁFICO DE PIZZA GERAL
-@callback(
-    [
-        Output("graph-pizza-sintese-retrabalho-geral_veiculo", "figure"),
-        Output("indicador-porcentagem-retrabalho-veiculo", "children"),
-        Output("indicador-porcentagem-correcao-primeira", "children"),
-    ],
-    [
-        Input("input-intervalo-datas-veiculo", "value"),
-        Input("input-min-dias-veiculo", "value"),
-        Input("input-select-oficina-veiculo", "value"),
-        Input("input-select-secao-veiculo", "value"),
-        Input("input-select-ordens-servico-veiculos", "value"),
-        Input("input-select-veiculos-veiculo", "value"),
-    ],
-)
-def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-    lista_veiculos = [lista_veiculos]
-    # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-        return go.Figure(), "", ""
-    total_retrabalho, total_correcao_primeira, labels, values = veiculos_service.sintese_geral_fun(
-        datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos
-    )
-    fig = grafico_pizza_sintese_geral(labels, values)
-    return fig, total_retrabalho, total_correcao_primeira
+# @callback(
+#     [
+#         Output("graph-pizza-sintese-retrabalho-geral_veiculo", "figure"),
+#         Output("indicador-porcentagem-retrabalho-veiculo", "children"),
+#         Output("indicador-porcentagem-correcao-primeira", "children"),
+#     ],
+#     [
+#         Input("input-intervalo-datas-veiculo", "value"),
+#         Input("input-min-dias-veiculo", "value"),
+#         Input("input-select-oficina-veiculo", "value"),
+#         Input("input-select-secao-veiculo", "value"),
+#         Input("input-select-ordens-servico-veiculos", "value"),
+#         Input("input-select-veiculos-veiculo", "value"),
+#     ],
+# )
+# def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+#     lista_veiculos = [lista_veiculos]
+#     # Valida input
+#     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+#         return go.Figure(), "", ""
+#     total_retrabalho, total_correcao_primeira, labels, values = veiculos_service.sintese_geral_fun(
+#         datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos
+#     )
+#     fig = grafico_pizza_sintese_geral(labels, values)
+#     return fig, total_retrabalho, total_correcao_primeira
 
 
 # GRÁFICO DE RETRABALHOS POR VEÍCULOS
