@@ -271,7 +271,7 @@ class CRUDRegraService:
             FROM
                 mat_view_retrabalho_{min_dias}_dias_distinct
             WHERE
-                "DATA DA ABERTURA DA OS"::timestamp BETWEEN CURRENT_DATE - INTERVAL '{data_periodo_regra} days' AND CURRENT_DATE
+                "DATA DA ABERTURA DA OS"::timestamp BETWEEN CURRENT_DATE - INTERVAL '{data_periodo_regra} days' AND CURRENT_DATE + INTERVAL '2 days' 
                 {subquery_modelos_str}
                 {subquery_oficinas_str}
                 {subquery_secoes_str}

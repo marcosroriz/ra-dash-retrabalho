@@ -179,8 +179,9 @@ class ColaboradorService:
                 {subquery_modelo_str}
                 {subquery_oficina_str}
             GROUP BY 
-                "COLABORADOR QUE EXECUTOU O SERVICO"),
-            TOTAL AS (
+                "COLABORADOR QUE EXECUTOU O SERVICO"
+        ),
+        TOTAL AS (
                 SELECT COUNT(*) AS total_colaboradores FROM TABELA_RANK
         ) 
         SELECT 
