@@ -49,9 +49,6 @@ class VeiculoService:
         return df
 
     def get_os_possiveis_do_veiculo(self, id_veiculo):
-        # Subqueries
-        subquery_veiculos_str = subquery_veiculos([id_veiculo])
-
         query = f"""
             SELECT DISTINCT
                 "DESCRICAO DO SERVICO" AS "SERVICO"
@@ -102,12 +99,153 @@ class VeiculoService:
             {subquery_modelo_str}
             {subquery_oficina_str}
         """
-        print(query)
         # Executa query
         df = pd.read_sql(query, self.dbEngine)
 
         # Calcula o total de correções tardia
         df["TOTAL_CORRECAO_TARDIA"] = df["TOTAL_CORRECAO"] - df["TOTAL_CORRECAO_PRIMEIRA"]
+
+        return df
+
+    def get_indicador_rank_retrabalho_modelo_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Função para obter o ranking do veículo em termos de retrabalho por modelo nas opções selecionadas"""
+
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        WITH TABELA_RANK AS (       
+            SELECT 
+                "CODIGO DO VEICULO",
+                COUNT(*) AS quantidade_de_os_retrabalho,
+                ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) AS rank_veiculo
+            FROM
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                retrabalho = TRUE
+                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+            GROUP BY
+                "CODIGO DO VEICULO"
+        ), 
+        TOTAL AS (
+            SELECT 
+                COUNT(DISTINCT "CODIGO DO VEICULO") as total_veiculos 
+            FROM 
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+        )
+        SELECT 
+            tr.rank_veiculo || '/' || t.total_veiculos AS rank_veiculo
+        FROM 
+            TABELA_RANK tr, TOTAL t
+        WHERE
+            "CODIGO DO VEICULO" = '{id_veiculo}'
+        """
+        # Executa query
+        print(query)
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
+
+    def get_indicador_rank_correcao_primeira_modelo_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Função para obter o ranking do veículo em termos de correção de primeira por modelo nas opções selecionadas"""
+
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        WITH TABELA_RANK AS (       
+            SELECT 
+                "CODIGO DO VEICULO",
+                COUNT(*) AS quantidade_de_os_correcao_primeira,
+                ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) AS rank_veiculo
+            FROM
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                correcao_primeira = TRUE
+                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+            GROUP BY
+                "CODIGO DO VEICULO"
+        ), 
+        TOTAL AS (
+            SELECT 
+                COUNT(DISTINCT "CODIGO DO VEICULO") as total_veiculos 
+            FROM 
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+        )
+        SELECT 
+            tr.rank_veiculo || '/' || t.total_veiculos AS rank_veiculo
+        FROM 
+            TABELA_RANK tr, TOTAL t
+        WHERE
+            "CODIGO DO VEICULO" = '{id_veiculo}'
+        """
+        # Executa query
+        print(query)
+        df = pd.read_sql(query, self.dbEngine)
 
         return df
 

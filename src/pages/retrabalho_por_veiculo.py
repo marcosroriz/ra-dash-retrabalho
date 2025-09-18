@@ -400,8 +400,72 @@ def callback_sincroniza_input_veiculo_store(
 
 
 ##############################################################################
+# Callbacks para os indicadores ##############################################
+##############################################################################
+
+
+@callback(
+    Output("indicador-rank-retrabalho-veiculo", "children"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_rank_retrabalho_veiculo_modelo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return ""
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_indicador_rank_retrabalho_modelo_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return ""
+
+    return df["rank_veiculo"].values[0]
+
+
+
+@callback(
+    Output("indicador-rank-correcao-de-primeira-veiculo", "children"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_rank_correcao_primeira_veiculo_modelo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return ""
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_indicador_rank_correcao_primeira_modelo_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return ""
+
+    return df["rank_veiculo"].values[0]
+
+##############################################################################
 # Callbacks para os gráficos #################################################
 ##############################################################################
+
 
 @callback(
     Output("graph-pizza-sintese-veiculo", "figure"),
@@ -493,6 +557,7 @@ def plota_grafico_evolucao_retrabalho_por_veiculo_por_mes(data):
 
     return fig
 
+
 @callback(
     Output("graph-evolucao-retrabalho-por-secao-por-mes-veiculos-v2", "figure"),
     Input("store-input-dados-retrabalho-veiculo", "data"),
@@ -547,11 +612,10 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(data):
 
     # Plota o gráfico
     fig = veiculos_graficos.grafico_evolucao_custo_por_mes(df)
-    
+
     return fig
 
     # return fig
-    
 
 
 ##############################################################################
@@ -562,22 +626,22 @@ layout = dbc.Container(
         # Estado
         dcc.Store(id="store-input-dados-retrabalho-veiculo"),
         # Loading
-        dmc.LoadingOverlay(
-            visible=True,
-            id="loading-overlay-guia-por-veiculo",
-            loaderProps={"size": "xl"},
-            overlayProps={
-                "radius": "lg",
-                "blur": 2,
-                "style": {
-                    "top": 0,  # Start from the top of the viewport
-                    "left": 0,  # Start from the left of the viewport
-                    "width": "100vw",  # Cover the entire width of the viewport
-                    "height": "100vh",  # Cover the entire height of the viewport
-                },
-            },
-            zIndex=10,
-        ),
+        # dmc.LoadingOverlay(
+        #     visible=True,
+        #     id="loading-overlay-guia-por-veiculo",
+        #     loaderProps={"size": "xl"},
+        #     overlayProps={
+        #         "radius": "lg",
+        #         "blur": 2,
+        #         "style": {
+        #             "top": 0,  # Start from the top of the viewport
+        #             "left": 0,  # Start from the left of the viewport
+        #             "width": "100vw",  # Cover the entire width of the viewport
+        #             "height": "100vh",  # Cover the entire height of the viewport
+        #         },
+        #     },
+        #     zIndex=10,
+        # ),
         dbc.Row(
             [
                 dbc.Col(
@@ -815,509 +879,725 @@ layout = dbc.Container(
         dmc.Space(h=30),
         dbc.Row(
             [
-                dbc.Col(DashIconify(icon="material-symbols:insights", width=45), width="auto"),
+                dbc.Col(DashIconify(icon="icon-park-outline:ranking-list", width=45), width="auto"),
                 dbc.Col(
-                    html.H4("Indicadores", className="align-self-center"),
+                    dbc.Row(
+                        [
+                            html.H4("Indicadores", className="align-self-center"),
+                            dmc.Space(h=5),
+                            gera_labels_inputs_veiculos("labels-indicadores-pag-veiculo"),
+                        ]
+                    ),
+                    width=True,
                 ),
-                dmc.Space(h=20),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(id="indicador-porcentagem-retrabalho-veiculo", order=2),
-                                                DashIconify(
-                                                    icon="mdi:bus-alert",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("% retrabalho"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-porcentagem-correcao-primeira",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="ic:round-gps-fixed",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("% correção de primeira"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(id="indicador-relacao-os-problema", order=2),
-                                                DashIconify(
-                                                    icon="icon-park-solid:division",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Relaçao OS/problema"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                    ]
-                ),
-                dbc.Row(dmc.Space(h=20)),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-posicao-relaçao-retrabalho",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="ic:round-sort",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Ranking do veículo % retrabalho/geral"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-posição-veiculo-correção-primeira",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="ic:round-sort",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Ranking do veiculo % correção de primeira/geral"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(id="indicador-posição-veiculo-relaçao-osproblema", order=2),
-                                                DashIconify(
-                                                    icon="ic:round-sort",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Posição veiculo relaçao OS/Problema"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                    ]
-                ),
-                dbc.Row(dmc.Space(h=20)),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-posicao-relaçao-retrabalho-modelo",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="ic:round-sort",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Ranking do veículo % retrabalho/modelo"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-posição-veiculo-correção-primeira-modelo",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="ic:round-sort",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Ranking do veiculo % correção de primeira/modelo"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-posição-veiculo-relaçao-osproblema-modelo", order=2
-                                                ),
-                                                DashIconify(
-                                                    icon="ic:round-sort",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Posição veiculo OS/Problema modelo"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                    ]
-                ),
-                dbc.Row(dmc.Space(h=20)),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-pecas-totais",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="mdi:cog",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Valor total de peças"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-pecas-mes",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="mdi:wrench",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Valor total de peças/mês"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(id="indicador-ranking-pecas", order=2),
-                                                DashIconify(
-                                                    icon="mdi:podium",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Ranking do valor das peças dentro do período"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                    ]
-                ),
-                dbc.Row(dmc.Space(h=20)),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-oss-diferentes",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="game-icons:time-bomb",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Números de OSs"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-problemas-diferentes",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="mdi:tools",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Serviços diferentes"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(id="indicador-mecanicos-diferentes", order=2),
-                                                DashIconify(
-                                                    icon="mdi:account-wrench",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Mecânicos diferentes"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                    ]
-                ),
-                dbc.Row(dmc.Space(h=20)),
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-valor-geral-retrabalho",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="mdi:reload",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Valor de retrabalho"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(
-                                                    id="indicador-qtd-pecas",
-                                                    order=2,
-                                                ),
-                                                DashIconify(
-                                                    icon="mdi:reload-alert",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Quantidade de peças trocadas"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                        dbc.Col(
-                            dbc.Card(
-                                [
-                                    dbc.CardBody(
-                                        dmc.Group(
-                                            [
-                                                dmc.Title(id="indicador-ranking-valor-pecas-modelo", order=2),
-                                                DashIconify(
-                                                    icon="mdi:podium",
-                                                    width=48,
-                                                    color="black",
-                                                ),
-                                            ],
-                                            justify="space-around",
-                                            mt="md",
-                                            mb="xs",
-                                        ),
-                                    ),
-                                    dbc.CardFooter("Ranking valor de peça por modelo"),
-                                ],
-                                class_name="card-box-shadow",
-                            ),
-                            md=4,
-                        ),
-                    ]
-                ),
-            ]
+            ],
+            align="center",
         ),
+        dmc.Space(h=20),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-rank-retrabalho-veiculo", order=2),
+                                        DashIconify(
+                                            icon="tabler:reorder",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Rank Retrabalho / Modelo (menor = melhor)"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=3,
+                    className="mb-3 mb-md-0",
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-rank-correcao-de-primeira-veiculo", order=2),
+                                        DashIconify(
+                                            icon="gravity-ui:target-dart",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Rank Correção Primeira / Modelo (maior = melhor)"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=3,
+                    className="mb-3 mb-md-0",
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-total-os-veiculo", order=2),
+                                        DashIconify(
+                                            icon="pajamas:task-done",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Total de OSs executadas"),
+                        ],
+                        className="card-box",
+                    ),
+                    md=3,
+                    className="mb-3 mb-md-0",
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-rank-os-veiculo", order=2),
+                                        DashIconify(
+                                            icon="solar:ranking-linear",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Rank de OSs / Modelo"),
+                        ],
+                        className="card-box",
+                    ),
+                    md=3,
+                    className="mb-3 mb-md-0",
+                ),
+            ],
+            justify="center",
+        ),
+        dmc.Space(h=20),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-gasto-total-veiculo", order=2),
+                                        DashIconify(
+                                            icon="hugeicons:search-dollar",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Total gasto com peças"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=3,
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-rank-gasto-total-veiculo", order=2),
+                                        DashIconify(
+                                            icon="ion:analytics-sharp",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Rank Gasto Total Peças / Modelo"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=3,
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-gasto-retrabalho-total-veiculo", order=2),
+                                        DashIconify(
+                                            icon="emojione-monotone:money-with-wings",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Total gasto com peças em retrabalho"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=3,
+                ),
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardBody(
+                                dmc.Group(
+                                    [
+                                        dmc.Title(id="indicador-rank-gasto-retrabalho-veiculo", order=2),
+                                        DashIconify(
+                                            icon="ion:analytics-sharp",
+                                            width=48,
+                                            color="black",
+                                        ),
+                                    ],
+                                    justify="center",
+                                    mt="md",
+                                    mb="xs",
+                                ),
+                            ),
+                            dbc.CardFooter("Rank Gasto Retrabalho / Modelo"),
+                        ],
+                        class_name="card-box-shadow",
+                    ),
+                    md=3,
+                ),
+            ],
+            justify="center",
+        ),
+        # dbc.Row(
+        #         [
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(id="indicador-porcentagem-retrabalho-veiculo", order=2),
+        #                                     DashIconify(
+        #                                         icon="mdi:bus-alert",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("% retrabalho"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-porcentagem-correcao-primeira",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="ic:round-gps-fixed",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("% correção de primeira"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(id="indicador-relacao-os-problema", order=2),
+        #                                     DashIconify(
+        #                                         icon="icon-park-solid:division",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Relaçao OS/problema"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #         ]
+        #     ),
+        #     dbc.Row(dmc.Space(h=20)),
+        #     dbc.Row(
+        #         [
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-posicao-relaçao-retrabalho",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="ic:round-sort",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Ranking do veículo % retrabalho/geral"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-posição-veiculo-correção-primeira",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="ic:round-sort",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Ranking do veiculo % correção de primeira/geral"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(id="indicador-posição-veiculo-relaçao-osproblema", order=2),
+        #                                     DashIconify(
+        #                                         icon="ic:round-sort",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Posição veiculo relaçao OS/Problema"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #         ]
+        #     ),
+        #     dbc.Row(dmc.Space(h=20)),
+        #     dbc.Row(
+        #         [
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-posicao-relaçao-retrabalho-modelo",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="ic:round-sort",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Ranking do veículo % retrabalho/modelo"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-posição-veiculo-correção-primeira-modelo",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="ic:round-sort",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Ranking do veiculo % correção de primeira/modelo"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-posição-veiculo-relaçao-osproblema-modelo", order=2
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="ic:round-sort",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Posição veiculo OS/Problema modelo"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #         ]
+        #     ),
+        #     dbc.Row(dmc.Space(h=20)),
+        #     dbc.Row(
+        #         [
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-pecas-totais",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="mdi:cog",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Valor total de peças"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-pecas-mes",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="mdi:wrench",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Valor total de peças/mês"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(id="indicador-ranking-pecas", order=2),
+        #                                     DashIconify(
+        #                                         icon="mdi:podium",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Ranking do valor das peças dentro do período"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #         ]
+        #     ),
+        #     dbc.Row(dmc.Space(h=20)),
+        #     dbc.Row(
+        #         [
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-oss-diferentes",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="game-icons:time-bomb",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Números de OSs"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-problemas-diferentes",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="mdi:tools",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Serviços diferentes"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(id="indicador-mecanicos-diferentes", order=2),
+        #                                     DashIconify(
+        #                                         icon="mdi:account-wrench",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Mecânicos diferentes"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #         ]
+        #     ),
+        #     dbc.Row(dmc.Space(h=20)),
+        #     dbc.Row(
+        #         [
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-valor-geral-retrabalho",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="mdi:reload",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Valor de retrabalho"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(
+        #                                         id="indicador-qtd-pecas",
+        #                                         order=2,
+        #                                     ),
+        #                                     DashIconify(
+        #                                         icon="mdi:reload-alert",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Quantidade de peças trocadas"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #             dbc.Col(
+        #                 dbc.Card(
+        #                     [
+        #                         dbc.CardBody(
+        #                             dmc.Group(
+        #                                 [
+        #                                     dmc.Title(id="indicador-ranking-valor-pecas-modelo", order=2),
+        #                                     DashIconify(
+        #                                         icon="mdi:podium",
+        #                                         width=48,
+        #                                         color="black",
+        #                                     ),
+        #                                 ],
+        #                                 justify="space-around",
+        #                                 mt="md",
+        #                                 mb="xs",
+        #                             ),
+        #                         ),
+        #                         dbc.CardFooter("Ranking valor de peça por modelo"),
+        #                     ],
+        #                     class_name="card-box-shadow",
+        #                 ),
+        #                 md=4,
+        #             ),
+        #         ]
+        #     ),
+        # ),
         dbc.Row(dmc.Space(h=40)),
         # dmc.Space(h=40),
         dmc.Space(h=40),
@@ -1629,121 +1909,121 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(
     return fig
 
 
-# GRAFICO DA QUANTIDADE DE OSs, INDICADORES DE : PROBLEMAS DIFERENTES, MECANICOS DIFERENTES, OS DIFERENTES, OS/PROBL, RANKING OS/PROBL
-@callback(
-    [
-        Output("graph-evolucao-os-mes-veiculo-v2", "figure"),
-        Output("indicador-problemas-diferentes", "children"),
-        Output("indicador-mecanicos-diferentes", "children"),
-        Output("indicador-oss-diferentes", "children"),
-        Output("indicador-relacao-os-problema", "children"),
-        Output("indicador-posição-veiculo-relaçao-osproblema", "children"),
-        Output("indicador-posição-veiculo-relaçao-osproblema-modelo", "children"),
-    ],
-    [
-        Input("input-intervalo-datas-veiculo", "value"),
-        Input("input-min-dias-veiculo", "value"),
-        Input("input-select-oficina-veiculo", "value"),
-        Input("input-select-secao-veiculo", "value"),
-        Input("input-select-ordens-servico-veiculos", "value"),
-        Input("input-select-veiculos-veiculo", "value"),
-    ],
-)
-def plota_grafico_evolucao_quantidade_os_por_mes(
-    datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos
-):
-    lista_veiculos = [lista_veiculos]
-    # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-        return go.Figure(), "", "", "", "", "", ""
-    (
-        os_diferentes,
-        mecanicos_diferentes,
-        os_veiculo_filtradas,
-        os_problema,
-        df_soma_mes,
-        df_os_unicas,
-        rk_os_problema_geral,
-        rk_os_problema_modelos,
-    ) = veiculos_service.evolucao_quantidade_os_por_mes_fun(
-        datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos
-    )
-    fig = grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas)
-    return (
-        fig,
-        os_diferentes,
-        mecanicos_diferentes,
-        os_veiculo_filtradas,
-        os_problema,
-        rk_os_problema_geral,
-        rk_os_problema_modelos,
-    )
+# # GRAFICO DA QUANTIDADE DE OSs, INDICADORES DE : PROBLEMAS DIFERENTES, MECANICOS DIFERENTES, OS DIFERENTES, OS/PROBL, RANKING OS/PROBL
+# @callback(
+#     [
+#         Output("graph-evolucao-os-mes-veiculo-v2", "figure"),
+#         Output("indicador-problemas-diferentes", "children"),
+#         Output("indicador-mecanicos-diferentes", "children"),
+#         Output("indicador-oss-diferentes", "children"),
+#         Output("indicador-relacao-os-problema", "children"),
+#         Output("indicador-posição-veiculo-relaçao-osproblema", "children"),
+#         Output("indicador-posição-veiculo-relaçao-osproblema-modelo", "children"),
+#     ],
+#     [
+#         Input("input-intervalo-datas-veiculo", "value"),
+#         Input("input-min-dias-veiculo", "value"),
+#         Input("input-select-oficina-veiculo", "value"),
+#         Input("input-select-secao-veiculo", "value"),
+#         Input("input-select-ordens-servico-veiculos", "value"),
+#         Input("input-select-veiculos-veiculo", "value"),
+#     ],
+# )
+# def plota_grafico_evolucao_quantidade_os_por_mes(
+#     datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos
+# ):
+#     lista_veiculos = [lista_veiculos]
+#     # Valida input
+#     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+#         return go.Figure(), "", "", "", "", "", ""
+#     (
+#         os_diferentes,
+#         mecanicos_diferentes,
+#         os_veiculo_filtradas,
+#         os_problema,
+#         df_soma_mes,
+#         df_os_unicas,
+#         rk_os_problema_geral,
+#         rk_os_problema_modelos,
+#     ) = veiculos_service.evolucao_quantidade_os_por_mes_fun(
+#         datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos
+#     )
+#     fig = grafico_qtd_os_e_soma_de_os_mes(df_soma_mes, df_os_unicas)
+#     return (
+#         fig,
+#         os_diferentes,
+#         mecanicos_diferentes,
+#         os_veiculo_filtradas,
+#         os_problema,
+#         rk_os_problema_geral,
+#         rk_os_problema_modelos,
+#     )
 
 
-# GRAFICO DA TABELA DE PEÇAS
-@callback(
-    Output("graph-pecas-trocadas-por-mes", "figure"),
-    [
-        Input("input-intervalo-datas-veiculo", "value"),
-        Input("input-min-dias-veiculo", "value"),
-        Input("input-select-oficina-veiculo", "value"),
-        Input("input-select-secao-veiculo", "value"),
-        Input("input-select-ordens-servico-veiculos", "value"),
-        Input("input-select-veiculos-veiculo", "value"),
-    ],
-)
-def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
-    equipamentos = [equipamentos]
-    # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
-        return go.Figure()
+# # GRAFICO DA TABELA DE PEÇAS
+# @callback(
+#     Output("graph-pecas-trocadas-por-mes", "figure"),
+#     [
+#         Input("input-intervalo-datas-veiculo", "value"),
+#         Input("input-min-dias-veiculo", "value"),
+#         Input("input-select-oficina-veiculo", "value"),
+#         Input("input-select-secao-veiculo", "value"),
+#         Input("input-select-ordens-servico-veiculos", "value"),
+#         Input("input-select-veiculos-veiculo", "value"),
+#     ],
+# )
+# def plota_grafico_pecas_trocadas_por_mes(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
+#     equipamentos = [equipamentos]
+#     # Valida input
+#     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos):
+#         return go.Figure()
 
-    data_inicio_str = datas[0]
-    data_fim_str = datas[1]
+#     data_inicio_str = datas[0]
+#     data_fim_str = datas[1]
 
-    if data_inicio_str is None:
-        return go.Figure()  # Ou algum valor padrão válido
-    if data_fim_str is None:
-        return go.Figure()  # Ou algum valor padrão válido
+#     if data_inicio_str is None:
+#         return go.Figure()  # Ou algum valor padrão válido
+#     if data_fim_str is None:
+#         return go.Figure()  # Ou algum valor padrão válido
 
-    # Garante que equipamentos seja uma lista
-    if isinstance(equipamentos, str):
-        equipamentos = [equipamentos]
-    df_veiculos, df_media_geral, df_media_modelo = veiculos_service.pecas_trocadas_por_mes_fun(
-        datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos
-    )
-    fig = grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo)
-    return fig
+#     # Garante que equipamentos seja uma lista
+#     if isinstance(equipamentos, str):
+#         equipamentos = [equipamentos]
+#     df_veiculos, df_media_geral, df_media_modelo = veiculos_service.pecas_trocadas_por_mes_fun(
+#         datas, min_dias, lista_oficinas, lista_secaos, lista_os, equipamentos
+#     )
+#     fig = grafico_tabela_pecas(df_veiculos, df_media_geral, df_media_modelo)
+#     return fig
 
 
-# TABELA DE PEÇAS, INDICADORES DE: VALORES DE PECAS, VALOR DE PECAS/MES, RANKING DO VALOR DE PECAS, TOTAL DE PEÇAS
-@callback(
-    [
-        Output("tabela-pecas-substituidas", "rowData"),
-        Output("indicador-pecas-totais", "children"),
-        Output("indicador-pecas-mes", "children"),
-        Output("indicador-ranking-pecas", "children"),
-        Output("indicador-qtd-pecas", "children"),
-    ],
-    # Input("graph-pecas-trocadas-por-mes", "clickData"),
-    [
-        Input("input-intervalo-datas-veiculo", "value"),
-        Input("input-min-dias-veiculo", "value"),
-        Input("input-select-oficina-veiculo", "value"),
-        Input("input-select-secao-veiculo", "value"),
-        Input("input-select-ordens-servico-veiculos", "value"),
-        Input("input-select-veiculos-veiculo", "value"),
-    ],
-)
-def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-    lista_veiculos = [lista_veiculos]
-    # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
-        return [], " ", " ", " ", " "
-    df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total = (
-        veiculos_service.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
-    )
-    return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total
+# # TABELA DE PEÇAS, INDICADORES DE: VALORES DE PECAS, VALOR DE PECAS/MES, RANKING DO VALOR DE PECAS, TOTAL DE PEÇAS
+# @callback(
+#     [
+#         Output("tabela-pecas-substituidas", "rowData"),
+#         Output("indicador-pecas-totais", "children"),
+#         Output("indicador-pecas-mes", "children"),
+#         Output("indicador-ranking-pecas", "children"),
+#         Output("indicador-qtd-pecas", "children"),
+#     ],
+#     # Input("graph-pecas-trocadas-por-mes", "clickData"),
+#     [
+#         Input("input-intervalo-datas-veiculo", "value"),
+#         Input("input-min-dias-veiculo", "value"),
+#         Input("input-select-oficina-veiculo", "value"),
+#         Input("input-select-secao-veiculo", "value"),
+#         Input("input-select-ordens-servico-veiculos", "value"),
+#         Input("input-select-veiculos-veiculo", "value"),
+#     ],
+# )
+# def atualiza_tabela_pecas(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+#     lista_veiculos = [lista_veiculos]
+#     # Valida input
+#     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
+#         return [], " ", " ", " ", " "
+#     df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total = (
+#         veiculos_service.tabela_pecas_fun(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos)
+#     )
+#     return df_detalhes_dict, valor_total_veiculos_str, valor_mes_str, rk, numero_pecas_veiculos_total
 
 
 # DOWLOAD DA TABELA PEÇAS
@@ -1793,32 +2073,32 @@ def dowload_excel_tabela_peças(n_clicks, datas, min_dias, lista_oficinas, lista
 
 
 # TABELA DE DESCRIÇÃO DE SERVIÇOS E INDICADO DE VALOR DE RETRABALHO
-@callback(
-    [
-        Output("tabela-descricao-de-servico", "rowData"),
-        Output("indicador-valor-geral-retrabalho", "children"),
-    ],
-    [
-        Input("input-intervalo-datas-veiculo", "value"),
-        Input("input-min-dias-veiculo", "value"),
-        Input("input-select-oficina-veiculo", "value"),
-        Input("input-select-secao-veiculo", "value"),
-        Input("input-select-ordens-servico-veiculos", "value"),
-        Input("input-select-veiculos-veiculo", "value"),
-    ],
-)
-def atualiza_tabela_retrabalho_por_descrição_serviço(
-    datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo
-):
-    lista_veiculo = [lista_veiculo]
-    # Valida input
-    if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
-        return [], " "
+# @callback(
+#     [
+#         Output("tabela-descricao-de-servico", "rowData"),
+#         Output("indicador-valor-geral-retrabalho", "children"),
+#     ],
+#     [
+#         Input("input-intervalo-datas-veiculo", "value"),
+#         Input("input-min-dias-veiculo", "value"),
+#         Input("input-select-oficina-veiculo", "value"),
+#         Input("input-select-secao-veiculo", "value"),
+#         Input("input-select-ordens-servico-veiculos", "value"),
+#         Input("input-select-veiculos-veiculo", "value"),
+#     ],
+# )
+# def atualiza_tabela_retrabalho_por_descrição_serviço(
+#     datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo
+# ):
+#     lista_veiculo = [lista_veiculo]
+#     # Valida input
+#     if not input_valido(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo):
+#         return [], " "
 
-    df_dict, valor_retrabalho = veiculos_service.tabela_top_os_geral_retrabalho_fun(
-        datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo
-    )
-    return df_dict, valor_retrabalho
+#     df_dict, valor_retrabalho = veiculos_service.tabela_top_os_geral_retrabalho_fun(
+#         datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculo
+#     )
+#     return df_dict, valor_retrabalho
 
 
 # DOWLOAD DA TABELA RETRABALHO POR DESCRIÇÃO DE SERVIÇO
@@ -1905,7 +2185,7 @@ def atualiza_ranking_pecas(datas, min_dias, lista_oficinas, lista_secoes, lista_
         Input("input-select-ordens-servico-veiculos", "value"),
         Input("input-select-veiculos-veiculo", "value"),
     ],
-    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
+    # running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
 )
 def ranking_retrabalho_veiculos(datas, min_dias, lista_oficinas, lista_secaos, lista_os, lista_veiculos):
     lista_veiculos = [lista_veiculos]

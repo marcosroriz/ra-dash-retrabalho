@@ -46,7 +46,7 @@ def grafico_pizza_veiculo(data, metadata_browser):
 
     # Remove o espaçamento em torno do gráfico
     fig.update_layout(
-        margin=dict(t=20, b=0),  # Remove as margens
+        margin=dict(t=40, b=0),  # Remove as margens
         height=350,  # Ajuste conforme necessário
         legend=dict(
             orientation="h",  # Legenda horizontal
@@ -57,9 +57,24 @@ def grafico_pizza_veiculo(data, metadata_browser):
         ),
     )
 
+    total_num_os = len(data)
+    total_num_os_str = f"{total_num_os:,}".replace(",", ".")
+
+    fig.update_layout(
+        title=dict(
+            text=f"Total de OS: {total_num_os_str}",
+            y=0.97,  # Posição vertical do título
+            x=0.5,  # Centraliza o título horizontalmente
+            xanchor="center",
+            yanchor="top",
+            font=dict(size=18),  # Tamanho do texto
+        ),
+        separators=",.",
+    )
+
     # Remove o espaçamento lateral do gráfico no dispositivo móvel
     if metadata_browser and metadata_browser["device"] == "Mobile":
-        fig.update_layout(margin=dict(t=20, b=20, l=20, r=20))
+        fig.update_layout(margin=dict(t=40, b=20, l=20, r=20))
 
     return fig
 
