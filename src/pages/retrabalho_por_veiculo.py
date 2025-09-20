@@ -687,8 +687,9 @@ def plota_grafico_pizza_sintese_veiculo(data, metadata_browser):
 @callback(
     Output("graph-evolucao-os-mes-veiculo", "figure"),
     Input("store-input-dados-retrabalho-veiculo", "data"),
+    running=[(Output("loading-overlay-guia-por-veiculo", "visible"), True, False)],
 )
-def plota_grafico_evolucao_quantidade_os_por_mes_v2(data):
+def plota_grafico_evolucao_quantidade_os_por_mes(data):
     # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
     if not data or not data["valido"]:
         return go.Figure()
@@ -1001,22 +1002,22 @@ layout = dbc.Container(
         # Estado
         dcc.Store(id="store-input-dados-retrabalho-veiculo"),
         # Loading
-        # dmc.LoadingOverlay(
-        #     visible=True,
-        #     id="loading-overlay-guia-por-veiculo",
-        #     loaderProps={"size": "xl"},
-        #     overlayProps={
-        #         "radius": "lg",
-        #         "blur": 2,
-        #         "style": {
-        #             "top": 0,  # Start from the top of the viewport
-        #             "left": 0,  # Start from the left of the viewport
-        #             "width": "100vw",  # Cover the entire width of the viewport
-        #             "height": "100vh",  # Cover the entire height of the viewport
-        #         },
-        #     },
-        #     zIndex=10,
-        # ),
+        dmc.LoadingOverlay(
+            visible=True,
+            id="loading-overlay-guia-por-veiculo",
+            loaderProps={"size": "xl"},
+            overlayProps={
+                "radius": "lg",
+                "blur": 2,
+                "style": {
+                    "top": 0,  # Start from the top of the viewport
+                    "left": 0,  # Start from the left of the viewport
+                    "width": "100vw",  # Cover the entire width of the viewport
+                    "height": "100vh",  # Cover the entire height of the viewport
+                },
+            },
+            zIndex=10,
+        ),
         dbc.Row(
             [
                 dbc.Col(
