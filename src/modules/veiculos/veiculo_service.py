@@ -17,6 +17,8 @@ from modules.sql_utils import (
     subquery_equipamentos,
     subquery_modelos_pecas,
 )
+
+from modules.service_utils import definir_status
 from modules.veiculos.helps import HelpsVeiculos
 
 
@@ -1005,6 +1007,162 @@ class VeiculoService:
         df_melt = df_melt.sort_values(by=["year_month_dt", "CATEGORIA"])
 
         return df_melt
+
+    def get_dados_tabela_top_servicos_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        # Datas
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+
+        query = f"""
+        WITH veiculo_com_pecas AS (
+            SELECT
+                main.*,
+                pg."VALOR"
+            FROM mat_view_retrabalho_{min_dias}_dias main
+            LEFT JOIN 
+                view_pecas_desconsiderando_combustivel pg
+            ON 
+                main."NUMERO DA OS" = pg."OS"
+            WHERE
+                "CODIGO DO VEICULO" = '{id_veiculo}'
+                AND main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_oficinas_str}
+        ),
+        veiculo_com_pecas_e_classificacao AS (
+            SELECT *
+            FROM veiculo_com_pecas main
+            LEFT JOIN os_dados_classificacao odc
+                ON main."KEY_HASH" = odc."KEY_HASH"
+        )
+        SELECT 
+            main."DESCRICAO DA OFICINA",
+            main."DESCRICAO DA SECAO",
+            main."DESCRICAO DO SERVICO",
+
+            COUNT(distinct main."NUMERO DA OS") AS "TOTAL_OS",
+            SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END) AS "TOTAL_RETRABALHO",
+            SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO",
+            SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END) AS "TOTAL_CORRECAO_PRIMEIRA",
+
+            100 * ROUND(SUM(CASE WHEN main.retrabalho THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_RETRABALHO",
+            100 * ROUND(SUM(CASE WHEN main.correcao THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO",
+            100 * ROUND(SUM(CASE WHEN main.correcao_primeira THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC, 4) AS "PERC_CORRECAO_PRIMEIRA",
+            100 * ROUND(
+                COUNT(DISTINCT main."NUMERO DA OS")::NUMERIC
+                / SUM(COUNT(DISTINCT main."NUMERO DA OS")) OVER (),
+                4
+            ) AS "PERC_TOTAL_OS",
+
+            SUM(main."VALOR") AS "TOTAL_GASTO",
+            SUM(CASE WHEN main.retrabalho THEN main."VALOR" ELSE 0 END) AS "TOTAL_GASTO_RETRABALHO",
+            100 * ROUND(
+                COALESCE(
+                    SUM(CASE WHEN main.retrabalho THEN main."VALOR" ELSE 0 END)::NUMERIC
+                    / NULLIF(SUM(main."VALOR")::NUMERIC, 0),
+                    0
+                ),
+                4
+            ) AS "PERC_GASTO_RETRABALHO"
+
+        FROM veiculo_com_pecas_e_classificacao main
+        GROUP BY 
+            main."DESCRICAO DA OFICINA",
+            main."DESCRICAO DA SECAO",
+            main."DESCRICAO DO SERVICO"
+        ORDER BY "TOTAL_GASTO_RETRABALHO" DESC
+        """
+
+        df = pd.read_sql(query, self.dbEngine)
+        df["TOTAL_GASTO_RETRABALHO"] = df["TOTAL_GASTO_RETRABALHO"].replace(np.nan, 0)
+        df["TOTAL_GASTO"] = df["TOTAL_GASTO"].replace(np.nan, 0)
+
+        return df
+
+    def get_dados_tabela_lista_os_pecas_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        # Datas
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Subqueries
+        subquery_oficinas_str = subquery_oficinas(lista_oficinas)
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+
+        query = f"""
+        WITH 
+        pecas_agg AS (
+            SELECT 
+                pg."OS", 
+                SUM(pg."VALOR") AS total_valor, 
+                STRING_AGG(pg."VALOR"::TEXT, '__SEP__' ORDER BY pg."PRODUTO") AS pecas_valor_str,
+                STRING_AGG(pg."PRODUTO"::text, '__SEP__' ORDER BY pg."PRODUTO") AS pecas_trocadas_str
+            FROM 
+                view_pecas_desconsiderando_combustivel pg 
+            WHERE 
+                to_timestamp(pg."DATA", 'DD/MM/YYYY') BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            GROUP BY 
+                pg."OS"
+        ),
+        os_avaliadas AS (
+            SELECT
+                *
+            FROM
+                mat_view_retrabalho_{min_dias}_dias m
+            LEFT JOIN 
+                os_dados_classificacao odc
+            ON 
+                m."KEY_HASH" = odc."KEY_HASH" 
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "CODIGO DO VEICULO" = '{id_veiculo}'
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_oficinas_str}
+        )
+        SELECT *
+        FROM os_avaliadas os
+        LEFT JOIN pecas_agg p
+        ON os."NUMERO DA OS" = p."OS"
+        """
+        print(query)
+
+        df = pd.read_sql(query, self.dbEngine)
+
+        # Preenche valores nulos
+        df["total_valor"] = df["total_valor"].fillna(0)
+        df["pecas_valor_str"] = df["pecas_valor_str"].fillna("0")
+        df["pecas_trocadas_str"] = df["pecas_trocadas_str"].fillna("Nenhuma")
+
+        # Aplica a função para definir o status de cada OS
+        df["status_os"] = df.apply(definir_status, axis=1)
+
+        # Datas aberturas (converte para DT)
+        df["DATA DA ABERTURA DA OS DT"] = pd.to_datetime(df["DATA DA ABERTURA DA OS"])
+        df["DATA DO FECHAMENTO DA OS DT"] = pd.to_datetime(df["DATA DO FECHAMENTO DA OS"])
+
+        # Ordena por data de abertura
+        df = df.sort_values(by="DATA DA ABERTURA DA OS DT", ascending=False)
+
+        return df
 
     def atualizar_servicos_func(self, datas, min_dias, lista_oficinas, lista_secaos, lista_veiculos):
         # Datas

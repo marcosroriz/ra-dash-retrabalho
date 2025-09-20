@@ -871,7 +871,7 @@ def tabela_detalhamento_problema_colaborador(vec_problema_lbl, data):
     return df_os_problema_colaborador.to_dict("records")
 
 
-# Callback para realizar o download quando o botão de os categorizadasfor clicado
+# Callback para realizar o download quando o botão de os categorizadas for clicado
 @callback(
     Output("download-excel-categorizadas", "data"),
     [

@@ -29,14 +29,15 @@ from dash import callback_context
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
-# Importar nossas constantes e funções utilitárias
-
 # Banco de Dados
 from db import PostgresSingleton
 
 # Import de arquivos
 import modules.veiculos.graficos as veiculos_graficos
-from modules.entities_utils import get_modelos, get_lista_os, get_veiculos, get_oficinas, get_secoes
+import modules.veiculos.tabelas as veiculos_tabelas
+
+# Improts gerais
+from modules.entities_utils import get_modelos, get_lista_os, get_veiculos, get_oficinas, get_secoes, gerar_excel
 from modules.veiculos.tabelas import *
 from modules.sql_utils import *
 from modules.veiculos.inputs import input_valido4
@@ -798,7 +799,198 @@ def plota_grafico_evolucao_retrabalho_por_secao_por_mes(data):
 
     return fig
 
-    # return fig
+
+##############################################################################
+# Callbacks para as tabelas ##################################################
+##############################################################################
+
+
+@callback(
+    Output("tabela-top-servicos-categorizados-veiculo", "rowData"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_tabela_top_servicos_veiculo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return []
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    df = veiculos_service.get_dados_tabela_top_servicos_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    return df.to_dict(orient="records")
+
+
+@callback(
+    Output("tabela-lista-os-pecas-veiculo", "rowData"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_tabela_detalhamento_os_pecas_veiculo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return []
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    df = veiculos_service.get_dados_tabela_lista_os_pecas_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    # Ação de visualização
+    df["acao"] = "🔍 Detalhar"
+
+    return df.to_dict(orient="records")
+
+
+##############################################################################
+# Callbacks Excel ############################################################
+##############################################################################
+
+
+# Callback para realizar o download quando o botão da categoria de OS do veículo for clicado
+@callback(
+    Output("download-excel-top-servicos-veiculo", "data"),
+    [
+        Input("btn-exportar-excel-top-servicos-veiculo", "n_clicks"),
+        Input("store-input-dados-retrabalho-veiculo", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def cb_excel_tabela_top_servicos_veiculo(n_clicks, data):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    if triggered_id != "btn-exportar-excel-top-servicos-veiculo":
+        return dash.no_update  # Ignora mudanças nos outros inputs
+
+    if not n_clicks or n_clicks <= 0:
+        return dash.no_update
+
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return dash.no_update
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    df = veiculos_service.get_dados_tabela_top_servicos_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    excel_data = gerar_excel(df=df)
+
+    date_now = datetime.now().strftime("%d-%m-%Y")
+    return dcc.send_bytes(excel_data, f"tabela_servicos_veiculo_categorizados_{date_now}.xlsx")
+
+
+# Callback para realizar o download quando o botão da tabela de os e peças do veículo for clicado
+@callback(
+    Output("download-excel-tabela-os-pecas-veiculo", "data"),
+    [
+        Input("btn-exportar-excel-tabela-os-pecas-veiculo", "n_clicks"),
+        Input("store-input-dados-retrabalho-veiculo", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def cb_excel_tabela_os_pecas_veiculo(n_clicks, data):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de download
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    if triggered_id != "btn-exportar-excel-tabela-os-pecas-veiculo":
+        return dash.no_update  # Ignora mudanças nos outros inputs
+
+    if not n_clicks or n_clicks <= 0:
+        return dash.no_update
+
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return dash.no_update
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    df = veiculos_service.get_dados_tabela_lista_os_pecas_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    excel_data = gerar_excel(df=df)
+
+    date_now = datetime.now().strftime("%d-%m-%Y")
+    return dcc.send_bytes(excel_data, f"tabela_os_pecas_veiculo_{date_now}.xlsx")
+
+
+##############################################################################
+# Botão detalhar #############################################################
+##############################################################################
+
+
+@callback(
+    Output("url", "href", allow_duplicate=True),
+    Input("tabela-lista-os-pecas-veiculo", "cellRendererData"),
+    Input("tabela-lista-os-pecas-veiculo", "virtualRowData"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+    prevent_initial_call=True,
+)
+def cb_pag_veiculo_botao_detalhar_os_tabela_os(linha, linha_virtual, data):
+    ctx = callback_context  # Obtém o contexto do callback
+    if not ctx.triggered:
+        return dash.no_update  # Evita execução desnecessária
+
+    # Verifica se o callback foi acionado pelo botão de visualização
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[1]
+
+    if triggered_id != "cellRendererData":
+        return dash.no_update
+
+    # Acessa os demais dados da linha
+    linha_alvo = linha_virtual[linha["rowIndex"]]
+
+    # Pega o parâmetro final (# da os)
+    numero_da_os = linha_alvo["NUMERO DA OS"]
+    # Min Dias
+    min_dias = data["min_dias"]
+
+    url_params = [
+        f"os={numero_da_os}",
+        f"mindiasretrabalho={min_dias}",
+    ]
+    url_params_str = "&".join(url_params)
+
+    return f"/retrabalho-por-os?{url_params_str}"
 
 
 ##############################################################################
@@ -1097,8 +1289,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter([
-                                "Rank Retrabalho / Modelo", html.Br(), "(menor = melhor)"]),
+                            dbc.CardFooter(["Rank Retrabalho / Modelo", html.Br(), "(menor = melhor)"]),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -1876,22 +2067,87 @@ layout = dbc.Container(
         dmc.Space(h=40),
         dbc.Row(
             [
+                dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            html.H4(
+                                "Detalhamento dos Serviços",
+                                className="align-self-center",
+                            ),
+                            dmc.Space(h=5),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        gera_labels_inputs_veiculos("labels-tabela-top-servicos-categorizados-veiculo"),
+                                        width=True,
+                                    ),
+                                    dbc.Col(
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Exportar para Excel",
+                                                    id="btn-exportar-excel-top-servicos-veiculo",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "background-color": "#007bff",  # Azul
+                                                        "color": "white",
+                                                        "border": "none",
+                                                        "padding": "10px 20px",
+                                                        "border-radius": "8px",
+                                                        "cursor": "pointer",
+                                                        "font-size": "16px",
+                                                        "font-weight": "bold",
+                                                    },
+                                                ),
+                                                dcc.Download(id="download-excel-top-servicos-veiculo"),
+                                            ],
+                                            style={"text-align": "right"},
+                                        ),
+                                        width="auto",
+                                    ),
+                                ],
+                                align="center",
+                                justify="between",  # Deixa os itens espaçados
+                            ),
+                        ]
+                    ),
+                    width=True,
+                ),
+            ],
+            align="center",
+        ),
+        dmc.Space(h=40),
+        dag.AgGrid(
+            id="tabela-top-servicos-categorizados-veiculo",
+            columnDefs=veiculos_tabelas.tbl_top_servicos_categorizados_veiculo,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+            },
+            style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+        ),
+        dmc.Space(h=40),
+        dbc.Row(
+            [
                 dbc.Col(DashIconify(icon="mdi:cog-outline", width=45), width="auto"),
                 dbc.Col(
                     dbc.Row(
                         [
                             html.H4(
-                                "Tabela de peças por OS",
+                                "Lista de OS e Peças do Veículo",
                                 className="align-self-center",
                             ),
                             dmc.Space(h=5),
-                            dbc.Col(gera_labels_inputs_veiculos("pecas-substituidas-por-os-filtro"), width=True),
+                            dbc.Col(gera_labels_inputs_veiculos("labels-tabela-lista-os-pecas-do-veiculo"), width=True),
                             dbc.Col(
                                 html.Div(
                                     [
                                         html.Button(
                                             "Exportar para Excel",
-                                            id="btn-exportar-pecas",
+                                            id="btn-exportar-excel-tabela-os-pecas-veiculo",
                                             n_clicks=0,
                                             style={
                                                 "background-color": "#007bff",  # Azul
@@ -1904,7 +2160,7 @@ layout = dbc.Container(
                                                 "font-weight": "bold",
                                             },
                                         ),
-                                        dcc.Download(id="download-excel-tabela-pecas"),
+                                        dcc.Download(id="download-excel-tabela-os-pecas-veiculo"),
                                     ],
                                     style={"text-align": "right"},
                                 ),
@@ -1917,7 +2173,19 @@ layout = dbc.Container(
             ],
             align="center",
         ),
-        dmc.Space(h=20),
+        dmc.Space(h=40),
+        dag.AgGrid(
+            id="tabela-lista-os-pecas-veiculo",
+            columnDefs=veiculos_tabelas.tbl_detalhamento_os_pecas_veiculo,
+            rowData=[],
+            defaultColDef={"filter": True, "floatingFilter": True},
+            columnSize="autoSize",
+            dashGridOptions={
+                "localeText": locale_utils.AG_GRID_LOCALE_BR,
+            },
+            style={"height": 600, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+        ),
+        dmc.Space(h=40),
         dag.AgGrid(
             enableEnterpriseModules=True,
             id="tabela-pecas-substituidas",

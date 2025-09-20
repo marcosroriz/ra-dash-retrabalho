@@ -753,10 +753,13 @@ class ColaboradorService:
                 main.*,
                 pg."VALOR"
             FROM mat_view_retrabalho_{min_dias}_dias main
-            LEFT JOIN view_pecas_desconsiderando_combustivel pg
-                ON main."NUMERO DA OS" = pg."OS"
+            LEFT JOIN 
+                view_pecas_desconsiderando_combustivel pg
+            ON 
+                main."NUMERO DA OS" = pg."OS"
             WHERE
                 main."COLABORADOR QUE EXECUTOU O SERVICO" = {id_colaborador}
+                AND main."DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
                 {subquery_secoes_str}
                 {subquery_os_str}
                 {subquery_modelo_str}
