@@ -173,7 +173,6 @@ class VeiculoService:
             "CODIGO DO VEICULO" = '{id_veiculo}'
         """
         # Executa query
-        print(query)
         df = pd.read_sql(query, self.dbEngine)
 
         return df
@@ -244,7 +243,342 @@ class VeiculoService:
             "CODIGO DO VEICULO" = '{id_veiculo}'
         """
         # Executa query
-        print(query)
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
+
+    def get_indicador_total_os_modelo_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Função para obter o total de OS que um veículo teve em um determinado período"""
+
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        SELECT 
+            COUNT(*) AS quantidade_de_os
+        FROM
+            mat_view_retrabalho_{min_dias}_dias
+        WHERE
+            "CODIGO DO VEICULO" = '{id_veiculo}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        """
+        # Executa query
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
+
+    def get_indicador_rank_total_os_modelo_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Função para obter o ranking de OS que um veículo teve em um determinado período"""
+
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        WITH TABELA_RANK AS (       
+            SELECT 
+                "CODIGO DO VEICULO",
+                COUNT(*) AS quantidade_de_os,
+                ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) AS rank_veiculo
+            FROM
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+            GROUP BY
+                "CODIGO DO VEICULO"
+        ), 
+        TOTAL AS (
+            SELECT 
+                COUNT(DISTINCT "CODIGO DO VEICULO") as total_veiculos 
+            FROM 
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+        )
+        SELECT 
+            tr.rank_veiculo || '/' || t.total_veiculos AS rank_veiculo
+        FROM 
+            TABELA_RANK tr, TOTAL t
+        WHERE
+            "CODIGO DO VEICULO" = '{id_veiculo}'
+        """
+        # Executa query
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
+
+    def get_indicador_total_gasto_pecas_modelo_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Função para obter o total gasto com peças que um veículo teve em um determinado período"""
+
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        SELECT
+            SUM(pg."VALOR") AS "TOTAL_GASTO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
+        WHERE
+            "CODIGO DO VEICULO" = '{id_veiculo}'
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            "CODIGO DO VEICULO"
+        """
+        # Executa query
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
+
+    def get_indicador_rank_gasto_total_pecas_modelo_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Função para obter o ranking de gasto com peças que um veículo teve em um determinado período"""
+
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        WITH TABELA_RANK AS (       
+            SELECT 
+                "CODIGO DO VEICULO",
+                SUM(pg."VALOR") AS "TOTAL_GASTO",
+                ROW_NUMBER() OVER (ORDER BY SUM(pg."VALOR") DESC) AS rank_veiculo
+            FROM
+                mat_view_retrabalho_{min_dias}_dias main
+            JOIN
+                view_pecas_desconsiderando_combustivel pg 
+            ON
+                main."NUMERO DA OS" = pg."OS"
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+            GROUP BY
+                "CODIGO DO VEICULO"
+        ), 
+        TOTAL AS (
+            SELECT 
+                COUNT(DISTINCT "CODIGO DO VEICULO") as total_veiculos 
+            FROM 
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+        )
+        SELECT 
+            tr.rank_veiculo || '/' || t.total_veiculos AS rank_veiculo
+        FROM 
+            TABELA_RANK tr, TOTAL t
+        WHERE
+            "CODIGO DO VEICULO" = '{id_veiculo}'
+        """
+        # Executa query
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
+
+    def get_indicador_total_gasto_retrabalho_pecas_modelo_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Função para obter o total gasto com peças vinculadas a retrabalho que um veículo teve em um determinado período"""
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        SELECT
+            SUM(pg."VALOR") AS "TOTAL_GASTO"
+        FROM
+            mat_view_retrabalho_{min_dias}_dias main
+        JOIN
+            view_pecas_desconsiderando_combustivel pg 
+        ON
+            main."NUMERO DA OS" = pg."OS"
+        WHERE
+            "CODIGO DO VEICULO" = '{id_veiculo}'
+            AND "retrabalho" = TRUE
+            AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}'
+            {subquery_secoes_str}
+            {subquery_os_str}
+            {subquery_modelo_str}
+            {subquery_oficina_str}
+        GROUP BY
+            "CODIGO DO VEICULO"
+        """
+        # Executa query
+        df = pd.read_sql(query, self.dbEngine)
+
+        return df
+
+    def get_indicador_rank_gasto_retrabalho_pecas_modelo_veiculo(
+        self, id_veiculo, datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os
+    ):
+        """Função para obter o ranking de gasto com peças em retrabalho que um veículo teve em um determinado período"""
+
+        data_inicio_str = datas[0]
+
+        # Remove min_dias antes para evitar que a última OS não seja retrabalho
+        data_fim = pd.to_datetime(datas[1])
+        data_fim = data_fim - pd.DateOffset(days=min_dias + 1)
+        data_fim_str = data_fim.strftime("%Y-%m-%d")
+
+        # Filtro das subqueries
+        subquery_secoes_str = subquery_secoes(lista_secaos)
+        subquery_os_str = subquery_os(lista_os)
+        subquery_modelo_str = subquery_modelos(lista_modelos, termo_all="TODOS")
+        subquery_oficina_str = subquery_oficinas(lista_oficinas)
+
+        query = f"""
+        WITH TABELA_RANK AS (       
+            SELECT 
+                "CODIGO DO VEICULO",
+                SUM(pg."VALOR") AS "TOTAL_GASTO",
+                ROW_NUMBER() OVER (ORDER BY SUM(pg."VALOR") DESC) AS rank_veiculo
+            FROM
+                mat_view_retrabalho_{min_dias}_dias main
+            JOIN
+                view_pecas_desconsiderando_combustivel pg 
+            ON
+                main."NUMERO DA OS" = pg."OS"
+            WHERE
+                "retrabalho" = TRUE
+                AND "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+            GROUP BY
+                "CODIGO DO VEICULO"
+        ), 
+        TOTAL AS (
+            SELECT 
+                COUNT(DISTINCT "CODIGO DO VEICULO") as total_veiculos 
+            FROM 
+                mat_view_retrabalho_{min_dias}_dias
+            WHERE
+                "DATA DO FECHAMENTO DA OS" BETWEEN '{data_inicio_str}' AND '{data_fim_str}' 
+                AND "DESCRICAO DO MODELO" IN (
+                    SELECT DISTINCT "DESCRICAO DO MODELO"
+                    FROM mat_view_retrabalho_{min_dias}_dias
+                    WHERE "CODIGO DO VEICULO" = '{id_veiculo}'
+                )
+                {subquery_secoes_str}
+                {subquery_os_str}
+                {subquery_modelo_str}
+                {subquery_oficina_str}
+        )
+        SELECT 
+            tr.rank_veiculo || '/' || t.total_veiculos AS rank_veiculo
+        FROM 
+            TABELA_RANK tr, TOTAL t
+        WHERE
+            "CODIGO DO VEICULO" = '{id_veiculo}'
+        """
+        # Executa query
         df = pd.read_sql(query, self.dbEngine)
 
         return df

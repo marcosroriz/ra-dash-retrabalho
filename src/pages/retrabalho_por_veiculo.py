@@ -30,7 +30,6 @@ import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
 # Importar nossas constantes e funções utilitárias
-import locale_utils
 
 # Banco de Dados
 from db import PostgresSingleton
@@ -399,6 +398,10 @@ def callback_sincroniza_input_veiculo_store(
     return input_dict
 
 
+def formata_float_para_real(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 ##############################################################################
 # Callbacks para os indicadores ##############################################
 ##############################################################################
@@ -433,7 +436,6 @@ def cb_rank_retrabalho_veiculo_modelo(data):
     return df["rank_veiculo"].values[0]
 
 
-
 @callback(
     Output("indicador-rank-correcao-de-primeira-veiculo", "children"),
     Input("store-input-dados-retrabalho-veiculo", "data"),
@@ -461,6 +463,187 @@ def cb_rank_correcao_primeira_veiculo_modelo(data):
         return ""
 
     return df["rank_veiculo"].values[0]
+
+
+@callback(
+    Output("indicador-total-os-veiculo", "children"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_total_os_veiculo_modelo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return ""
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_indicador_total_os_modelo_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return ""
+
+    return df["quantidade_de_os"].values[0]
+
+
+@callback(
+    Output("indicador-rank-os-veiculo", "children"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_rank_total_os_veiculo_modelo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return ""
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_indicador_rank_total_os_modelo_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return ""
+
+    return df["rank_veiculo"].values[0]
+
+
+@callback(
+    Output("indicador-gasto-total-veiculo", "children"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_total_gasto_pecas_veiculo_modelo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return ""
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_indicador_total_gasto_pecas_modelo_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return ""
+
+    total_gasto = df["TOTAL_GASTO"].values[0]
+    total_gasto_fmt = formata_float_para_real(total_gasto)
+
+    return total_gasto_fmt
+
+
+@callback(
+    Output("indicador-rank-gasto-total-veiculo", "children"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_rank_gasto_total_pecas_veiculo_modelo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return ""
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_indicador_rank_gasto_total_pecas_modelo_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return ""
+
+    return df["rank_veiculo"].values[0]
+
+
+@callback(
+    Output("indicador-gasto-retrabalho-total-veiculo", "children"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_total_gasto_retrabalho_pecas_veiculo_modelo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return ""
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_indicador_total_gasto_retrabalho_pecas_modelo_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return ""
+
+    total_gasto = df["TOTAL_GASTO"].values[0]
+    total_gasto_fmt = formata_float_para_real(total_gasto)
+
+    return total_gasto_fmt
+
+
+@callback(
+    Output("indicador-rank-gasto-retrabalho-veiculo", "children"),
+    Input("store-input-dados-retrabalho-veiculo", "data"),
+)
+def cb_rank_gasto_retrabalho_pecas_veiculo_modelo(data):
+    # Valida se os dados do estado estão OK, caso contrário retorna os dados padrão
+    if not data or not data["valido"]:
+        return ""
+
+    # Obtem os dados do estado
+    id_veiculo = data["id_veiculo"]
+    datas = data["datas"]
+    min_dias = data["min_dias"]
+    modelo_escolhido = data["modelo_escolhido"]
+    lista_oficinas = data["lista_oficinas"]
+    lista_secaos = data["lista_secaos"]
+    lista_os = data["lista_os"]
+
+    # Obtém os dados
+    df = veiculos_service.get_indicador_rank_gasto_retrabalho_pecas_modelo_veiculo(
+        id_veiculo, datas, min_dias, [modelo_escolhido], lista_oficinas, lista_secaos, lista_os
+    )
+
+    if df.empty:
+        return ""
+
+    return df["rank_veiculo"].values[0]
+
 
 ##############################################################################
 # Callbacks para os gráficos #################################################
@@ -914,7 +1097,8 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Rank Retrabalho / Modelo (menor = melhor)"),
+                            dbc.CardFooter([
+                                "Rank Retrabalho / Modelo", html.Br(), "(menor = melhor)"]),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -939,7 +1123,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Rank Correção Primeira / Modelo (maior = melhor)"),
+                            dbc.CardFooter(["Rank Correção Primeira / Modelo", html.Br(), "(maior = melhor)"]),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -964,7 +1148,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Total de OSs executadas"),
+                            dbc.CardFooter(["Total de OSs executadas", html.Br(), "(no período selecionado)"]),
                         ],
                         className="card-box",
                     ),
@@ -989,7 +1173,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Rank de OSs / Modelo"),
+                            dbc.CardFooter(["Rank de OSs / Modelo", html.Br(), "(menor = melhor)"]),
                         ],
                         className="card-box",
                     ),
@@ -1020,7 +1204,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Total gasto com peças"),
+                            dbc.CardFooter(["Total gasto com peças", html.Br(), "(no período)"]),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -1044,7 +1228,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Rank Gasto Total Peças / Modelo"),
+                            dbc.CardFooter(["Rank Gasto Total Peças / Modelo", html.Br(), "(menor = melhor)"]),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -1068,7 +1252,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Total gasto com peças em retrabalho"),
+                            dbc.CardFooter(["Total gasto com retrabalho", html.Br(), "(no período selecionado)"]),
                         ],
                         class_name="card-box-shadow",
                     ),
@@ -1092,7 +1276,7 @@ layout = dbc.Container(
                                     mb="xs",
                                 ),
                             ),
-                            dbc.CardFooter("Rank Gasto Retrabalho / Modelo"),
+                            dbc.CardFooter(["Rank Gasto Retrabalho / Modelo", html.Br(), "(menor = melhor)"]),
                         ],
                         class_name="card-box-shadow",
                     ),
