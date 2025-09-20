@@ -57,7 +57,7 @@ def grafico_pizza_veiculo(data, metadata_browser):
         ),
     )
 
-    total_num_os = len(data)
+    total_num_os = int(data["TOTAL_OS"].values[0])
     total_num_os_str = f"{total_num_os:,}".replace(",", ".")
 
     fig.update_layout(
