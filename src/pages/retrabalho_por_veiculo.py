@@ -91,75 +91,75 @@ lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
 # Callbacks para os inputs via URL ###########################################
 ##############################################################################
 
-# # Função auxiliar para transformar string '[%27A%27,%20%27B%27]' → ['A', 'B']
-# def parse_list_param(param):
-#     if param:
-#         try:
-#             return ast.literal_eval(param)
-#         except:
-#             return []
-#     return []
+# Função auxiliar para transformar string '[%27A%27,%20%27B%27]' → ['A', 'B']
+def parse_list_param_pag_veiculo(param):
+    if param:
+        try:
+            return ast.literal_eval(param)
+        except:
+            return []
+    return []
 
 
 # # Preenche os dados via URL
-# @callback(
-#     Output("input-select-veiculos-veiculo", "value"),
-#     Output("input-intervalo-datas-veiculo", "value"),
-#     Output("input-min-dias-veiculo", "value"),
-#     Output("input-select-secao-veiculo", "value"),
-#     Output("input-select-ordens-servico-veiculos", "value"),
-#     Output("input-select-modelos-veiculo", "value"),
-#     Output("input-select-oficina-veiculo", "value"),
-#     Input("url", "href"),
-# )
-# def callback_receber_campos_via_url(href):
-#     if not href:
-#         return (
-#             dash.no_update,
-#             dash.no_update,
-#             dash.no_update,
-#             dash.no_update,
-#             dash.no_update,
-#             dash.no_update,
-#             dash.no_update,
-#         )
+@callback(
+    Output("input-select-veiculos-veiculo", "value"),
+    Output("input-intervalo-datas-veiculo", "value"),
+    Output("input-min-dias-veiculo", "value"),
+    Output("input-select-secao-veiculo", "value"),
+    Output("input-select-ordens-servico-veiculos", "value"),
+    Output("input-select-modelos-veiculo", "value"),
+    Output("input-select-oficina-veiculo", "value"),
+    Input("url", "href"),
+)
+def callback_receber_campos_via_url_pag_veiculo(href):
+    if not href:
+        return (
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+            dash.no_update,
+        )
 
-#     # Faz o parse dos parâmetros da url
-#     parsed_url = urlparse(href)
-#     query_params = parse_qs(parsed_url.query)
+    # Faz o parse dos parâmetros da url
+    parsed_url = urlparse(href)
+    query_params = parse_qs(parsed_url.query)
 
-#     print("================================================")
-#     print("RECEBI OS PARAMETROS DA URL")
-#     print(query_params)
-#     print("================================================")
+    print("================================================")
+    print("RECEBI OS PARAMETROS DA URL")
+    print(query_params)
+    print("================================================")
 
-#     id_veiculo = query_params.get("id_veiculo", [1202])[0]
-#     data_hoje = datetime.now().strftime("%Y-%m-%d")
-#     datas = [query_params.get("data_inicio", ["2024-08-01"])[0], query_params.get("data_fim", [data_hoje])[0]]
-#     min_dias = query_params.get("min_dias", [10])[0]
-#     lista_secaos = parse_list_param(query_params.get("lista_secaos", [None])[0])
-#     lista_os = parse_list_param(query_params.get("lista_os", [None])[0])
-#     lista_modelos = parse_list_param(query_params.get("lista_modelos", [None])[0])
-#     lista_oficinas = parse_list_param(query_params.get("lista_oficinas", [None])[0])
+    id_veiculo = query_params.get("id_veiculo", [1202])[0]
+    data_hoje = datetime.now().strftime("%Y-%m-%d")
+    datas = [query_params.get("data_inicio", ["2024-08-01"])[0], query_params.get("data_fim", [data_hoje])[0]]
+    min_dias = query_params.get("min_dias", [10])[0]
+    lista_secaos = parse_list_param_pag_veiculo(query_params.get("lista_secaos", "['TODAS']")[0])
+    lista_os = parse_list_param_pag_veiculo(query_params.get("lista_os", "['TODAS']")[0])
+    lista_modelos = "TODOS"
+    lista_oficinas = parse_list_param_pag_veiculo(query_params.get("lista_oficinas", "['TODAS']")[0])
 
-#     # Converte para int, se não for possível, retorna None
-#     if id_veiculo is not None:
-#         try:
-#             id_veiculo = int(id_veiculo)
-#         except ValueError:
-#             id_veiculo = None
+    # Converte para int, se não for possível, retorna None
+    if id_veiculo is not None:
+        try:
+            id_veiculo = int(id_veiculo)
+        except ValueError:
+            id_veiculo = None
 
-#     if min_dias is not None:
-#         try:
-#             min_dias = int(min_dias)
-#         except ValueError:
-#             min_dias = None
+    if min_dias is not None:
+        try:
+            min_dias = int(min_dias)
+        except ValueError:
+            min_dias = None
 
-#     print("================================================")
-#     print("RETORNEI OS PARAMETROS DA URL")
-#     print(id_veiculo, datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas)
-#     print("================================================")
-#     return str(id_veiculo), datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
+    print("================================================")
+    print("RETORNEI OS PARAMETROS DA URL")
+    print(id_veiculo, datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas)
+    print("================================================")
+    return str(id_veiculo), datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
 
 
 ##############################################################################
@@ -232,10 +232,11 @@ def corrige_input_secao(lista_secaos):
         Output("input-select-veiculos-veiculo", "value", allow_duplicate=True),
     ],
     Input("input-select-modelos-veiculo", "value"),
+    Input("input-select-veiculos-veiculo", "value"),
     prevent_initial_call=True,
 )
-def corrige_input_veiculos_ao_mudar_modelo(modelo_escolhido):
-    if modelo_escolhido is None or modelo_escolhido == "":
+def corrige_input_veiculos_ao_mudar_modelo(modelo_escolhido, vec_escolhido):
+    if modelo_escolhido is None or modelo_escolhido == "" or modelo_escolhido == [] or len(modelo_escolhido) == 0:
         # Retorna a opção padrão (TODOS OS VEICULOS)
         lista_padrao_veiculos = [
             {
@@ -258,7 +259,10 @@ def corrige_input_veiculos_ao_mudar_modelo(modelo_escolhido):
         {"label": veiculo["VEICULO"], "value": veiculo["VEICULO"]} for veiculo in lista_veiculos_possiveis
     ]
 
+    # Valor Padrão
     valor_padrao = lista_veiculos_options[0]["value"]
+    if (vec_escolhido is not None and vec_escolhido in lista_todos_veiculos["VEICULO"].unique()):
+        valor_padrao = vec_escolhido
 
     return lista_veiculos_options, valor_padrao
 
@@ -366,7 +370,7 @@ def gera_labels_inputs_veiculos(campo):
     ],
 )
 def callback_sincroniza_input_veiculo_store(
-    id_veiculo=1202,
+    id_veiculo,
     datas=None,
     min_dias=None,
     modelo_escolhido=None,
@@ -391,10 +395,6 @@ def callback_sincroniza_input_veiculo_store(
         input_dict["valido"] = True
     else:
         input_dict["valido"] = False
-
-    print("ESTADO --------------------------------")
-    print(input_dict)
-    print("ESTADO --------------------------------")
 
     return input_dict
 

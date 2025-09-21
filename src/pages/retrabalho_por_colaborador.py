@@ -75,7 +75,7 @@ lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
 
 
 # Função auxiliar para transformar string '[%27A%27,%20%27B%27]' → ['A', 'B']
-def parse_list_param(param):
+def parse_list_param_pag_colaborador(param):
     if param:
         try:
             return ast.literal_eval(param)
@@ -95,7 +95,7 @@ def parse_list_param(param):
     Output("input-select-oficina-colaborador", "value"),
     Input("url", "href"),
 )
-def callback_receber_campos_via_url(href):
+def callback_receber_campos_via_url_pag_colaborador(href):
     if not href:
         return (
             dash.no_update,
@@ -115,10 +115,10 @@ def callback_receber_campos_via_url(href):
     data_hoje = datetime.now().strftime("%Y-%m-%d")
     datas = [query_params.get("data_inicio", ["2024-08-01"])[0], query_params.get("data_fim", [data_hoje])[0]]
     min_dias = query_params.get("min_dias", [10])[0]
-    lista_secaos = parse_list_param(query_params.get("lista_secaos", [None])[0])
-    lista_os = parse_list_param(query_params.get("lista_os", [None])[0])
-    lista_modelos = parse_list_param(query_params.get("lista_modelos", [None])[0])
-    lista_oficinas = parse_list_param(query_params.get("lista_oficinas", [None])[0])
+    lista_secaos = parse_list_param_pag_colaborador(query_params.get("lista_secaos", [None])[0])
+    lista_os = parse_list_param_pag_colaborador(query_params.get("lista_os", [None])[0])
+    lista_modelos = parse_list_param_pag_colaborador(query_params.get("lista_modelos", [None])[0])
+    lista_oficinas = parse_list_param_pag_colaborador(query_params.get("lista_oficinas", [None])[0])
 
     # Converte para int, se não for possível, retorna None
     if id_colaborador is not None:
@@ -147,7 +147,7 @@ def callback_receber_campos_via_url(href):
     Input("input-select-oficina-colaborador", "value"),
     prevent_initial_call="initial_duplicate",
 )
-def callback_sincronizar_campos_para_url(
+def callback_sincronizar_campos_para_url_pag_colaborador(
     id_colaborador, datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
 ):
     if not input_valido(id_colaborador, datas, min_dias, lista_secaos, lista_oficinas, lista_modelos, lista_os):
