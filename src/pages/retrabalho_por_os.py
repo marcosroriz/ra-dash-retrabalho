@@ -539,7 +539,7 @@ def preencher_timeline(data):
         if len(lista_os_correcao_valida) > 0:
             os_correcao = ", ".join(lista_os_correcao_valida)
 
-        titulo_item = dmc.Text(f"OS {os_numero}", size="lg")
+        titulo_item = dmc.Text(f"OS {str(os)}", size="lg")
         item_body = dbc.Row(
             [
                 dmc.Text("🧑‍🔧 Colaborador: " + os_colaborador, size="sm", className="text-muted"),
