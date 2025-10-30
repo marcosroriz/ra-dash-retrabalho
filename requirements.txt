@@ -22,3 +22,4 @@ seaborn
 gunicorn
 werkzeug
 xlsxwriter
+sshtunnel
