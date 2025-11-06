@@ -218,8 +218,8 @@ layout = dbc.Container(
                             dmc.Box(
                                 html.H1(
                                     [
-                                        html.Strong("Relatórios"),
-                                        "\u00a0 de OS",
+                                        "Relatórios de Retrabalho via\u00a0",
+                                        html.Strong("LLMs"),
                                     ],
                                     className="align-self-center",
                                 ),
@@ -277,4 +277,4 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Relatórios", path="/relatorio-gerenciar", icon="carbon:rule")
+dash.register_page(__name__, name="Relatórios LLMs", path="/relatorio-gerenciar", icon="carbon:rule")

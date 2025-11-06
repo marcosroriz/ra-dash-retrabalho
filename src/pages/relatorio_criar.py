@@ -638,7 +638,7 @@ layout = dbc.Container(
                     html.H1(
                         [
                             "Criar \u00a0",
-                            html.Strong("relatório"),
+                            html.Strong("relatório LLM"),
                             "\u00a0 para monitoramento do retrabalho",
                         ],
                         className="align-self-center",

@@ -100,6 +100,17 @@ def cb_ler_relatorio_receber_campos_via_url(href):
         id_regra = None
         data_relatorio = None
 
+    # Verifica a data
+    if data_relatorio in (None, "", "None", "none", "null", "NULL"):
+        data_relatorio = None
+    else:
+        try:
+            data_relatorio = datetime.strptime(data_relatorio, "%Y-%m-%d").date()
+        except ValueError:
+            # Not a valid date format, treat as None
+            data_relatorio = None
+
+    # Se a data não for informada, pega a última data disponível para a regra
     if id_regra is not None and data_relatorio is None:
         df_ultima_data_regra = crud_relatorio_service.get_ultima_data_regra(id_regra)
         if not df_ultima_data_regra.empty:
@@ -217,7 +228,7 @@ layout = dbc.Container(
                     dbc.Col(
                         html.H1(
                             [
-                                "Relatório de ação de\u00a0",
+                                "Relatório LLM do \u00a0",
                                 html.Strong("retrabalho"),
                             ],
                             className="align-self-center",
