@@ -141,6 +141,17 @@ def get_regras_monitoramento_os(dbEngine):
     )
 
 
+def get_relatorios_llm_os(dbEngine):
+    # Lista de regras
+    return pd.read_sql(
+        """
+        SELECT nome as "label", id as "value" FROM regra_relatorio_llm_os
+        ORDER BY nome;
+        """,
+        dbEngine,
+    )
+
+
 def get_tipos_eventos_telemetria_mix_com_data(dbEngine):
     # Retorna os tipos de eventos de telemetria que possuem StartDateTime
     query = """
