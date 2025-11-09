@@ -127,7 +127,7 @@ def cb_pag_relatorio_botao_acao_tabela(linha, linha_virtual):
             dash.no_update,
         )
     elif acao == "acao_editar":
-        return f"/regra-editar?id_regra={id_regra}", dash.no_update, dash.no_update
+        return f"/relatorio-editar?id_regra={id_regra}", dash.no_update, dash.no_update
     elif acao == "acao_apagar":
         nome_regra = f"{nome_regra} (ID: {id_regra})"
         return dash.no_update, True, nome_regra
