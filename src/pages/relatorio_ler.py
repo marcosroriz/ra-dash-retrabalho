@@ -193,6 +193,28 @@ def cb_ler_relatorio_sincroniza_input_store(id_regra, dia_execucao):
     )
 
 
+# Gera todas as datas possíveis para o input de data
+start = date(2025, 1, 1)
+end = date.today()
+all_dates = {start + timedelta(days=i) for i in range((end - start).days + 1)}
+@callback(
+    Output("ler-relatorio-input-select-data", "disabledDates"),
+    Input("ler-relatorio-input-select-regra", "value"),
+)
+def cb_datas_permitidas(id_regra):
+    """Retorna as datas permitidas para o input de data do relatório."""
+    if not id_regra:
+        return list(all_dates)
+    
+    df_datas = crud_relatorio_service.get_datas_regra(id_regra)
+    df_datas["dia"] = pd.to_datetime(df_datas["dia"])
+    lista_datas = df_datas["dia"].dt.date.tolist()
+
+    # Now, remove allowed dates from all_dates to get disabled dates
+    disabled_dates = all_dates - set(lista_datas)
+    return list(disabled_dates)
+
+
 ##############################################################################
 # Callbacks do relatório #####################################################
 ##############################################################################
@@ -295,6 +317,7 @@ layout = dbc.Container(
                                 dmc.DateInput(
                                     id="ler-relatorio-input-select-data",
                                     minDate=date(2020, 8, 5),
+                                    maxDate=datetime.now().date(),
                                     valueFormat="DD/MM/YYYY",
                                     value=(datetime.now() - timedelta(days=10)).date(),
                                 ),

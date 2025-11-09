@@ -77,6 +77,17 @@ class CRUDRelatorioService:
         """
         df = pd.read_sql(query, self.dbEngine)
         return df
+    
+    def get_datas_regra(self, id_regra):
+        """Função para obter todas as datas de uma regra de relatório"""
+        query = f"""
+            SELECT dia
+            FROM relatorio_regra_relatorio_llm_os
+            WHERE id_regra = {id_regra}
+            ORDER BY dia DESC
+        """
+        df = pd.read_sql(query, self.dbEngine)
+        return df
 
     def get_relatorio_markdown_regra(self, id_regra, data_relatorio):
         """Função para obter o relatório em markdown de uma regra e data específica"""
