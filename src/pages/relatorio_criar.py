@@ -109,7 +109,7 @@ def horario_valido(horario_envio):
     return True
 
 def target_dia_semana_valido(checklist):
-    if not checklist:
+    if checklist is None:
         return False
 
     # Dias da semana
@@ -443,7 +443,7 @@ def salvar_regra_monitoramento_retrabalho(
         or not horario_valido(horario_envio)
     ):
         return [True, False]
-
+    
     # Valida nome da regra
     if not nome_regra:
         return [True, False]
