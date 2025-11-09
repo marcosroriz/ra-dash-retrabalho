@@ -8,6 +8,7 @@
 ##############################################################################
 # Bibliotecas básicas
 import re
+import pandas as pd 
 
 # Importar bibliotecas do dash básicas e plotly
 import dash
@@ -64,6 +65,15 @@ def prepara_dados_tabela(df_regras):
 )
 def cb_pag_relatorio_carregar_regras_existentes(ready):
     df_todas_regras = crud_relatorio_service.get_todas_regras_relatorios()
+    df_todas_regras["created_at"] = pd.to_datetime(df_todas_regras["created_at"])
+    df_todas_regras["dia_ultimo_relatorio"] = pd.to_datetime(df_todas_regras["dia_ultimo_relatorio"])
+    df_todas_regras["executed_at"] = pd.to_datetime(df_todas_regras["executed_at"])
+
+    # Subtraía 3 horas para ajustar o fuso horário
+    df_todas_regras["created_at"] = df_todas_regras["created_at"] - pd.Timedelta(hours=3)
+    df_todas_regras["dia_ultimo_relatorio"] = df_todas_regras["dia_ultimo_relatorio"] - pd.Timedelta(hours=3)
+    df_todas_regras["executed_at"] = df_todas_regras["executed_at"] - pd.Timedelta(hours=3) 
+
     lista_todas_regras = []
     if not df_todas_regras.empty:
         df_todas_regras = prepara_dados_tabela(df_todas_regras)
