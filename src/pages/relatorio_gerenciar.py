@@ -134,6 +134,88 @@ def cb_pag_relatorio_botao_acao_tabela(linha, linha_virtual):
     else:
         return dash.no_update, dash.no_update, dash.no_update
 
+# Callback botão criar relatório
+@callback(
+    Output("url", "href", allow_duplicate=True),
+    Input("btn-criar-relatorio", "n_clicks"),
+    prevent_initial_call=True,
+)
+def cb_pag_relatorio_botao_criar_regra(n_clicks):
+    if n_clicks is None:
+        return dash.no_update
+
+    return "/relatorio-criar"
+
+
+# Callback para o botão de cancelar apagar regra
+@callback(
+    Output("relatorio-modal-confirma-apagar-regra", "opened", allow_duplicate=True),
+    Input("relatorio-btn-cancelar-apagar", "n_clicks"),
+    prevent_initial_call=True,
+)
+def cb_pag_relatorio_botao_cancelar_apagar_regra(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        return dash.no_update
+    else:
+        return False
+    
+
+# Callback para o botão de confirmar apagar regra
+# Saída:
+# - Fecha o Modal de confirmação de apagar regra
+# - Abre o Modal de sucesso de apagar regra
+# - Atualiza tabela de regras existentes
+@callback(
+    [
+        Output("relatorio-modal-confirma-apagar-regra", "opened", allow_duplicate=True),
+        Output("relatorio-modal-sucesso-apagar-regra", "opened", allow_duplicate=True),
+        Output("tabela-relatorios-existentes", "rowData", allow_duplicate=True),
+    ],
+    Input("relatorio-btn-confirma-apagar", "n_clicks"),
+    Input("relatorio-nome-regra-apagar", "children"),
+    prevent_initial_call=True,
+)
+def cb_pag_relatorio_botao_confirma_apagar_regra(n_clicks, nome_regra):
+    if n_clicks is None or n_clicks == 0:
+        return dash.no_update, dash.no_update, dash.no_update
+    else:
+        match = re.search(r"ID:\s*(\d+)", nome_regra)
+        id_regra = int(match.group(1))
+
+        # Apagar a regra
+        crud_relatorio_service.apagar_regra(id_regra)
+
+        # Atualiza a tabela
+        df_todas_regras = crud_relatorio_service.get_todas_regras_relatorios()
+        df_todas_regras["created_at"] = pd.to_datetime(df_todas_regras["created_at"])
+        df_todas_regras["dia_ultimo_relatorio"] = pd.to_datetime(df_todas_regras["dia_ultimo_relatorio"])
+        df_todas_regras["executed_at"] = pd.to_datetime(df_todas_regras["executed_at"])
+
+        # Subtraía 3 horas para ajustar o fuso horário
+        df_todas_regras["created_at"] = df_todas_regras["created_at"] - pd.Timedelta(hours=3)
+        df_todas_regras["dia_ultimo_relatorio"] = df_todas_regras["dia_ultimo_relatorio"] - pd.Timedelta(hours=3)
+        df_todas_regras["executed_at"] = df_todas_regras["executed_at"] - pd.Timedelta(hours=3) 
+
+        lista_todas_regras = []
+        if not df_todas_regras.empty:
+            df_todas_regras = prepara_dados_tabela(df_todas_regras)
+            lista_todas_regras = df_todas_regras.to_dict(orient="records")
+
+        return False, True, lista_todas_regras
+
+
+# Callback para fechar o modal de sucesso de apagar regra
+@callback(
+    Output("relatorio-modal-sucesso-apagar-regra", "opened", allow_duplicate=True),
+    Input("relatorio-btn-close-modal-sucesso-apagar", "n_clicks"),
+    prevent_initial_call=True,
+)
+def cb_botao_close_modal_sucesso_apagar_regra(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        return dash.no_update
+    else:
+        return False
+
 
 ##############################################################################
 # Layout #####################################################################
@@ -168,12 +250,12 @@ layout = dbc.Container(
                     dmc.Text("Esta ação não poderá ser desfeita."),
                     dmc.Group(
                         [
-                            dmc.Button("Cancelar", id="btn-cancelar-apagar-regra", variant="default"),
+                            dmc.Button("Cancelar", id="relatorio-btn-cancelar-apagar", variant="default"),
                             dmc.Button(
                                 "Apagar",
                                 color="red",
                                 variant="outline",
-                                id="btn-confirma-apagar-regra",
+                                id="relatorio-btn-confirma-apagar",
                             ),
                         ],
                         justify="flex-end",
@@ -207,7 +289,7 @@ layout = dbc.Container(
                                 "Fechar",
                                 color="green",
                                 variant="outline",
-                                id="btn-close-modal-sucesso-apagar-gerenciar-regra",
+                                id="relatorio-btn-close-modal-sucesso-apagar",
                             ),
                         ],
                     ),

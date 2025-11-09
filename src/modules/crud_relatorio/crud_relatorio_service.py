@@ -110,3 +110,21 @@ class CRUDRelatorioService:
             return False
         else:
             return True
+    
+    def apagar_regra(self, id_regra):
+        """Função para apagar uma regra de monitoramento"""
+
+        # Query
+        query = f"""
+            DELETE FROM regra_relatorio_llm_os WHERE id = {id_regra}
+        """
+
+        try:
+            # Executa a query
+            with self.dbEngine.begin() as conn:
+                conn.execute(text(query))
+
+            return True
+        except Exception as e:
+            print(f"Erro ao apagar regra: {e}")
+            return False
