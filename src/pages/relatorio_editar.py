@@ -1063,31 +1063,31 @@ layout = dbc.Container(
                                         options=[
                                             {
                                                 "label": "SEG",
-                                                "value": 1,
+                                                "value": 0,
                                             },
                                             {
                                                 "label": "TER",
-                                                "value": 2,
+                                                "value": 1,
                                             },
                                             {
                                                 "label": "QUA",
-                                                "value": 3,
+                                                "value": 2,
                                             },
                                             {
                                                 "label": "QUI",
-                                                "value": 4,
+                                                "value": 3,
                                             },
                                             {
                                                 "label": "SEX",
-                                                "value": 5,
+                                                "value": 4,
                                             },
                                             {
                                                 "label": "SAB",
-                                                "value": 6,
+                                                "value": 5,
                                             },
                                             {
                                                 "label": "DOM",
-                                                "value": 0,
+                                                "value": 6,
                                             },
                                         ],
                                         value=1,
