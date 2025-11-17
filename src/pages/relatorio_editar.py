@@ -12,7 +12,6 @@ import re
 # Importar bibliotecas para manipulação de URL
 from urllib.parse import urlparse, parse_qs
 
-
 # Importar bibliotecas do dash básicas e plotly
 import dash
 from dash import html, dcc, callback, Input, Output, callback_context
@@ -81,10 +80,29 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 # Callbacks para os inputs via URL ###########################################
 ##############################################################################
 
+# Converte para int, se não for possível, retorna None
+def safe_int(value):
+    try:
+        return int(value) if value is not None else None
+    except (ValueError, TypeError):
+        return None
+    
+@callback(
+    Output("url", "href", allow_duplicate=True),
+    Input("pag-editar-relatorio-btn-close-modal-erro-carregar-dados", "n_clicks"),
+    prevent_initial_call=True,
+)
+def cb_pag_editar_relatorio_botao_close_modal_erro_carregar_dados(n_clicks):
+    if n_clicks is None or n_clicks == 0:
+        return dash.no_update
+    
+    return "/relatorio-gerenciar"
+
+
 @callback(
     [
-        Output("store-id-relatorio-regra", "data"),
-        Output("pag-editar-btn-close-erro-carregar-dados", "opened"),
+        Output("pag-editar-relatorio-store-id-regra", "data"),
+        Output("pag-editar-relatorio-modal-erro-carregar-dados", "opened"),
         Output("pag-editar-relatorio-input-nome", "value"),
         Output("pag-editar-relatorio-input-periodo-dias-monitoramento", "value"),
         Output("pag-editar-relatorio-input-select-dias", "value"),
@@ -93,6 +111,7 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
         Output("pag-editar-relatorio-input-select-secao", "value"),
         Output("pag-editar-relatorio-input-select-ordens-servico", "value"),
         Output("pag-editar-relatorio-checklist-dia-semana", "value"),
+        Output("pag-editar-relatorio-horario-envio-regra", "value"),
         Output("pag-editar-relatorio-switch-enviar-email", "checked"),
         Output("pag-editar-relatorio-input-email-1", "value"),
         Output("pag-editar-relatorio-input-email-2", "value"),
@@ -105,11 +124,10 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
         Output("pag-editar-relatorio-input-wpp-3", "value"),
         Output("pag-editar-relatorio-input-wpp-4", "value"),
         Output("pag-editar-relatorio-input-wpp-5", "value"),
-        Output("pag-editar-relatorio-horario-envio-regra", "value"),
     ],
     Input("url", "href"),
 )
-def cb_pag_editar_regra_relatorio_receber_campos_via_url(href):
+def cb_pag_editar_regra_receber_campos_via_url(href):
     if not href:
         raise dash.exceptions.PreventUpdate
 
@@ -122,13 +140,14 @@ def cb_pag_editar_regra_relatorio_receber_campos_via_url(href):
 
     # Store da regra padrao
     store_id_regra = {"id_regra": -1, "valido": False}
+    
     # Resposta padrão
     resposta_padrao = [store_id_regra, True] + [dash.no_update] * 21
 
-    id_regra = query_params.get("id_regra", [0])[0]
+    id_regra = safe_int(query_params.get("id_regra", [None])[0])
 
     # Verifica se o id da regra é válido
-    if id_regra is None or id_regra == 0:
+    if id_regra is None or id_regra < 0:
         return resposta_padrao
 
     # Pega os dados da regra
@@ -145,13 +164,14 @@ def cb_pag_editar_regra_relatorio_receber_campos_via_url(href):
 
     id_regra = dados_regra["id"]
     nome_regra = dados_regra["nome"]
-    periodo = dados_regra["periodo"]
+    data_periodo_regra = dados_regra["periodo"]
     min_dias_retrabalho = dados_regra["min_dias_retrabalho"]
     lista_modelos = dados_regra["modelos_veiculos"]
     lista_oficinas = dados_regra["oficinas"]
     lista_secoes = dados_regra["secoes"]
     lista_os = dados_regra["os"]
     dia_semana = dados_regra["dia_semana"]
+    hora_disparar = dados_regra["hora_disparar"].strftime("%H:%M")
 
     email_ativo = dados_regra["target_email"]
     email_dest_1 = dados_regra["target_email_dest1"]
@@ -167,7 +187,6 @@ def cb_pag_editar_regra_relatorio_receber_campos_via_url(href):
     wpp_dest_4 = dados_regra["target_wpp_dest4"]
     wpp_dest_5 = dados_regra["target_wpp_dest5"]
 
-    hora_disparar = dados_regra["hora_disparar"].strftime("%H:%M")
 
     resposta = [
         # Store com o id da regra para podermos atualizar depois
@@ -176,13 +195,14 @@ def cb_pag_editar_regra_relatorio_receber_campos_via_url(href):
         False,
         # Dados da regra / que vão para os inputs
         nome_regra,
-        periodo,
+        data_periodo_regra,
         min_dias_retrabalho,
         lista_modelos,
         lista_oficinas,
         lista_secoes,
         lista_os,
         dia_semana,
+        hora_disparar,
         email_ativo,
         email_dest_1,
         email_dest_2,
@@ -195,23 +215,10 @@ def cb_pag_editar_regra_relatorio_receber_campos_via_url(href):
         wpp_dest_3,
         wpp_dest_4,
         wpp_dest_5,
-        hora_disparar,
     ]
 
     print(resposta)
     return resposta
-
-
-@callback(
-    Output("url", "href", allow_duplicate=True),
-    Input("pag-editar-btn-close-erro-carregar-dados", "n_clicks"),
-    prevent_initial_call=True,
-)
-def cb_botao_close_modal_erro_carregar_dados_editar_regra(n_clicks):
-    if n_clicks is None or n_clicks == 0:
-        return dash.no_update
-    
-    return "/relatorio-gerenciar"
 
 ##############################################################################
 # Callbacks para os inputs ###################################################
@@ -306,7 +313,7 @@ def corrige_input_secao(lista_secaos):
 
 @callback(
     [
-        Output("pag-editar-relatorio-input-select-ordens-servico", "options"),
+        Output("pag-editar-relatorio-input-select-ordens-servico", "options", allow_duplicate=True),
         Output("pag-editar-relatorio-input-select-ordens-servico", "value", allow_duplicate=True),
     ],
     [
@@ -476,6 +483,7 @@ def verifica_erro_wpp_4(wpp_telefone):
 def verifica_erro_wpp_5(wpp_telefone):
     return verifica_erro_wpp(wpp_telefone)
 
+
 ##############################################################################
 # Callbacks para atualizar a regra ###########################################
 ##############################################################################
@@ -517,7 +525,7 @@ def fecha_modal_sucesso_salvar_regra(n_clicks_btn_fechar):
         Output("pag-editar-relatorio-modal-sucesso-salvar", "opened", allow_duplicate=True),
     ],
     [
-        Input("store-editar-input-id-editar-regra", "data"),
+        Input("pag-editar-relatorio-store-id-regra", "data"),
         Input("pag-editar-relatorio-btn-salvar-regra", "n_clicks"),
         Input("pag-editar-relatorio-input-nome", "value"),
         Input("pag-editar-relatorio-input-periodo-dias-monitoramento", "value"),
@@ -543,7 +551,7 @@ def fecha_modal_sucesso_salvar_regra(n_clicks_btn_fechar):
     ],
     prevent_initial_call=True,
 )
-def cb_atualizar_regra_monitoramento_retrabalho(
+def cb_atualizarr_regra_relatorio(
     store_regra,
     n_clicks_btn_salvar,
     nome_regra,
@@ -582,7 +590,7 @@ def cb_atualizar_regra_monitoramento_retrabalho(
     # Se o botão não foi clicado, não faz nada
     if not n_clicks_btn_salvar or n_clicks_btn_salvar <= 0:
         return [dash.no_update, dash.no_update]
-
+    
     # Valida se tem o id da regra
     if not store_regra:
         return [dash.no_update, dash.no_update]
@@ -592,6 +600,7 @@ def cb_atualizar_regra_monitoramento_retrabalho(
     # Se não tem o id da regra, não faz nada
     if id_regra == -1:
         return [dash.no_update, dash.no_update]
+
 
     # Valida Resto do input
     if (
@@ -661,12 +670,13 @@ def cb_atualizar_regra_monitoramento_retrabalho(
         "target_wpp_dest5": target_wpp_telefones_validos[4],
     }
 
-    regra_atualizada_com_sucesso = crud_relatorio_service.criar_relatorio_monitoramento(payload)
+    regra_criada_com_sucesso = crud_relatorio_service.atualizar_regra_monitoramento(id_regra, payload)
 
-    if regra_atualizada_com_sucesso:
+    if regra_criada_com_sucesso:
         return [False, True]
     else:
         return [True, False]
+
 
 
 
@@ -675,14 +685,15 @@ def cb_atualizar_regra_monitoramento_retrabalho(
 ##############################################################################
 layout = dbc.Container(
     [
-        # Estado
-        dcc.Store(id="store-id-relatorio-regra"),
+        dcc.Store(id="pag-editar-relatorio-store-id-regra"),
+        # Modais
         dmc.Modal(
-            # title="Erro ao carregar os dados",
             id="pag-editar-relatorio-modal-erro-carregar-dados",
             centered=True,
             radius="lg",
             size="md",
+            closeOnClickOutside=False,
+            closeOnEscape=False,
             children=dmc.Stack(
                 [
                     dmc.ThemeIcon(
@@ -700,7 +711,7 @@ layout = dbc.Container(
                                 "Fechar",
                                 color="red",
                                 variant="outline",
-                                id="pag-editar-btn-close-erro-carregar-dados",
+                                id="pag-editar-relatorio-btn-close-modal-erro-carregar-dados",
                             ),
                         ],
                     ),
@@ -765,7 +776,7 @@ layout = dbc.Container(
                         children=DashIconify(icon="material-symbols:check-circle-rounded", width=128, height=128),
                     ),
                     dmc.Title("Sucesso!", order=1),
-                    dmc.Text("A regra foi atualizado com sucesso."),
+                    dmc.Text("A regra foi atualizada com sucesso."),
                     dmc.Group(
                         [
                             dmc.Button(
@@ -829,9 +840,8 @@ layout = dbc.Container(
                 dbc.Col(
                     html.H1(
                         [
-                            "Criar \u00a0",
+                            "Atualizar regra para \u00a0",
                             html.Strong("relatório LLM"),
-                            "\u00a0 para monitoramento do retrabalho",
                         ],
                         className="align-self-center",
                     ),
