@@ -88,3 +88,28 @@ div#conteudo-markdown-relatorio h1 {
     margin-top: 0.5em;
 }
 
+
+.header-dada-relatorio {
+    text-align: center;
+    position: relative;
+    font-weight: 400;
+    margin: 1em 0em 2em 0em;
+}
+
+.header-dada-relatorio::before,
+.header-dada-relatorio::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 30%;
+    height: 2px;
+    background: #dfdfdf;
+}
+
+.header-dada-relatorio::before {
+    left: 0;
+}
+
+.header-dada-relatorio::after {
+    right: 0;
+}

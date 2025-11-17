@@ -4,10 +4,6 @@
 # Tela para apresentar relatório de uma regra para detecção de retrabalho
 
 
-import plotly.express as px
-import plotly.graph_objects as go
-
-
 ##############################################################################
 # IMPORTS ####################################################################
 ##############################################################################
@@ -31,6 +27,9 @@ import dash_ag_grid as dag
 # Dash componentes Mantine e icones
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
+
+# Emoji para os relatórios
+import emoji
 
 # Importar nossas constantes e funções utilitárias
 import locale_utils
@@ -197,6 +196,8 @@ def cb_ler_relatorio_sincroniza_input_store(id_regra, dia_execucao):
 start = date(2025, 1, 1)
 end = date.today()
 all_dates = {start + timedelta(days=i) for i in range((end - start).days + 1)}
+
+
 @callback(
     Output("ler-relatorio-input-select-data", "disabledDates"),
     Input("ler-relatorio-input-select-regra", "value"),
@@ -205,7 +206,7 @@ def cb_datas_permitidas(id_regra):
     """Retorna as datas permitidas para o input de data do relatório."""
     if not id_regra:
         return list(all_dates)
-    
+
     df_datas = crud_relatorio_service.get_datas_regra(id_regra)
     df_datas["dia"] = pd.to_datetime(df_datas["dia"])
     lista_datas = df_datas["dia"].dt.date.tolist()
@@ -229,8 +230,24 @@ def cb_render_relatorio_markdown(store_payload):
     if not store_payload or not store_payload["valido"]:
         return ""
     else:
-        return store_payload["relatorio_md"]
+        raw_md = store_payload["relatorio_md"]
+        # Converte emojis no markdown
+        md = emoji.emojize(raw_md, language="alias")
+        return md
 
+
+# Renderiza a data do relatório
+@callback(
+    Output("header-dada-relatorio", "children"),    
+    Input("store-ler-relatorio", "data"),
+)
+def cb_render_data_relatorio(store_payload):
+    if not store_payload or not store_payload["valido"]:
+        return ""
+    else:
+        dia_execucao = store_payload["dia_execucao"]
+        dia_execucao_fmt = datetime.strptime(dia_execucao, "%Y-%m-%d").strftime("%d/%m/%Y")
+        return f"{dia_execucao_fmt}"
 
 ##############################################################################
 # Layout #####################################################################
@@ -342,6 +359,10 @@ layout = dbc.Container(
         ),
         dmc.Space(h=40),
         # Relatório em MD
+        html.H2(
+            id="header-dada-relatorio",
+            className="header-dada-relatorio",
+        ),
         dcc.Markdown(id="conteudo-markdown-relatorio", className="markdown-relatorio"),
     ]
 )
