@@ -284,6 +284,8 @@ def verifica_erro_wpp(wpp_telefone):
         r"^\d{2}\d{4}-\d{4}$",  # 629999-9999
         r"^\d{10}$",  # 6299999999 (fixo)
         r"^\d{11}$",  # 62999999999 (celular)
+        r"-group$",   # grupo do whatsapp
+        r"\d{12}-\d{10}" # grupo do whatsapp (outro formato)
     ]
 
     if not any(re.match(padrao, wpp_limpo) for padrao in padroes_validos):

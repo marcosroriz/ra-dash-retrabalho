@@ -34,6 +34,10 @@ headers = {
 # ROTINAS DE APOIO ###########################################################
 ##############################################################################
 def formatar_telefone(numero_br):
+    # Verifica se não é grupo
+    if re.search(r"-group$|\d{12}-\d{10}", numero_br):
+        return numero_br
+
     # Remove tudo que não for número
     somente_digitos = re.sub(r"\D", "", numero_br)
 
