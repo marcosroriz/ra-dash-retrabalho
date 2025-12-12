@@ -1,0 +1,20 @@
+services:
+  dash-ra-retrabalho:
+    build: .
+    image: ceia-ufg/dash-ra-retrabalho
+    container_name: dash-ra-retrabalho
+
+    env_file:
+      - src/.env
+
+    ports:
+      - "${PORT}:${PORT}"
+
+    networks:
+      - dash-ra-retrabalho
+
+    restart: unless-stopped
+
+networks:
+  dash-ra-retrabalho:
+    driver: bridge

@@ -90,11 +90,17 @@ pio.templates.default = "tema"
 # DASH #######################################################################
 ##############################################################################
 
+BASE_DIR = os.getcwd()  
+
+# Caminhos absolutos
+ASSETS_PATH = os.path.join(BASE_DIR, "assets")
+PAGES_PATH = os.path.join(BASE_DIR, "pages")  
+
 # Dash
 app = Dash(
     "Dashboard de OSs",
-    # assets_folder="/var/www/ra-retrabalho/src/assets",
-    # pages_folder="/var/www/ra-retrabalho/src/pages",
+    assets_folder=ASSETS_PATH,
+    pages_folder=PAGES_PATH,
     external_stylesheets=stylesheets,
     external_scripts=scripts,
     use_pages=True,
@@ -168,7 +174,7 @@ header = dmc.Group(
                     height=32,
                     className="logo-mobile",
                 ),
-                # Logo Desktop 
+                # Logo Desktop
                 html.Img(
                     src=app.get_asset_url("logo.png"),
                     height=40,
@@ -243,6 +249,7 @@ app.layout = dmc.MantineProvider(app_shell)
 def toggle_navbar(opened, navbar):
     navbar["collapsed"] = {"mobile": not opened, "desktop": True}
     return navbar
+
 
 # Hook para levar para o topo ao mudar a url
 app.clientside_callback(
