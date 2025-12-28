@@ -115,19 +115,6 @@ server = app.server
 def criarMenu(dirVertical=True):
     return dbc.Nav(
         [
-            # dbc.NavLink(
-            #     html.Span(
-            #         [
-            #             DashIconify(icon=page["icon"], width=16, className="me-1"),
-            #             dmc.Space(w=2),
-            #             dmc.Text(page["name"], size="sm"),
-            #         ],
-            #         style={"display": "flex", "alignItems": "center"},
-            #     ),
-            #     href=page["relative_path"],
-            #     class_name="me-2",
-            #     active="exact",
-            # )
             dbc.NavLink(page["name"], href=page["relative_path"], active="exact")
             for page in dash.page_registry.values()
             if not page.get("hide_page", False)
@@ -137,30 +124,6 @@ def criarMenu(dirVertical=True):
         pills=True,
     )
 
-
-# def criarMenuAlt(dirVertical=True):
-#     return dmc.Group(
-#         [
-#             html.A(
-#                 dmc.Button("Visao Geral", leftSection=DashIconify(icon="material-symbols:home"), variant="outline"),
-#                 href="/",
-#             ),
-#             dmc.Menu(
-#                 [
-#                     dmc.MenuTarget(
-#                         dmc.Button("Análise", leftSection=DashIconify(icon="tabler:search"), variant="outline")
-#                     ),
-#                     dmc.MenuDropdown(
-#                         [
-#                             dmc.MenuItem("Colaborador", leftSection=DashIconify(icon="mdi:worker")),
-#                             dmc.MenuItem("Tipo de Serviço", leftSection=DashIconify(icon="ic:baseline-category")),
-#                             dmc.MenuItem("Ordem de Serviço", leftSection=DashIconify(icon="fluent-mdl2:repair")),
-#                         ]
-#                     ),
-#                 ]
-#             ),
-#         ]
-#     )
 
 # Cabeçalho
 header = dmc.Group(
@@ -312,4 +275,5 @@ if __name__ == "__main__":
             profile_dir=PROF_DIR,
         )
 
+    print("RUNNING ON HOST:", APP_HOST, "PORT:", APP_PORT, "DEBUG:", APP_DEBUG, "PROFILE:", PROFILE)
     app.run(host=APP_HOST, debug=APP_DEBUG, port=APP_PORT)
