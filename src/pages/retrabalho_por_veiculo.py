@@ -91,6 +91,7 @@ lista_todas_secoes.insert(0, {"LABEL": "TODAS"})
 # Callbacks para os inputs via URL ###########################################
 ##############################################################################
 
+
 # Função auxiliar para transformar string '[%27A%27,%20%27B%27]' → ['A', 'B']
 def parse_list_param_pag_veiculo(param):
     if param:
@@ -160,6 +161,25 @@ def callback_receber_campos_via_url_pag_veiculo(href):
     print(id_veiculo, datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas)
     print("================================================")
     return str(id_veiculo), datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
+
+
+# Gera dinamicamente as datas do input
+def gera_input_datas_veiculo_dinamico():
+    data_hoje = date.today()
+    return html.Div(
+        [
+            dbc.Label("Data (intervalo) de análise"),
+            dmc.DatePicker(
+                id="input-intervalo-datas-veiculo",
+                allowSingleDateInRange=True,
+                type="range",
+                minDate=date(2024, 8, 1),
+                maxDate=data_hoje,
+                value=[date(2024, 8, 1), data_hoje],
+            ),
+        ],
+        className="dash-bootstrap",
+    )
 
 
 ##############################################################################
@@ -261,7 +281,7 @@ def corrige_input_veiculos_ao_mudar_modelo(modelo_escolhido, vec_escolhido):
 
     # Valor Padrão
     valor_padrao = lista_veiculos_options[0]["value"]
-    if (vec_escolhido is not None and vec_escolhido in lista_todos_veiculos["VEICULO"].unique()):
+    if vec_escolhido is not None and vec_escolhido in lista_todos_veiculos["VEICULO"].unique():
         valor_padrao = vec_escolhido
 
     return lista_veiculos_options, valor_padrao
@@ -1046,22 +1066,7 @@ layout = dbc.Container(
                                 html.Hr(),
                                 dbc.Col(
                                     dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Data (intervalo) de análise"),
-                                                    dmc.DatePicker(
-                                                        id="input-intervalo-datas-veiculo",
-                                                        allowSingleDateInRange=True,
-                                                        type="range",
-                                                        minDate=date(2024, 8, 1),
-                                                        maxDate=date.today(),
-                                                        value=[date(2024, 8, 1), date.today()],
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
+                                        [gera_input_datas_veiculo_dinamico()],
                                         body=True,
                                     ),
                                     md=6,

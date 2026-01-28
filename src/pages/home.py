@@ -78,7 +78,30 @@ lista_todas_os.insert(0, {"LABEL": "TODAS"})
 ##############################################################################
 
 ##############################################################################
-# Callbacks para os inputs ###################################################
+# Callbacks para construir os inputs #########################################
+##############################################################################
+
+
+def gera_input_datas_home_dinamico():
+    data_hoje = date.today()
+    return html.Div(
+        [
+            dbc.Label("Data (intervalo) de análise"),
+            dmc.DatePicker(
+                id="input-intervalo-datas-geral",
+                allowSingleDateInRange=True,
+                type="range",
+                minDate=date(2024, 8, 1),
+                maxDate=data_hoje,
+                value=[date(2024, 8, 1), data_hoje],
+            ),
+        ],
+        className="dash-bootstrap",
+    )
+
+
+##############################################################################
+# Callbacks para processar os inputs #########################################
 ##############################################################################
 
 
@@ -193,7 +216,9 @@ def corrige_input_ordem_servico(lista_os, lista_secaos):
         Input("store-window-size", "data"),
     ],
 )
-def plota_grafico_pizza_sintese_geral(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, metadata_browser):
+def plota_grafico_pizza_sintese_geral(
+    datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os, metadata_browser
+):
     # Valida input
     if not input_valido(datas, min_dias, lista_modelos, lista_oficinas, lista_secaos, lista_os):
         return go.Figure()
@@ -586,6 +611,7 @@ def callback_botao_detalhamento_veiculo(
 
     return f"/retrabalho-por-veiculo?{url_params_str}"
 
+
 @callback(
     Output("tabela-top-veiculos-geral", "rowData"),
     [
@@ -856,20 +882,7 @@ layout = dbc.Container(
                                 dbc.Col(
                                     dbc.Card(
                                         [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Data (intervalo) de análise"),
-                                                    dmc.DatePicker(
-                                                        id="input-intervalo-datas-geral",
-                                                        allowSingleDateInRange=True,
-                                                        type="range",
-                                                        minDate=date(2024, 8, 1),
-                                                        maxDate=date.today(),
-                                                        value=[date(2024, 8, 1), date.today()],
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
+                                            gera_input_datas_home_dinamico()
                                         ],
                                         body=True,
                                     ),
@@ -1199,7 +1212,7 @@ layout = dbc.Container(
                                                         "font-size": "16px",
                                                         "font-weight": "bold",
                                                     },
-                                                    className="btnExcel"
+                                                    className="btnExcel",
                                                 ),
                                                 dcc.Download(id="download-excel-tipo-os"),
                                             ],
@@ -1267,7 +1280,7 @@ layout = dbc.Container(
                                                         "font-size": "16px",
                                                         "font-weight": "bold",
                                                     },
-                                                    className="btnExcel"
+                                                    className="btnExcel",
                                                 ),
                                                 dcc.Download(id="download-excel-tabela-colaborador"),
                                             ],
@@ -1334,7 +1347,7 @@ layout = dbc.Container(
                                                         "font-size": "16px",
                                                         "font-weight": "bold",
                                                     },
-                                                    className="btnExcel"
+                                                    className="btnExcel",
                                                 ),
                                                 dcc.Download(id="download-excel-tabela-veiculo"),
                                             ],

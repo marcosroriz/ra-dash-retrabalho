@@ -216,6 +216,31 @@ def cb_datas_permitidas(id_regra):
     return list(disabled_dates)
 
 
+def gera_input_datas_ler_dinamico():
+    datetime_hoje = datetime.now()
+    return html.Div(
+        [
+            dbc.Label("Data do relatório"),
+            dmc.DateInput(
+                id="ler-relatorio-input-select-data",
+                minDate=date(2020, 8, 5),
+                maxDate=datetime_hoje.date(),
+                valueFormat="DD/MM/YYYY",
+                value=(datetime_hoje - timedelta(days=10)).date(),
+            ),
+            dmc.Space(h=5),
+            dbc.FormText(
+                html.Em(
+                    "Período inválido",
+                    id="ler-relatorio-input-data-error",
+                ),
+                color="secondary",
+            ),
+        ],
+        className="dash-bootstrap",
+    )
+
+
 ##############################################################################
 # Callbacks do relatório #####################################################
 ##############################################################################
@@ -238,7 +263,7 @@ def cb_render_relatorio_markdown(store_payload):
 
 # Renderiza a data do relatório
 @callback(
-    Output("header-dada-relatorio", "children"),    
+    Output("header-dada-relatorio", "children"),
     Input("store-ler-relatorio", "data"),
 )
 def cb_render_data_relatorio(store_payload):
@@ -248,6 +273,7 @@ def cb_render_data_relatorio(store_payload):
         dia_execucao = store_payload["dia_execucao"]
         dia_execucao_fmt = datetime.strptime(dia_execucao, "%Y-%m-%d").strftime("%d/%m/%Y")
         return f"{dia_execucao_fmt}"
+
 
 ##############################################################################
 # Layout #####################################################################
@@ -328,27 +354,7 @@ layout = dbc.Container(
                 ),
                 dbc.Col(
                     dbc.Card(
-                        html.Div(
-                            [
-                                dbc.Label("Data do relatório"),
-                                dmc.DateInput(
-                                    id="ler-relatorio-input-select-data",
-                                    minDate=date(2020, 8, 5),
-                                    maxDate=datetime.now().date(),
-                                    valueFormat="DD/MM/YYYY",
-                                    value=(datetime.now() - timedelta(days=10)).date(),
-                                ),
-                                dmc.Space(h=5),
-                                dbc.FormText(
-                                    html.Em(
-                                        "Período inválido",
-                                        id="ler-relatorio-input-data-error",
-                                    ),
-                                    color="secondary",
-                                ),
-                            ],
-                            className="dash-bootstrap",
-                        ),
+                        gera_input_datas_ler_dinamico(),
                         id="ler-relatorio-card-input-data",
                         body=True,
                     ),

@@ -76,14 +76,35 @@ lista_todas_os = df_lista_os.to_dict(orient="records")
 # CALLBACKS ##################################################################
 ##############################################################################
 
+
+def gera_input_datas_tiposervico_dinamico():
+    data_hoje = date.today()
+    return html.Div(
+        [
+            dbc.Label("Data (intervalo) de análise"),
+            dmc.DatePicker(
+                id="input-intervalo-datas-os",
+                allowSingleDateInRange=True,
+                type="range",
+                minDate=date(2024, 8, 1),
+                maxDate=data_hoje,
+                value=[date(2024, 8, 1), data_hoje],
+            ),
+        ],
+        className="dash-bootstrap",
+    )
+
+
 ##############################################################################
 # Callbacks para os inputs ###################################################
 ##############################################################################
 
+
 # Função para formatar valores em R$
 # Outra possibilidade é usar locale, porém podemos rodar em um ambiente sem locale pt_BR
 def formata_moeda(valor):
-    return "{:,.2f}".format(valor).replace(',', 'X').replace('.', ',').replace('X', '.')
+    return "{:,.2f}".format(valor).replace(",", "X").replace(".", ",").replace("X", ".")
+
 
 # Função para validar o input
 def input_valido_tela_tipo_servico(datas, min_dias, lista_modelos, lista_oficinas, lista_os):
@@ -242,7 +263,9 @@ def computa_retrabalho(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
     df_os_llm = df_os.merge(df_llm_raw, on="KEY_HASH", how="left")
 
     # Obtem os dados de custo
-    df_custo_raw = tipo_servico_service.obtem_dados_os_custo_sql(datas, min_dias, lista_modelos, lista_oficinas, lista_os)
+    df_custo_raw = tipo_servico_service.obtem_dados_os_custo_sql(
+        datas, min_dias, lista_modelos, lista_oficinas, lista_os
+    )
 
     # Obtem os dados de custo agregados por OS
     df_custo_por_os_raw = df_custo_raw[["NUMERO DA OS", "VALOR"]].drop_duplicates()
@@ -502,9 +525,11 @@ def atualiza_indicadores_os_mecanico(store_payload):
         f"{media_correcoes_tardias}%",
     ]
 
+
 ##############################################################################
 # Callbacks para as tabelas ##################################################
 ##############################################################################
+
 
 @callback(
     Output("tabela-top-mecanicos", "rowData"),
@@ -531,6 +556,7 @@ def update_tabela_mecanicos_retrabalho(store_payload):
 
     # Retorna tabela
     return df_colaborador.to_dict("records")
+
 
 ##############################################################################
 # Layout #####################################################################
@@ -606,22 +632,7 @@ layout = dbc.Container(
                                 html.Hr(),
                                 dbc.Col(
                                     dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Data (intervalo) de análise"),
-                                                    dmc.DatePicker(
-                                                        id="input-intervalo-datas-os",
-                                                        allowSingleDateInRange=True,
-                                                        type="range",
-                                                        minDate=date(2024, 8, 1),
-                                                        maxDate=date.today(),
-                                                        value=[date(2024, 8, 1), date.today()],
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
+                                        [gera_input_datas_tiposervico_dinamico()],
                                         body=True,
                                     ),
                                     md=6,
@@ -1246,7 +1257,9 @@ layout = dbc.Container(
 ##############################################################################
 # Registro da página #########################################################
 ##############################################################################
-dash.register_page(__name__, name="Tipo de Serviço", path="/retrabalho-por-servico", icon="ic:baseline-category", hide_page=True)
+dash.register_page(
+    __name__, name="Tipo de Serviço", path="/retrabalho-por-servico", icon="ic:baseline-category", hide_page=True
+)
 
 
 # #!/usr/bin/env python

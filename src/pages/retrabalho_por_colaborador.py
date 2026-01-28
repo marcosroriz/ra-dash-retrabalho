@@ -168,6 +168,24 @@ def callback_sincronizar_campos_para_url_pag_colaborador(
     return f"?{url_params_str}"
 
 
+def gera_input_datas_colaborador_dinamico():
+    data_hoje = date.today()
+    return html.Div(
+        [
+            dbc.Label("Data (intervalo) de análise"),
+            dmc.DatePicker(
+                id="input-intervalo-datas-colaborador",
+                allowSingleDateInRange=True,
+                type="range",
+                minDate=date(2024, 8, 1),
+                maxDate=data_hoje,
+                value=[date(2024, 8, 1), data_hoje],
+            ),
+        ],
+        className="dash-bootstrap",
+    )
+
+
 ##############################################################################
 # Callbacks para os inputs ###################################################
 ##############################################################################
@@ -1102,22 +1120,7 @@ layout = dbc.Container(
                                 ),
                                 dbc.Col(
                                     dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Data (intervalo) de análise"),
-                                                    dmc.DatePicker(
-                                                        id="input-intervalo-datas-colaborador",
-                                                        allowSingleDateInRange=True,
-                                                        type="range",
-                                                        minDate=date(2024, 8, 1),
-                                                        maxDate=datetime.now().date(),
-                                                        value=[date(2024, 8, 1), datetime.now().date()],
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
+                                        [gera_input_datas_colaborador_dinamico()],
                                         body=True,
                                     ),
                                     md=6,
