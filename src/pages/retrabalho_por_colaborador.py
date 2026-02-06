@@ -170,8 +170,9 @@ def callback_sincronizar_campos_para_url_pag_colaborador(
 
 @callback(
     Output("input-intervalo-datas-colaborador", "maxDate"),
-    Output("input-intervalo-datas-colaborador", "value"),
+    Output("input-intervalo-datas-colaborador", "value", allow_duplicate=True),
     Input("url", "pathname"),  # fires on page load
+    prevent_initial_call=True,
 )
 def cb_input_datas_colaborador_dinamico(_):
     hoje = date.today()
