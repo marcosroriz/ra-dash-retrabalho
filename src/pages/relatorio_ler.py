@@ -216,29 +216,16 @@ def cb_datas_permitidas(id_regra):
     return list(disabled_dates)
 
 
-def gera_input_datas_ler_dinamico():
-    datetime_hoje = datetime.now()
-    return html.Div(
-        [
-            dbc.Label("Data do relatório"),
-            dmc.DateInput(
-                id="ler-relatorio-input-select-data",
-                minDate=date(2020, 8, 5),
-                maxDate=datetime_hoje.date(),
-                valueFormat="DD/MM/YYYY",
-                value=(datetime_hoje - timedelta(days=10)).date(),
-            ),
-            dmc.Space(h=5),
-            dbc.FormText(
-                html.Em(
-                    "Período inválido",
-                    id="ler-relatorio-input-data-error",
-                ),
-                color="secondary",
-            ),
-        ],
-        className="dash-bootstrap",
-    )
+
+@callback(
+    Output("ler-relatorio-input-select-data", "maxDate"),
+    Output("ler-relatorio-input-select-data", "value"),
+    Input("url", "pathname"),  # fires on page load
+)
+def cb_input_datas_rel_ler_dinamico(_):
+    hoje = date.today()
+    return hoje, [date(2024, 8, 1), hoje]
+
 
 
 ##############################################################################
@@ -354,7 +341,27 @@ layout = dbc.Container(
                 ),
                 dbc.Col(
                     dbc.Card(
-                        gera_input_datas_ler_dinamico(),
+                        html.Div(
+                            [
+                                dbc.Label("Data do relatório"),
+                                dmc.DateInput(
+                                    id="ler-relatorio-input-select-data",
+                                    minDate=date(2020, 8, 5),
+                                    maxDate=datetime.now().date(),
+                                    valueFormat="DD/MM/YYYY",
+                                    value=(datetime.now() - timedelta(days=10)).date(),
+                                ),
+                                dmc.Space(h=5),
+                                dbc.FormText(
+                                    html.Em(
+                                        "Período inválido",
+                                        id="ler-relatorio-input-data-error",
+                                    ),
+                                    color="secondary",
+                                ),
+                            ],
+                            className="dash-bootstrap",
+                        ),
                         id="ler-relatorio-card-input-data",
                         body=True,
                     ),

@@ -163,23 +163,15 @@ def callback_receber_campos_via_url_pag_veiculo(href):
     return str(id_veiculo), datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
 
 
-# Gera dinamicamente as datas do input
-def gera_input_datas_veiculo_dinamico():
-    data_hoje = date.today()
-    return html.Div(
-        [
-            dbc.Label("Data (intervalo) de análise"),
-            dmc.DatePicker(
-                id="input-intervalo-datas-veiculo",
-                allowSingleDateInRange=True,
-                type="range",
-                minDate=date(2024, 8, 1),
-                maxDate=data_hoje,
-                value=[date(2024, 8, 1), data_hoje],
-            ),
-        ],
-        className="dash-bootstrap",
-    )
+@callback(
+    Output("input-intervalo-datas-veiculo", "maxDate"),
+    Output("input-intervalo-datas-veiculo", "value"),
+    Input("url", "pathname"),  # fires on page load
+)
+def cb_input_datas_veiculo_dinamico(_):
+    hoje = date.today()
+    return hoje, [date(2024, 8, 1), hoje]
+
 
 
 ##############################################################################
@@ -1066,7 +1058,22 @@ layout = dbc.Container(
                                 html.Hr(),
                                 dbc.Col(
                                     dbc.Card(
-                                        [gera_input_datas_veiculo_dinamico()],
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Data (intervalo) de análise"),
+                                                    dmc.DatePicker(
+                                                        id="input-intervalo-datas-veiculo",
+                                                        allowSingleDateInRange=True,
+                                                        type="range",
+                                                        minDate=date(2024, 8, 1),
+                                                        maxDate=date.today(),
+                                                        value=[date(2024, 8, 1), date.today()],
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            )
+                                        ],
                                         body=True,
                                     ),
                                     md=6,

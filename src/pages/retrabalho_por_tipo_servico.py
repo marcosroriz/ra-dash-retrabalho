@@ -77,22 +77,17 @@ lista_todas_os = df_lista_os.to_dict(orient="records")
 ##############################################################################
 
 
-def gera_input_datas_tiposervico_dinamico():
-    data_hoje = date.today()
-    return html.Div(
-        [
-            dbc.Label("Data (intervalo) de análise"),
-            dmc.DatePicker(
-                id="input-intervalo-datas-os",
-                allowSingleDateInRange=True,
-                type="range",
-                minDate=date(2024, 8, 1),
-                maxDate=data_hoje,
-                value=[date(2024, 8, 1), data_hoje],
-            ),
-        ],
-        className="dash-bootstrap",
-    )
+@callback(
+    Output("input-intervalo-datas-os", "maxDate"),
+    Output("input-intervalo-datas-os", "value"),
+    Input("url", "pathname"),  # fires on page load
+)
+def cb_input_datas_tipo_servico_dinamico(_):
+    hoje = date.today()
+    return hoje, [date(2024, 8, 1), hoje]
+
+
+
 
 
 ##############################################################################
@@ -632,7 +627,22 @@ layout = dbc.Container(
                                 html.Hr(),
                                 dbc.Col(
                                     dbc.Card(
-                                        [gera_input_datas_tiposervico_dinamico()],
+                                        [
+                                            html.Div(
+                                                [
+                                                    dbc.Label("Data (intervalo) de análise"),
+                                                    dmc.DatePicker(
+                                                        id="input-intervalo-datas-os",
+                                                        allowSingleDateInRange=True,
+                                                        type="range",
+                                                        minDate=date(2024, 8, 1),
+                                                        maxDate=date.today(),
+                                                        value=[date(2024, 8, 1), date.today()],
+                                                    ),
+                                                ],
+                                                className="dash-bootstrap",
+                                            )
+                                        ],
                                         body=True,
                                     ),
                                     md=6,
