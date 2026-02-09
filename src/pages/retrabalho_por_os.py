@@ -110,7 +110,6 @@ def callback_receber_campos_via_url(href):
     Output("url", "search", allow_duplicate=True),
     Input("input-detalhamento-os-selecionada", "value"),
     Input("input-detalhamento-select-dias-os-retrabalho", "value"),
-    prevent_initial_call="initial_duplicate",
 )
 def callback_sincronizar_campos_para_url(os_numero, min_dias):
     if not os_numero or not min_dias:

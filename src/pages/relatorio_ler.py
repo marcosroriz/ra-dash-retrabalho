@@ -221,7 +221,6 @@ def cb_datas_permitidas(id_regra):
     Output("ler-relatorio-input-select-data", "maxDate"),
     Output("ler-relatorio-input-select-data", "value", allow_duplicate=True),
     Input("url", "pathname"),  # fires on page load
-    prevent_initial_call=True,
 )
 def cb_input_datas_rel_ler_dinamico(_):
     hoje = date.today()
