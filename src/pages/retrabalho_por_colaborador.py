@@ -168,16 +168,6 @@ def callback_sincronizar_campos_para_url_pag_colaborador(
     return f"?{url_params_str}"
 
 
-@callback(
-    Output("input-intervalo-datas-colaborador", "maxDate"),
-    Output("input-intervalo-datas-colaborador", "value", allow_duplicate=True),
-    Input("url", "pathname"),  # fires on page load
-)
-def cb_input_datas_colaborador_dinamico(_):
-    hoje = date.today()
-    return hoje, [date(2024, 8, 1), hoje]
-
-
 ##############################################################################
 # Callbacks para os inputs ###################################################
 ##############################################################################
@@ -1037,617 +1027,620 @@ def download_excel_detalhamento_problema(n_clicks, vec_problema_lbl, data):
 ##############################################################################
 # Layout #####################################################################
 ##############################################################################
-layout = dbc.Container(
-    [
-        # Estado
-        dcc.Store(id="store-input-dados-retrabalho-colaborador"),
-        # Loading
-        dmc.LoadingOverlay(
-            visible=True,
-            id="loading-overlay",
-            loaderProps={"size": "xl"},
-            overlayProps={
-                "radius": "lg",
-                "blur": 2,
-                "style": {
-                    "top": 0,  # Start from the top of the viewport
-                    "left": 0,  # Start from the left of the viewport
-                    "width": "100vw",  # Cover the entire width of the viewport
-                    "height": "100vh",  # Cover the entire height of the viewport
+def layout():
+    return dbc.Container(
+        [
+            # Estado
+            dcc.Store(id="store-input-dados-retrabalho-colaborador"),
+            # Loading
+            dmc.LoadingOverlay(
+                visible=True,
+                id="loading-overlay",
+                loaderProps={"size": "xl"},
+                overlayProps={
+                    "radius": "lg",
+                    "blur": 2,
+                    "style": {
+                        "top": 0,  # Start from the top of the viewport
+                        "left": 0,  # Start from the left of the viewport
+                        "width": "100vw",  # Cover the entire width of the viewport
+                        "height": "100vh",  # Cover the entire height of the viewport
+                    },
                 },
-            },
-            zIndex=10,
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        # Cabeçalho e Inputs
+                zIndex=10,
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            # Cabeçalho e Inputs
+                            dbc.Row(
+                                [
+                                    html.Hr(),
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
+                                            dbc.Col(
+                                                html.H1(
+                                                    [
+                                                        "Visão geral do\u00a0",
+                                                        html.Strong("Colaborador"),
+                                                    ],
+                                                    className="align-self-center",
+                                                ),
+                                                width=True,
+                                            ),
+                                        ],
+                                        align="center",
+                                    ),
+                                    dmc.Space(h=15),
+                                    html.Hr(),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Colaborador (Código):"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-colaborador-colaborador",
+                                                            options=[
+                                                                {
+                                                                    "label": f"{linha['LABEL_COLABORADOR']}",
+                                                                    "value": linha["CODIGO"],
+                                                                }
+                                                                for _, linha in df_mecanicos.iterrows()
+                                                            ],
+                                                            placeholder="Selecione um colaborador",
+                                                            value=3295,
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Data (intervalo) de análise"),
+                                                        dmc.DatePicker(
+                                                            id="input-intervalo-datas-colaborador",
+                                                            allowSingleDateInRange=True,
+                                                            type="range",
+                                                            minDate=date(2024, 8, 1),
+                                                            maxDate=date.today(),
+                                                            value=[date(2024, 8, 1), date.today()],
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                )
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dmc.Space(h=10),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Tempo (em dias) entre OS para retrabalho"),
+                                                        dcc.Dropdown(
+                                                            id="input-min-dias-colaborador",
+                                                            options=[
+                                                                {"label": "10 dias", "value": 10},
+                                                                {"label": "15 dias", "value": 15},
+                                                                {"label": "30 dias", "value": 30},
+                                                            ],
+                                                            placeholder="Período em dias",
+                                                            value=10,
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Seções (categorias) de manutenção"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-secao-colaborador",
+                                                            options=[
+                                                                {"label": sec["LABEL"], "value": sec["LABEL"]}
+                                                                for sec in lista_todas_secoes
+                                                            ],
+                                                            multi=True,
+                                                            value=["TODAS"],
+                                                            placeholder="Selecione uma ou mais seções...",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dmc.Space(h=10),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Oficinas"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-oficina-colaborador",
+                                                            options=[
+                                                                {"label": os["LABEL"], "value": os["LABEL"]}
+                                                                for os in lista_todas_oficinas
+                                                            ],
+                                                            multi=True,
+                                                            value=["TODAS"],
+                                                            placeholder="Selecione uma ou mais oficinas...",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Modelo"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-modelos-colaborador",
+                                                            multi=True,
+                                                            value=["TODAS"],
+                                                            placeholder="Selecione um ou mais modelos...",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dmc.Space(h=10),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Ordens de Serviço"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-ordens-servico-colaborador",
+                                                            multi=True,
+                                                            value=["TODAS"],
+                                                            placeholder="Selecione uma ou mais ordens de serviço...",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=12,
+                                    ),
+                                ]
+                            ),
+                        ],
+                        md=8,
+                    ),
+                    dbc.Col(
+                        # Resumo
                         dbc.Row(
                             [
-                                html.Hr(),
                                 dbc.Row(
                                     [
-                                        dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
+                                        # Cabeçalho
+                                        html.Hr(),
                                         dbc.Col(
-                                            html.H1(
-                                                [
-                                                    "Visão geral do\u00a0",
-                                                    html.Strong("Colaborador"),
-                                                ],
-                                                className="align-self-center",
-                                            ),
-                                            width=True,
+                                            DashIconify(icon="wpf:statistics", width=45),
+                                            width="auto",
                                         ),
+                                        dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
+                                        dmc.Space(h=15),
+                                        html.Hr(),
                                     ],
                                     align="center",
                                 ),
-                                dmc.Space(h=15),
-                                html.Hr(),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Colaborador (Código):"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-colaborador-colaborador",
-                                                        options=[
-                                                            {
-                                                                "label": f"{linha['LABEL_COLABORADOR']}",
-                                                                "value": linha["CODIGO"],
-                                                            }
-                                                            for _, linha in df_mecanicos.iterrows()
-                                                        ],
-                                                        placeholder="Selecione um colaborador",
-                                                        value=3295,
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Data (intervalo) de análise"),
-                                                    dmc.DatePicker(
-                                                        id="input-intervalo-datas-colaborador",
-                                                        allowSingleDateInRange=True,
-                                                        type="range",
-                                                        minDate=date(2024, 8, 1),
-                                                        maxDate=date.today(),
-                                                        value=[date(2024, 8, 1), date.today()],
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            )
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Tempo (em dias) entre OS para retrabalho"),
-                                                    dcc.Dropdown(
-                                                        id="input-min-dias-colaborador",
-                                                        options=[
-                                                            {"label": "10 dias", "value": 10},
-                                                            {"label": "15 dias", "value": 15},
-                                                            {"label": "30 dias", "value": 30},
-                                                        ],
-                                                        placeholder="Período em dias",
-                                                        value=10,
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Seções (categorias) de manutenção"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-secao-colaborador",
-                                                        options=[
-                                                            {"label": sec["LABEL"], "value": sec["LABEL"]}
-                                                            for sec in lista_todas_secoes
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais seções...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Oficinas"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-oficina-colaborador",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_oficinas
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais oficinas...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Modelo"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-modelos-colaborador",
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione um ou mais modelos...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Ordens de Serviço"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-ordens-servico-colaborador",
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais ordens de serviço...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            ),
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=12,
-                                ),
+                                # Gráfico de pizza com a relação entre Retrabalho e Correção
+                                dcc.Graph(id="graph-pizza-sintese-colaborador"),
                             ]
                         ),
-                    ],
-                    md=8,
-                ),
-                dbc.Col(
-                    # Resumo
-                    dbc.Row(
-                        [
-                            dbc.Row(
-                                [
-                                    # Cabeçalho
-                                    html.Hr(),
-                                    dbc.Col(
-                                        DashIconify(icon="wpf:statistics", width=45),
-                                        width="auto",
+                        md=4,
+                    ),
+                ]
+            ),
+            dmc.Space(h=30),
+            # Indicadores
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="icon-park-outline:ranking-list", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Indicadores",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_colaborador("labels-indicadores-pag-colaborador"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dmc.Space(h=20),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-quantidade-servico", order=2),
+                                            DashIconify(
+                                                icon="material-symbols:order-play-outline",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
                                     ),
-                                    dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
-                                    dmc.Space(h=15),
-                                    html.Hr(),
-                                ],
-                                align="center",
-                            ),
-                            # Gráfico de pizza com a relação entre Retrabalho e Correção
-                            dcc.Graph(id="graph-pizza-sintese-colaborador"),
-                        ]
+                                ),
+                                dbc.CardFooter("Total de tipo serviços"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
                     ),
-                    md=4,
-                ),
-            ]
-        ),
-        dmc.Space(h=30),
-        # Indicadores
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="icon-park-outline:ranking-list", width=45), width="auto"),
-                dbc.Col(
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-rank-servico", order=2),
+                                            DashIconify(
+                                                icon="ion:analytics-sharp",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("Rank de serviços diferentes"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-total-os-trabalho", order=2),
+                                            DashIconify(
+                                                icon="pajamas:task-done",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("Total de OSs executadas"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-rank-os", order=2),
+                                            DashIconify(
+                                                icon="solar:ranking-linear",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("Rank de OSs absolutas"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                ],
+                justify="center",
+            ),
+            dbc.Row(dmc.Space(h=20)),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-retrabalho", order=2),
+                                            DashIconify(
+                                                icon="tabler:reorder",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("% das OS são retrabalho"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-correcao-de-primeira", order=2),
+                                            DashIconify(
+                                                icon="gravity-ui:target-dart",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("% das OSs correção de primeira"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-nota-colaborador", order=2),
+                                            DashIconify(
+                                                icon="material-symbols-light:bar-chart-4-bars-rounded",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("Nota do colaborador"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-rank-posicao-nota", order=2),
+                                            DashIconify(
+                                                icon="solar:ranking-linear",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("Posição da nota media"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                ],
+            ),
+            dbc.Row(dmc.Space(h=20)),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-gasto-total-colaborador", order=2),
+                                            DashIconify(
+                                                icon="hugeicons:search-dollar",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("Total gasto com peças"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=6,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-gasto-retrabalho-total-colaborador", order=2),
+                                            DashIconify(
+                                                icon="emojione-monotone:money-with-wings",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter("Total gasto com peças em retrabalho"),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=6,
+                    ),
+                ],
+                justify="center",
+            ),
+            dmc.Space(h=80),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Evolução da % de retrabalho e correção de primeira por mês",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_colaborador("labels-colaborador-evolucao-retrabalho-por-mes"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dcc.Graph(id="graph-evolucao-retrabalho-por-mes"),
+            dmc.Space(h=40),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="fluent:arrow-trending-sparkle-20-filled", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4("Evolução da nota média por mês", className="align-self-center"),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_colaborador("labels-colaborador-evolucao-nota-por-mes"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dcc.Graph(id="graph-evolucao-nota-por-mes"),
+            dmc.Space(h=40),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="hugeicons:search-dollar", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Evolução do gasto médio com retrabalho por mês", className="align-self-center"
+                                ),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_colaborador("labels-colaborador-evolucao-gasto-por-mes"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dcc.Graph(id="graph-evolucao-gasto-colaborador"),
+            dmc.Space(h=40),
+            dbc.Row(
+                [
+                    # Gráfico de Pizza
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4("Atuação Geral"),
+                                dcc.Graph(id="graph-pizza-atuacao-geral"),
+                            ]
+                        ),
+                        md=4,
+                    ),
+                    # Indicadores
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4("Atuação OS (TOP 10)"),
+                                dcc.Graph(id="graph-principais-os"),
+                            ]
+                        ),
+                        md=8,
+                    ),
+                ],
+                align="center",
+            ),
+            dmc.Space(h=40),
+            dbc.Alert(
+                [
                     dbc.Row(
                         [
-                            html.H4(
-                                "Indicadores",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_colaborador("labels-indicadores-pag-colaborador"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=20),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-quantidade-servico", order=2),
-                                        DashIconify(
-                                            icon="material-symbols:order-play-outline",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Total de tipo serviços"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-servico", order=2),
-                                        DashIconify(
-                                            icon="ion:analytics-sharp",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Rank de serviços diferentes"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-total-os-trabalho", order=2),
-                                        DashIconify(
-                                            icon="pajamas:task-done",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Total de OSs executadas"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-os", order=2),
-                                        DashIconify(
-                                            icon="solar:ranking-linear",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Rank de OSs absolutas"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-            ],
-            justify="center",
-        ),
-        dbc.Row(dmc.Space(h=20)),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-retrabalho", order=2),
-                                        DashIconify(
-                                            icon="tabler:reorder",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("% das OS são retrabalho"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-correcao-de-primeira", order=2),
-                                        DashIconify(
-                                            icon="gravity-ui:target-dart",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("% das OSs correção de primeira"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-nota-colaborador", order=2),
-                                        DashIconify(
-                                            icon="material-symbols-light:bar-chart-4-bars-rounded",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Nota do colaborador"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-posicao-nota", order=2),
-                                        DashIconify(
-                                            icon="solar:ranking-linear",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Posição da nota media"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-            ],
-        ),
-        dbc.Row(dmc.Space(h=20)),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-gasto-total-colaborador", order=2),
-                                        DashIconify(
-                                            icon="hugeicons:search-dollar",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Total gasto com peças"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=6,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-gasto-retrabalho-total-colaborador", order=2),
-                                        DashIconify(
-                                            icon="emojione-monotone:money-with-wings",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter("Total gasto com peças em retrabalho"),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=6,
-                ),
-            ],
-            justify="center",
-        ),
-        dmc.Space(h=80),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Evolução da % de retrabalho e correção de primeira por mês",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_colaborador("labels-colaborador-evolucao-retrabalho-por-mes"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-retrabalho-por-mes"),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-sparkle-20-filled", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4("Evolução da nota média por mês", className="align-self-center"),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_colaborador("labels-colaborador-evolucao-nota-por-mes"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-nota-por-mes"),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="hugeicons:search-dollar", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4("Evolução do gasto médio com retrabalho por mês", className="align-self-center"),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_colaborador("labels-colaborador-evolucao-gasto-por-mes"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-gasto-colaborador"),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                # Gráfico de Pizza
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4("Atuação Geral"),
-                            dcc.Graph(id="graph-pizza-atuacao-geral"),
-                        ]
-                    ),
-                    md=4,
-                ),
-                # Indicadores
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4("Atuação OS (TOP 10)"),
-                            dcc.Graph(id="graph-principais-os"),
-                        ]
-                    ),
-                    md=8,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=40),
-        dbc.Alert(
-            [
-                dbc.Row(
-                    [
-                        dbc.Col(DashIconify(icon="material-symbols:info-outline-rounded", width=45), width="auto"),
-                        dbc.Col(
-                            html.P(
-                                """
+                            dbc.Col(DashIconify(icon="material-symbols:info-outline-rounded", width=45), width="auto"),
+                            dbc.Col(
+                                html.P(
+                                    """
                                 As tabelas a seguir mostram a atuação do colaborador nas OS, começando por uma visão 
                                 categórica, com todas as OS de um mesmo serviço. Depois, é possível consultar a atuação
                                 individual em cada OS. Os textos são avaliados por modelos de Large Language Model 
@@ -1655,240 +1648,244 @@ layout = dbc.Container(
                                 acompanhar o desempenho diante de um problema específico de um veículo, entendido como
                                 um conjunto de OS relacionadas até a resolução completa da questão.
                                 """
-                            ),
-                            className="mt-2",
-                            width=True,
-                        ),
-                    ],
-                    align="center",
-                ),
-            ],
-            dismissable=True,
-            color="info",
-        ),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Detalhamento do colaborador nas OSs escolhidas (por categoria)",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        gera_labels_inputs_colaborador("labels-tabela-colaborador-categorizadas-os"),
-                                        width=True,
-                                    ),
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Button(
-                                                    "Exportar para Excel",
-                                                    id="btn-exportar-categorizadas-pag-colaborador",
-                                                    n_clicks=0,
-                                                    style={
-                                                        "background-color": "#007bff",  # Azul
-                                                        "color": "white",
-                                                        "border": "none",
-                                                        "padding": "10px 20px",
-                                                        "border-radius": "8px",
-                                                        "cursor": "pointer",
-                                                        "font-size": "16px",
-                                                        "font-weight": "bold",
-                                                    },
-                                                ),
-                                                dcc.Download(id="download-excel-categorizadas"),
-                                            ],
-                                            style={"text-align": "right"},
-                                        ),
-                                        width="auto",
-                                    ),
-                                ],
-                                align="center",
-                                justify="between",  # Deixa os itens espaçados
-                            ),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=40),
-        dag.AgGrid(
-            id="tabela-top-os-colaborador",
-            columnDefs=colaborador_tabelas.tbl_top_os_geral_retrabalho,
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            dashGridOptions={
-                "localeText": locale_utils.AG_GRID_LOCALE_BR,
-            },
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
-        ),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Detalhamento do colaborador nas OSs escolhidas (por OS)",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        gera_labels_inputs_colaborador("labels-tabela-colaborador-detalhamento-os"),
-                                        width=True,
-                                    ),
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Button(
-                                                    "Exportar para Excel",
-                                                    id="btn-exportar-detalhamento-pag-colaborador",
-                                                    n_clicks=0,
-                                                    style={
-                                                        "background-color": "#007bff",  # Azul
-                                                        "color": "white",
-                                                        "border": "none",
-                                                        "padding": "10px 20px",
-                                                        "border-radius": "8px",
-                                                        "cursor": "pointer",
-                                                        "font-size": "16px",
-                                                        "font-weight": "bold",
-                                                    },
-                                                ),
-                                                dcc.Download(id="download-excel-detalhamento-os-colaborador"),
-                                            ],
-                                            style={"text-align": "right"},
-                                        ),
-                                        width="auto",
-                                    ),
-                                ],
-                                align="center",
-                                justify="between",  # Deixa os itens espaçados
-                            ),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=40),
-        dag.AgGrid(
-            id="tabela-detalhamento-os-colaborador",
-            columnDefs=colaborador_tabelas.tbl_detalhamento_os_colaborador,
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            dashGridOptions={
-                "localeText": locale_utils.AG_GRID_LOCALE_BR,
-            },
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
-        ),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="game-icons:time-bomb", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Detalhamento da atuação do colaborador em um problema de um veículo",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        gera_labels_inputs_colaborador(
-                                            "labels-tabela-colaborador-detalhamento-veiculo-prob-colaborador"
-                                        ),
-                                        width=True,
-                                    ),
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Button(
-                                                    "Exportar para Excel",
-                                                    id="btn-exportar-detalhamento-veiculo-prob-colaborador",
-                                                    n_clicks=0,
-                                                    style={
-                                                        "background-color": "#007bff",  # Azul
-                                                        "color": "white",
-                                                        "border": "none",
-                                                        "padding": "10px 20px",
-                                                        "border-radius": "8px",
-                                                        "cursor": "pointer",
-                                                        "font-size": "16px",
-                                                        "font-weight": "bold",
-                                                    },
-                                                ),
-                                                dcc.Download(id="download-excel-detalhamento-veiculo-prob-colaborador"),
-                                            ],
-                                            style={"text-align": "right"},
-                                        ),
-                                        width="auto",
-                                    ),
-                                ],
-                                align="center",
-                                justify="between",  # Deixa os itens espaçados
-                            ),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=20),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            html.Div(
-                                [
-                                    dbc.Label("Veículos e problema a detalhar:"),
-                                    dcc.Dropdown(
-                                        id="input-lista-vec-detalhar-problema-colaborador",
-                                        options=[],
-                                        placeholder="Selecione o veículo e problema",
-                                    ),
-                                ],
-                                className="dash-bootstrap",
+                                ),
+                                className="mt-2",
+                                width=True,
                             ),
                         ],
-                        body=True,
+                        align="center",
                     ),
-                    md=12,
-                ),
-            ],
-        ),
-        dmc.Space(h=20),
-        dag.AgGrid(
-            id="tabela-detalhamento-problema-colaborador",
-            columnDefs=colaborador_tabelas.tbl_detalhamento_problema_colaborador,
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            dashGridOptions={
-                "localeText": locale_utils.AG_GRID_LOCALE_BR,
-            },
-            style={"height": 500, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
-        ),
-    ]
-)
+                ],
+                dismissable=True,
+                color="info",
+            ),
+            dmc.Space(h=40),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Detalhamento do colaborador nas OSs escolhidas (por categoria)",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            gera_labels_inputs_colaborador(
+                                                "labels-tabela-colaborador-categorizadas-os"
+                                            ),
+                                            width=True,
+                                        ),
+                                        dbc.Col(
+                                            html.Div(
+                                                [
+                                                    html.Button(
+                                                        "Exportar para Excel",
+                                                        id="btn-exportar-categorizadas-pag-colaborador",
+                                                        n_clicks=0,
+                                                        style={
+                                                            "background-color": "#007bff",  # Azul
+                                                            "color": "white",
+                                                            "border": "none",
+                                                            "padding": "10px 20px",
+                                                            "border-radius": "8px",
+                                                            "cursor": "pointer",
+                                                            "font-size": "16px",
+                                                            "font-weight": "bold",
+                                                        },
+                                                    ),
+                                                    dcc.Download(id="download-excel-categorizadas"),
+                                                ],
+                                                style={"text-align": "right"},
+                                            ),
+                                            width="auto",
+                                        ),
+                                    ],
+                                    align="center",
+                                    justify="between",  # Deixa os itens espaçados
+                                ),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dmc.Space(h=40),
+            dag.AgGrid(
+                id="tabela-top-os-colaborador",
+                columnDefs=colaborador_tabelas.tbl_top_os_geral_retrabalho,
+                rowData=[],
+                defaultColDef={"filter": True, "floatingFilter": True},
+                columnSize="autoSize",
+                dashGridOptions={
+                    "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                },
+                style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+            ),
+            dmc.Space(h=40),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="mdi:car-search-outline", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Detalhamento do colaborador nas OSs escolhidas (por OS)",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            gera_labels_inputs_colaborador("labels-tabela-colaborador-detalhamento-os"),
+                                            width=True,
+                                        ),
+                                        dbc.Col(
+                                            html.Div(
+                                                [
+                                                    html.Button(
+                                                        "Exportar para Excel",
+                                                        id="btn-exportar-detalhamento-pag-colaborador",
+                                                        n_clicks=0,
+                                                        style={
+                                                            "background-color": "#007bff",  # Azul
+                                                            "color": "white",
+                                                            "border": "none",
+                                                            "padding": "10px 20px",
+                                                            "border-radius": "8px",
+                                                            "cursor": "pointer",
+                                                            "font-size": "16px",
+                                                            "font-weight": "bold",
+                                                        },
+                                                    ),
+                                                    dcc.Download(id="download-excel-detalhamento-os-colaborador"),
+                                                ],
+                                                style={"text-align": "right"},
+                                            ),
+                                            width="auto",
+                                        ),
+                                    ],
+                                    align="center",
+                                    justify="between",  # Deixa os itens espaçados
+                                ),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dmc.Space(h=40),
+            dag.AgGrid(
+                id="tabela-detalhamento-os-colaborador",
+                columnDefs=colaborador_tabelas.tbl_detalhamento_os_colaborador,
+                rowData=[],
+                defaultColDef={"filter": True, "floatingFilter": True},
+                columnSize="autoSize",
+                dashGridOptions={
+                    "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                },
+                style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+            ),
+            dmc.Space(h=40),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="game-icons:time-bomb", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Detalhamento da atuação do colaborador em um problema de um veículo",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            gera_labels_inputs_colaborador(
+                                                "labels-tabela-colaborador-detalhamento-veiculo-prob-colaborador"
+                                            ),
+                                            width=True,
+                                        ),
+                                        dbc.Col(
+                                            html.Div(
+                                                [
+                                                    html.Button(
+                                                        "Exportar para Excel",
+                                                        id="btn-exportar-detalhamento-veiculo-prob-colaborador",
+                                                        n_clicks=0,
+                                                        style={
+                                                            "background-color": "#007bff",  # Azul
+                                                            "color": "white",
+                                                            "border": "none",
+                                                            "padding": "10px 20px",
+                                                            "border-radius": "8px",
+                                                            "cursor": "pointer",
+                                                            "font-size": "16px",
+                                                            "font-weight": "bold",
+                                                        },
+                                                    ),
+                                                    dcc.Download(
+                                                        id="download-excel-detalhamento-veiculo-prob-colaborador"
+                                                    ),
+                                                ],
+                                                style={"text-align": "right"},
+                                            ),
+                                            width="auto",
+                                        ),
+                                    ],
+                                    align="center",
+                                    justify="between",  # Deixa os itens espaçados
+                                ),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dmc.Space(h=20),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                html.Div(
+                                    [
+                                        dbc.Label("Veículos e problema a detalhar:"),
+                                        dcc.Dropdown(
+                                            id="input-lista-vec-detalhar-problema-colaborador",
+                                            options=[],
+                                            placeholder="Selecione o veículo e problema",
+                                        ),
+                                    ],
+                                    className="dash-bootstrap",
+                                ),
+                            ],
+                            body=True,
+                        ),
+                        md=12,
+                    ),
+                ],
+            ),
+            dmc.Space(h=20),
+            dag.AgGrid(
+                id="tabela-detalhamento-problema-colaborador",
+                columnDefs=colaborador_tabelas.tbl_detalhamento_problema_colaborador,
+                rowData=[],
+                defaultColDef={"filter": True, "floatingFilter": True},
+                columnSize="autoSize",
+                dashGridOptions={
+                    "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                },
+                style={"height": 500, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+            ),
+        ]
+    )
 
 
 ##############################################################################

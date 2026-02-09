@@ -77,20 +77,6 @@ lista_todas_os = df_lista_os.to_dict(orient="records")
 ##############################################################################
 
 
-@callback(
-    Output("input-intervalo-datas-os", "maxDate"),
-    Output("input-intervalo-datas-os", "value", allow_duplicate=True),
-    Input("url", "pathname"),  # fires on page load
-    prevent_initial_call=True,
-)
-def cb_input_datas_tipo_servico_dinamico(_):
-    hoje = date.today()
-    return hoje, [date(2024, 8, 1), hoje]
-
-
-
-
-
 ##############################################################################
 # Callbacks para os inputs ###################################################
 ##############################################################################

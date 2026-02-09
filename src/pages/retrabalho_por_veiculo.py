@@ -163,17 +163,6 @@ def callback_receber_campos_via_url_pag_veiculo(href):
     return str(id_veiculo), datas, min_dias, lista_secaos, lista_os, lista_modelos, lista_oficinas
 
 
-@callback(
-    Output("input-intervalo-datas-veiculo", "maxDate"),
-    Output("input-intervalo-datas-veiculo", "value", allow_duplicate=True),
-    Input("url", "pathname"),  # fires on page load
-)
-def cb_input_datas_veiculo_dinamico(_):
-    hoje = date.today()
-    return hoje, [date(2024, 8, 1), hoje]
-
-
-
 ##############################################################################
 # Callbacks para os inputs ###################################################
 ##############################################################################
@@ -1009,701 +998,706 @@ def cb_pag_veiculo_botao_detalhar_os_tabela_os(linha, linha_virtual, data):
 ##############################################################################
 # Layout #####################################################################
 ##############################################################################
-layout = dbc.Container(
-    [
-        # Estado
-        dcc.Store(id="store-input-dados-retrabalho-veiculo"),
-        # Loading
-        dmc.LoadingOverlay(
-            visible=True,
-            id="loading-overlay-guia-por-veiculo",
-            loaderProps={"size": "xl"},
-            overlayProps={
-                "radius": "lg",
-                "blur": 2,
-                "style": {
-                    "top": 0,  # Start from the top of the viewport
-                    "left": 0,  # Start from the left of the viewport
-                    "width": "100vw",  # Cover the entire width of the viewport
-                    "height": "100vh",  # Cover the entire height of the viewport
+def layout():
+    return dbc.Container(
+        [
+            # Estado
+            dcc.Store(id="store-input-dados-retrabalho-veiculo"),
+            # Loading
+            dmc.LoadingOverlay(
+                visible=True,
+                id="loading-overlay-guia-por-veiculo",
+                loaderProps={"size": "xl"},
+                overlayProps={
+                    "radius": "lg",
+                    "blur": 2,
+                    "style": {
+                        "top": 0,  # Start from the top of the viewport
+                        "left": 0,  # Start from the left of the viewport
+                        "width": "100vw",  # Cover the entire width of the viewport
+                        "height": "100vh",  # Cover the entire height of the viewport
+                    },
                 },
-            },
-            zIndex=10,
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        # Cabeçalho e Inputs
+                zIndex=10,
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            # Cabeçalho e Inputs
+                            dbc.Row(
+                                [
+                                    html.Hr(),
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(DashIconify(icon="mdi:bus", width=45), width="auto"),
+                                            dbc.Col(
+                                                html.H1(
+                                                    [
+                                                        "Retrabalho por\u00a0",
+                                                        html.Strong("veículo"),
+                                                    ],
+                                                    className="align-self-center",
+                                                ),
+                                                width=True,
+                                            ),
+                                        ],
+                                        align="center",
+                                    ),
+                                    dmc.Space(h=15),
+                                    html.Hr(),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Data (intervalo) de análise"),
+                                                        dmc.DatePicker(
+                                                            id="input-intervalo-datas-veiculo",
+                                                            allowSingleDateInRange=True,
+                                                            type="range",
+                                                            minDate=date(2024, 8, 1),
+                                                            maxDate=date.today(),
+                                                            value=[date(2024, 8, 1), date.today()],
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                )
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                        className="mb-3 mb-md-0",
+                                    ),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Tempo (em dias) entre OS para retrabalho"),
+                                                        dcc.Dropdown(
+                                                            id="input-min-dias-veiculo",
+                                                            options=[
+                                                                {"label": "10 dias", "value": 10},
+                                                                {"label": "15 dias", "value": 15},
+                                                                {"label": "30 dias", "value": 30},
+                                                            ],
+                                                            placeholder="Período em dias",
+                                                            value=10,
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dmc.Space(h=10),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Modelos"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-modelos-veiculo",
+                                                            options=[
+                                                                {"label": os["MODELO"], "value": os["MODELO"]}
+                                                                for os in lista_todos_modelos
+                                                            ],
+                                                            value="TODOS",
+                                                            placeholder="Selecione o modelo do veículo",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                        className="mb-3 mb-md-0",
+                                    ),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Veículos"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-veiculos-veiculo",
+                                                            multi=False,
+                                                            options=[
+                                                                {
+                                                                    "label": veiculo["VEICULO"],
+                                                                    "value": veiculo["VEICULO"],
+                                                                }
+                                                                for _, veiculo in df_veiculos.iterrows()
+                                                            ],
+                                                            value=df_veiculos.iloc[0]["VEICULO"],
+                                                            placeholder="Selecione o veículo",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dmc.Space(h=10),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Oficinas"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-oficina-veiculo",
+                                                            options=[
+                                                                {"label": oficina["LABEL"], "value": oficina["LABEL"]}
+                                                                for oficina in lista_todas_oficinas
+                                                            ],
+                                                            multi=True,
+                                                            value=["TODAS"],
+                                                            placeholder="Selecione uma ou mais oficinas...",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                        className="mb-3 mb-md-0",
+                                    ),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Seções (categorias) de manutenção"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-secao-veiculo",
+                                                            options=[
+                                                                {"label": sec["LABEL"], "value": sec["LABEL"]}
+                                                                for sec in lista_todas_secoes
+                                                            ],
+                                                            multi=True,
+                                                            value=["TODAS"],
+                                                            placeholder="Selecione uma ou mais seções...",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=6,
+                                    ),
+                                    dmc.Space(h=10),
+                                    dbc.Col(
+                                        dbc.Card(
+                                            [
+                                                html.Div(
+                                                    [
+                                                        dbc.Label("Ordens de Serviço"),
+                                                        dcc.Dropdown(
+                                                            id="input-select-ordens-servico-veiculos",
+                                                            options=[
+                                                                {"label": os["LABEL"], "value": os["LABEL"]}
+                                                                for os in lista_todas_os
+                                                            ],
+                                                            multi=True,
+                                                            value=["TODAS"],
+                                                            placeholder="Selecione uma ou mais ordens de serviço...",
+                                                        ),
+                                                    ],
+                                                    className="dash-bootstrap",
+                                                ),
+                                            ],
+                                            body=True,
+                                        ),
+                                        md=12,
+                                        className="mb-3 mb-md-0",
+                                    ),
+                                ]
+                            ),
+                        ],
+                        md=8,
+                        className="mb-3 mb-md-0",
+                    ),
+                    dbc.Col(
+                        # Resumo
                         dbc.Row(
                             [
-                                html.Hr(),
                                 dbc.Row(
                                     [
-                                        dbc.Col(DashIconify(icon="mdi:bus", width=45), width="auto"),
+                                        # Cabeçalho
+                                        html.Hr(),
                                         dbc.Col(
-                                            html.H1(
-                                                [
-                                                    "Retrabalho por\u00a0",
-                                                    html.Strong("veículo"),
-                                                ],
-                                                className="align-self-center",
-                                            ),
-                                            width=True,
+                                            DashIconify(icon="wpf:statistics", width=45),
+                                            width="auto",
                                         ),
+                                        dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
+                                        dmc.Space(h=15),
+                                        html.Hr(),
                                     ],
                                     align="center",
                                 ),
-                                dmc.Space(h=15),
-                                html.Hr(),
-                                dbc.Col(
-                                    dbc.Card(
+                                dmc.Space(h=30),
+                                # Gráfico de pizza com a relação entre Retrabalho e Correção
+                                dcc.Graph(id="graph-pizza-sintese-veiculo"),
+                            ]
+                        ),
+                        md=4,
+                    ),
+                ]
+            ),
+            dmc.Space(h=30),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="icon-park-outline:ranking-list", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4("Indicadores", className="align-self-center"),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_veiculos("labels-indicadores-pag-veiculo"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dmc.Space(h=20),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
                                         [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Data (intervalo) de análise"),
-                                                    dmc.DatePicker(
-                                                        id="input-intervalo-datas-veiculo",
-                                                        allowSingleDateInRange=True,
-                                                        type="range",
-                                                        minDate=date(2024, 8, 1),
-                                                        maxDate=date.today(),
-                                                        value=[date(2024, 8, 1), date.today()],
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
-                                            )
-                                        ],
-                                        body=True,
-                                    ),
-                                    md=6,
-                                    className="mb-3 mb-md-0",
-                                ),
-                                dbc.Col(
-                                    dbc.Card(
-                                        [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Tempo (em dias) entre OS para retrabalho"),
-                                                    dcc.Dropdown(
-                                                        id="input-min-dias-veiculo",
-                                                        options=[
-                                                            {"label": "10 dias", "value": 10},
-                                                            {"label": "15 dias", "value": 15},
-                                                            {"label": "30 dias", "value": 30},
-                                                        ],
-                                                        placeholder="Período em dias",
-                                                        value=10,
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
+                                            dmc.Title(id="indicador-rank-retrabalho-veiculo", order=2),
+                                            DashIconify(
+                                                icon="tabler:reorder",
+                                                width=48,
+                                                color="black",
                                             ),
                                         ],
-                                        body=True,
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
                                     ),
-                                    md=6,
                                 ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
+                                dbc.CardFooter(["Rank Retrabalho / Modelo", html.Br(), "(menor = melhor)"]),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                        className="mb-3 mb-md-0",
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
                                         [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Modelos"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-modelos-veiculo",
-                                                        options=[
-                                                            {"label": os["MODELO"], "value": os["MODELO"]}
-                                                            for os in lista_todos_modelos
-                                                        ],
-                                                        value="TODOS",
-                                                        placeholder="Selecione o modelo do veículo",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
+                                            dmc.Title(id="indicador-rank-correcao-de-primeira-veiculo", order=2),
+                                            DashIconify(
+                                                icon="gravity-ui:target-dart",
+                                                width=48,
+                                                color="black",
                                             ),
                                         ],
-                                        body=True,
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
                                     ),
-                                    md=6,
-                                    className="mb-3 mb-md-0",
                                 ),
-                                dbc.Col(
-                                    dbc.Card(
+                                dbc.CardFooter(["Rank Correção Primeira / Modelo", html.Br(), "(maior = melhor)"]),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                        className="mb-3 mb-md-0",
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
                                         [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Veículos"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-veiculos-veiculo",
-                                                        multi=False,
-                                                        options=[
-                                                            {
-                                                                "label": veiculo["VEICULO"],
-                                                                "value": veiculo["VEICULO"],
-                                                            }
-                                                            for _, veiculo in df_veiculos.iterrows()
-                                                        ],
-                                                        value=df_veiculos.iloc[0]["VEICULO"],
-                                                        placeholder="Selecione o veículo",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
+                                            dmc.Title(id="indicador-total-os-veiculo", order=2),
+                                            DashIconify(
+                                                icon="pajamas:task-done",
+                                                width=48,
+                                                color="black",
                                             ),
                                         ],
-                                        body=True,
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
                                     ),
-                                    md=6,
                                 ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
+                                dbc.CardFooter(["Total de OSs executadas", html.Br(), "(no período selecionado)"]),
+                            ],
+                            className="card-box",
+                        ),
+                        md=3,
+                        className="mb-3 mb-md-0",
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
                                         [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Oficinas"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-oficina-veiculo",
-                                                        options=[
-                                                            {"label": oficina["LABEL"], "value": oficina["LABEL"]}
-                                                            for oficina in lista_todas_oficinas
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais oficinas...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
+                                            dmc.Title(id="indicador-rank-os-veiculo", order=2),
+                                            DashIconify(
+                                                icon="solar:ranking-linear",
+                                                width=48,
+                                                color="black",
                                             ),
                                         ],
-                                        body=True,
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
                                     ),
-                                    md=6,
-                                    className="mb-3 mb-md-0",
                                 ),
-                                dbc.Col(
-                                    dbc.Card(
+                                dbc.CardFooter(["Rank de OSs / Modelo", html.Br(), "(menor = melhor)"]),
+                            ],
+                            className="card-box",
+                        ),
+                        md=3,
+                        className="mb-3 mb-md-0",
+                    ),
+                ],
+                justify="center",
+            ),
+            dmc.Space(h=20),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
                                         [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Seções (categorias) de manutenção"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-secao-veiculo",
-                                                        options=[
-                                                            {"label": sec["LABEL"], "value": sec["LABEL"]}
-                                                            for sec in lista_todas_secoes
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais seções...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
+                                            dmc.Title(id="indicador-gasto-total-veiculo", order=2),
+                                            DashIconify(
+                                                icon="hugeicons:search-dollar",
+                                                width=48,
+                                                color="black",
                                             ),
                                         ],
-                                        body=True,
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
                                     ),
-                                    md=6,
                                 ),
-                                dmc.Space(h=10),
-                                dbc.Col(
-                                    dbc.Card(
+                                dbc.CardFooter(["Total gasto com peças", html.Br(), "(no período)"]),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
                                         [
-                                            html.Div(
-                                                [
-                                                    dbc.Label("Ordens de Serviço"),
-                                                    dcc.Dropdown(
-                                                        id="input-select-ordens-servico-veiculos",
-                                                        options=[
-                                                            {"label": os["LABEL"], "value": os["LABEL"]}
-                                                            for os in lista_todas_os
-                                                        ],
-                                                        multi=True,
-                                                        value=["TODAS"],
-                                                        placeholder="Selecione uma ou mais ordens de serviço...",
-                                                    ),
-                                                ],
-                                                className="dash-bootstrap",
+                                            dmc.Title(id="indicador-rank-gasto-total-veiculo", order=2),
+                                            DashIconify(
+                                                icon="ion:analytics-sharp",
+                                                width=48,
+                                                color="black",
                                             ),
                                         ],
-                                        body=True,
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
                                     ),
-                                    md=12,
-                                    className="mb-3 mb-md-0",
+                                ),
+                                dbc.CardFooter(["Rank Gasto Total Peças / Modelo", html.Br(), "(menor = melhor)"]),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-gasto-retrabalho-total-veiculo", order=2),
+                                            DashIconify(
+                                                icon="emojione-monotone:money-with-wings",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter(["Total gasto com retrabalho", html.Br(), "(no período selecionado)"]),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardBody(
+                                    dmc.Group(
+                                        [
+                                            dmc.Title(id="indicador-rank-gasto-retrabalho-veiculo", order=2),
+                                            DashIconify(
+                                                icon="ion:analytics-sharp",
+                                                width=48,
+                                                color="black",
+                                            ),
+                                        ],
+                                        justify="center",
+                                        mt="md",
+                                        mb="xs",
+                                    ),
+                                ),
+                                dbc.CardFooter(["Rank Gasto Retrabalho / Modelo", html.Br(), "(menor = melhor)"]),
+                            ],
+                            class_name="card-box-shadow",
+                        ),
+                        md=3,
+                    ),
+                ],
+                justify="center",
+            ),
+            dbc.Row(dmc.Space(h=40)),
+            dmc.Space(h=40),
+            # Gráfico de Quantidade de OS / mes
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Evolução do número de OS por mês",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_veiculos("evolucao-os-mes-veiculo"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dcc.Graph(id="graph-evolucao-os-mes-veiculo"),
+            dmc.Space(h=40),
+            # Graficos de Evolução do Retrabalho por Mês
+            dmc.Space(h=30),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Evolução do retrabalho por veículo",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_veiculos("evolucao-retrabalho-por-garagem-por-mes-veiculos"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dcc.Graph(id="graph-evolucao-retrabalho-mes-por-veiculo"),
+            dmc.Space(h=40),
+            # Graficos de Evolução do Retrabalho por Seção
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Evolução do retrabalho por seção",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_veiculos("evolucao-retrabalho-por-secao-por-mes-veiculos"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes-veiculos-v2"),
+            dmc.Space(h=40),
+            # Grafico de Evolução do Custo
+            dmc.Space(h=30),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Evolução do custo de peças trocadas por mês",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                gera_labels_inputs_veiculos("evolucao-custo-por-mes-veiculos"),
+                            ]
+                        ),
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dcc.Graph(id="graph-evolucao-custo-por-mes-veiculo"),
+            dmc.Space(h=40),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Detalhamento dos Serviços",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            gera_labels_inputs_veiculos(
+                                                "labels-tabela-top-servicos-categorizados-veiculo"
+                                            ),
+                                            width=True,
+                                        ),
+                                        dbc.Col(
+                                            html.Div(
+                                                [
+                                                    html.Button(
+                                                        "Exportar para Excel",
+                                                        id="btn-exportar-excel-top-servicos-veiculo",
+                                                        n_clicks=0,
+                                                        style={
+                                                            "background-color": "#007bff",  # Azul
+                                                            "color": "white",
+                                                            "border": "none",
+                                                            "padding": "10px 20px",
+                                                            "border-radius": "8px",
+                                                            "cursor": "pointer",
+                                                            "font-size": "16px",
+                                                            "font-weight": "bold",
+                                                        },
+                                                    ),
+                                                    dcc.Download(id="download-excel-top-servicos-veiculo"),
+                                                ],
+                                                style={"text-align": "right"},
+                                            ),
+                                            width="auto",
+                                        ),
+                                    ],
+                                    align="center",
+                                    justify="between",  # Deixa os itens espaçados
                                 ),
                             ]
                         ),
-                    ],
-                    md=8,
-                    className="mb-3 mb-md-0",
-                ),
-                dbc.Col(
-                    # Resumo
-                    dbc.Row(
-                        [
-                            dbc.Row(
-                                [
-                                    # Cabeçalho
-                                    html.Hr(),
-                                    dbc.Col(
-                                        DashIconify(icon="wpf:statistics", width=45),
-                                        width="auto",
+                        width=True,
+                    ),
+                ],
+                align="center",
+            ),
+            dmc.Space(h=40),
+            dag.AgGrid(
+                id="tabela-top-servicos-categorizados-veiculo",
+                columnDefs=veiculos_tabelas.tbl_top_servicos_categorizados_veiculo,
+                rowData=[],
+                defaultColDef={"filter": True, "floatingFilter": True},
+                columnSize="autoSize",
+                dashGridOptions={
+                    "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                },
+                style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+            ),
+            dmc.Space(h=40),
+            dbc.Row(
+                [
+                    dbc.Col(DashIconify(icon="mdi:cog-outline", width=45), width="auto"),
+                    dbc.Col(
+                        dbc.Row(
+                            [
+                                html.H4(
+                                    "Lista de OS e Peças do Veículo",
+                                    className="align-self-center",
+                                ),
+                                dmc.Space(h=5),
+                                dbc.Col(
+                                    gera_labels_inputs_veiculos("labels-tabela-lista-os-pecas-do-veiculo"), width=True
+                                ),
+                                dbc.Col(
+                                    html.Div(
+                                        [
+                                            html.Button(
+                                                "Exportar para Excel",
+                                                id="btn-exportar-excel-tabela-os-pecas-veiculo",
+                                                n_clicks=0,
+                                                style={
+                                                    "background-color": "#007bff",  # Azul
+                                                    "color": "white",
+                                                    "border": "none",
+                                                    "padding": "10px 20px",
+                                                    "border-radius": "8px",
+                                                    "cursor": "pointer",
+                                                    "font-size": "16px",
+                                                    "font-weight": "bold",
+                                                },
+                                            ),
+                                            dcc.Download(id="download-excel-tabela-os-pecas-veiculo"),
+                                        ],
+                                        style={"text-align": "right"},
                                     ),
-                                    dbc.Col(html.H1("Resumo", className="align-self-center"), width=True),
-                                    dmc.Space(h=15),
-                                    html.Hr(),
-                                ],
-                                align="center",
-                            ),
-                            dmc.Space(h=30),
-                            # Gráfico de pizza com a relação entre Retrabalho e Correção
-                            dcc.Graph(id="graph-pizza-sintese-veiculo"),
-                        ]
-                    ),
-                    md=4,
-                ),
-            ]
-        ),
-        dmc.Space(h=30),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="icon-park-outline:ranking-list", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4("Indicadores", className="align-self-center"),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("labels-indicadores-pag-veiculo"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=20),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-retrabalho-veiculo", order=2),
-                                        DashIconify(
-                                            icon="tabler:reorder",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
+                                    width="auto",
                                 ),
-                            ),
-                            dbc.CardFooter(["Rank Retrabalho / Modelo", html.Br(), "(menor = melhor)"]),
-                        ],
-                        class_name="card-box-shadow",
+                            ]
+                        ),
+                        width=True,
                     ),
-                    md=3,
-                    className="mb-3 mb-md-0",
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-correcao-de-primeira-veiculo", order=2),
-                                        DashIconify(
-                                            icon="gravity-ui:target-dart",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter(["Rank Correção Primeira / Modelo", html.Br(), "(maior = melhor)"]),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                    className="mb-3 mb-md-0",
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-total-os-veiculo", order=2),
-                                        DashIconify(
-                                            icon="pajamas:task-done",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter(["Total de OSs executadas", html.Br(), "(no período selecionado)"]),
-                        ],
-                        className="card-box",
-                    ),
-                    md=3,
-                    className="mb-3 mb-md-0",
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-os-veiculo", order=2),
-                                        DashIconify(
-                                            icon="solar:ranking-linear",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter(["Rank de OSs / Modelo", html.Br(), "(menor = melhor)"]),
-                        ],
-                        className="card-box",
-                    ),
-                    md=3,
-                    className="mb-3 mb-md-0",
-                ),
-            ],
-            justify="center",
-        ),
-        dmc.Space(h=20),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-gasto-total-veiculo", order=2),
-                                        DashIconify(
-                                            icon="hugeicons:search-dollar",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter(["Total gasto com peças", html.Br(), "(no período)"]),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-gasto-total-veiculo", order=2),
-                                        DashIconify(
-                                            icon="ion:analytics-sharp",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter(["Rank Gasto Total Peças / Modelo", html.Br(), "(menor = melhor)"]),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-gasto-retrabalho-total-veiculo", order=2),
-                                        DashIconify(
-                                            icon="emojione-monotone:money-with-wings",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter(["Total gasto com retrabalho", html.Br(), "(no período selecionado)"]),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        [
-                            dbc.CardBody(
-                                dmc.Group(
-                                    [
-                                        dmc.Title(id="indicador-rank-gasto-retrabalho-veiculo", order=2),
-                                        DashIconify(
-                                            icon="ion:analytics-sharp",
-                                            width=48,
-                                            color="black",
-                                        ),
-                                    ],
-                                    justify="center",
-                                    mt="md",
-                                    mb="xs",
-                                ),
-                            ),
-                            dbc.CardFooter(["Rank Gasto Retrabalho / Modelo", html.Br(), "(menor = melhor)"]),
-                        ],
-                        class_name="card-box-shadow",
-                    ),
-                    md=3,
-                ),
-            ],
-            justify="center",
-        ),
-        dbc.Row(dmc.Space(h=40)),
-        dmc.Space(h=40),
-        # Gráfico de Quantidade de OS / mes
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Evolução do número de OS por mês",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("evolucao-os-mes-veiculo"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-os-mes-veiculo"),
-        dmc.Space(h=40),
-        # Graficos de Evolução do Retrabalho por Mês
-        dmc.Space(h=30),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Evolução do retrabalho por veículo",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("evolucao-retrabalho-por-garagem-por-mes-veiculos"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-retrabalho-mes-por-veiculo"),
-        dmc.Space(h=40),
-        # Graficos de Evolução do Retrabalho por Seção
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-text-20-filled", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Evolução do retrabalho por seção",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("evolucao-retrabalho-por-secao-por-mes-veiculos"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-retrabalho-por-secao-por-mes-veiculos-v2"),
-        dmc.Space(h=40),
-        # Grafico de Evolução do Custo
-        dmc.Space(h=30),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="fluent:arrow-trending-wrench-20-filled", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Evolução do custo de peças trocadas por mês",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            gera_labels_inputs_veiculos("evolucao-custo-por-mes-veiculos"),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dcc.Graph(id="graph-evolucao-custo-por-mes-veiculo"),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="mdi:account-wrench", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Detalhamento dos Serviços",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        gera_labels_inputs_veiculos("labels-tabela-top-servicos-categorizados-veiculo"),
-                                        width=True,
-                                    ),
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Button(
-                                                    "Exportar para Excel",
-                                                    id="btn-exportar-excel-top-servicos-veiculo",
-                                                    n_clicks=0,
-                                                    style={
-                                                        "background-color": "#007bff",  # Azul
-                                                        "color": "white",
-                                                        "border": "none",
-                                                        "padding": "10px 20px",
-                                                        "border-radius": "8px",
-                                                        "cursor": "pointer",
-                                                        "font-size": "16px",
-                                                        "font-weight": "bold",
-                                                    },
-                                                ),
-                                                dcc.Download(id="download-excel-top-servicos-veiculo"),
-                                            ],
-                                            style={"text-align": "right"},
-                                        ),
-                                        width="auto",
-                                    ),
-                                ],
-                                align="center",
-                                justify="between",  # Deixa os itens espaçados
-                            ),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=40),
-        dag.AgGrid(
-            id="tabela-top-servicos-categorizados-veiculo",
-            columnDefs=veiculos_tabelas.tbl_top_servicos_categorizados_veiculo,
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            dashGridOptions={
-                "localeText": locale_utils.AG_GRID_LOCALE_BR,
-            },
-            style={"height": 400, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
-        ),
-        dmc.Space(h=40),
-        dbc.Row(
-            [
-                dbc.Col(DashIconify(icon="mdi:cog-outline", width=45), width="auto"),
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            html.H4(
-                                "Lista de OS e Peças do Veículo",
-                                className="align-self-center",
-                            ),
-                            dmc.Space(h=5),
-                            dbc.Col(gera_labels_inputs_veiculos("labels-tabela-lista-os-pecas-do-veiculo"), width=True),
-                            dbc.Col(
-                                html.Div(
-                                    [
-                                        html.Button(
-                                            "Exportar para Excel",
-                                            id="btn-exportar-excel-tabela-os-pecas-veiculo",
-                                            n_clicks=0,
-                                            style={
-                                                "background-color": "#007bff",  # Azul
-                                                "color": "white",
-                                                "border": "none",
-                                                "padding": "10px 20px",
-                                                "border-radius": "8px",
-                                                "cursor": "pointer",
-                                                "font-size": "16px",
-                                                "font-weight": "bold",
-                                            },
-                                        ),
-                                        dcc.Download(id="download-excel-tabela-os-pecas-veiculo"),
-                                    ],
-                                    style={"text-align": "right"},
-                                ),
-                                width="auto",
-                            ),
-                        ]
-                    ),
-                    width=True,
-                ),
-            ],
-            align="center",
-        ),
-        dmc.Space(h=40),
-        dag.AgGrid(
-            id="tabela-lista-os-pecas-veiculo",
-            columnDefs=veiculos_tabelas.tbl_detalhamento_os_pecas_veiculo,
-            rowData=[],
-            defaultColDef={"filter": True, "floatingFilter": True},
-            columnSize="autoSize",
-            dashGridOptions={
-                "localeText": locale_utils.AG_GRID_LOCALE_BR,
-            },
-            style={"height": 600, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
-        ),
-        dmc.Space(h=40),
-    ]
-)
+                ],
+                align="center",
+            ),
+            dmc.Space(h=40),
+            dag.AgGrid(
+                id="tabela-lista-os-pecas-veiculo",
+                columnDefs=veiculos_tabelas.tbl_detalhamento_os_pecas_veiculo,
+                rowData=[],
+                defaultColDef={"filter": True, "floatingFilter": True},
+                columnSize="autoSize",
+                dashGridOptions={
+                    "localeText": locale_utils.AG_GRID_LOCALE_BR,
+                },
+                style={"height": 600, "resize": "vertical", "overflow": "hidden"},  # -> permite resize
+            ),
+            dmc.Space(h=40),
+        ]
+    )
 
 
 ##############################################################################

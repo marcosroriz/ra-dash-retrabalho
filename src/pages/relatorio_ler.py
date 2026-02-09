@@ -216,18 +216,6 @@ def cb_datas_permitidas(id_regra):
     return list(disabled_dates)
 
 
-
-@callback(
-    Output("ler-relatorio-input-select-data", "maxDate"),
-    Output("ler-relatorio-input-select-data", "value", allow_duplicate=True),
-    Input("url", "pathname"),  # fires on page load
-)
-def cb_input_datas_rel_ler_dinamico(_):
-    hoje = date.today()
-    return hoje, [date(2024, 8, 1), hoje]
-
-
-
 ##############################################################################
 # Callbacks do relatório #####################################################
 ##############################################################################
@@ -265,120 +253,121 @@ def cb_render_data_relatorio(store_payload):
 ##############################################################################
 # Layout #####################################################################
 ##############################################################################
-layout = dbc.Container(
-    [
-        # Estado
-        dcc.Store(id="store-ler-relatorio"),
-        # Modais
-        # Cabeçalho e Inputs
-        html.Hr(),
-        # Título Desktop
-        dmc.Box(
+def layout():
+    return dbc.Container(
+        [
+            # Estado
+            dcc.Store(id="store-ler-relatorio"),
+            # Modais
+            # Cabeçalho e Inputs
+            html.Hr(),
+            # Título Desktop
+            dmc.Box(
+                dbc.Row(
+                    [
+                        dbc.Col(DashIconify(icon="carbon:rule-data-quality", width=45), width="auto"),
+                        dbc.Col(
+                            html.H1(
+                                [
+                                    "Relatório LLM do \u00a0",
+                                    html.Strong("retrabalho"),
+                                ],
+                                className="align-self-center",
+                            ),
+                            width=True,
+                        ),
+                    ],
+                    align="center",
+                ),
+                visibleFrom="sm",
+            ),
+            # Titulo Mobile
+            dmc.Box(
+                dbc.Row(
+                    [
+                        dbc.Col(DashIconify(icon="carbon:rule-data-quality", width=45), width="auto"),
+                        dbc.Col(
+                            html.H1(
+                                "Relatório de retrabalho",
+                                className="align-self-center",
+                            ),
+                            width=True,
+                        ),
+                    ],
+                    align="center",
+                ),
+                hiddenFrom="sm",
+            ),
+            html.Hr(),
             dbc.Row(
                 [
-                    dbc.Col(DashIconify(icon="carbon:rule-data-quality", width=45), width="auto"),
                     dbc.Col(
-                        html.H1(
-                            [
-                                "Relatório LLM do \u00a0",
-                                html.Strong("retrabalho"),
-                            ],
-                            className="align-self-center",
+                        dbc.Card(
+                            html.Div(
+                                [
+                                    dbc.Label("Nome do Relatório"),
+                                    dcc.Dropdown(
+                                        id="ler-relatorio-input-select-regra",
+                                        options=[regra for regra in lista_regras],
+                                        placeholder="Selecione uma regra...",
+                                    ),
+                                    dmc.Space(h=5),
+                                    dbc.FormText(
+                                        html.Em(
+                                            "Regra não encontrada",
+                                            id="ler-relatorio-input-nome-error",
+                                        ),
+                                        color="secondary",
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                            id="ler-relatorio-card-input-nome",
+                            body=True,
                         ),
-                        width=True,
+                        md=6,
+                        className="mb-3 mb-md-0",
                     ),
-                ],
-                align="center",
-            ),
-            visibleFrom="sm",
-        ),
-        # Titulo Mobile
-        dmc.Box(
-            dbc.Row(
-                [
-                    dbc.Col(DashIconify(icon="carbon:rule-data-quality", width=45), width="auto"),
                     dbc.Col(
-                        html.H1(
-                            "Relatório de retrabalho",
-                            className="align-self-center",
+                        dbc.Card(
+                            html.Div(
+                                [
+                                    dbc.Label("Data do relatório"),
+                                    dmc.DateInput(
+                                        id="ler-relatorio-input-select-data",
+                                        minDate=date(2020, 8, 5),
+                                        maxDate=datetime.now().date(),
+                                        valueFormat="DD/MM/YYYY",
+                                        value=(datetime.now() - timedelta(days=10)).date(),
+                                    ),
+                                    dmc.Space(h=5),
+                                    dbc.FormText(
+                                        html.Em(
+                                            "Período inválido",
+                                            id="ler-relatorio-input-data-error",
+                                        ),
+                                        color="secondary",
+                                    ),
+                                ],
+                                className="dash-bootstrap",
+                            ),
+                            id="ler-relatorio-card-input-data",
+                            body=True,
                         ),
-                        width=True,
+                        md=6,
+                        className="mb-3 mb-md-0",
                     ),
-                ],
-                align="center",
+                ]
             ),
-            hiddenFrom="sm",
-        ),
-        html.Hr(),
-        dbc.Row(
-            [
-                dbc.Col(
-                    dbc.Card(
-                        html.Div(
-                            [
-                                dbc.Label("Nome do Relatório"),
-                                dcc.Dropdown(
-                                    id="ler-relatorio-input-select-regra",
-                                    options=[regra for regra in lista_regras],
-                                    placeholder="Selecione uma regra...",
-                                ),
-                                dmc.Space(h=5),
-                                dbc.FormText(
-                                    html.Em(
-                                        "Regra não encontrada",
-                                        id="ler-relatorio-input-nome-error",
-                                    ),
-                                    color="secondary",
-                                ),
-                            ],
-                            className="dash-bootstrap",
-                        ),
-                        id="ler-relatorio-card-input-nome",
-                        body=True,
-                    ),
-                    md=6,
-                    className="mb-3 mb-md-0",
-                ),
-                dbc.Col(
-                    dbc.Card(
-                        html.Div(
-                            [
-                                dbc.Label("Data do relatório"),
-                                dmc.DateInput(
-                                    id="ler-relatorio-input-select-data",
-                                    minDate=date(2020, 8, 5),
-                                    maxDate=datetime.now().date(),
-                                    valueFormat="DD/MM/YYYY",
-                                    value=(datetime.now() - timedelta(days=10)).date(),
-                                ),
-                                dmc.Space(h=5),
-                                dbc.FormText(
-                                    html.Em(
-                                        "Período inválido",
-                                        id="ler-relatorio-input-data-error",
-                                    ),
-                                    color="secondary",
-                                ),
-                            ],
-                            className="dash-bootstrap",
-                        ),
-                        id="ler-relatorio-card-input-data",
-                        body=True,
-                    ),
-                    md=6,
-                    className="mb-3 mb-md-0",
-                ),
-            ]
-        ),
-        dmc.Space(h=40),
-        # Relatório em MD
-        html.H2(
-            id="header-dada-relatorio",
-            className="header-dada-relatorio",
-        ),
-        dcc.Markdown(id="conteudo-markdown-relatorio", className="markdown-relatorio"),
-    ]
-)
+            dmc.Space(h=40),
+            # Relatório em MD
+            html.H2(
+                id="header-dada-relatorio",
+                className="header-dada-relatorio",
+            ),
+            dcc.Markdown(id="conteudo-markdown-relatorio", className="markdown-relatorio"),
+        ]
+    )
 
 
 ##############################################################################
